@@ -18,12 +18,12 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// Включение оффлайн-режима (Persistence)
+// Включение оффлайн-режима
 enableMultiTabIndexedDbPersistence(db).catch((err) => {
     console.warn("Оффлайн-режим недоступен:", err.code);
 });
 
-// --- НАСТРОЙКИ (КАТЕГОРИИ И СЧЕТА) ---
+// --- НАСТРОЙКИ ---
 const SETTINGS_KEY = "money_tracker_settings_main";
 const DEFAULTS = {
   accounts: [
@@ -34,6 +34,154 @@ const DEFAULTS = {
     income: [
       { id: "delivery", name: "Доставка", color: "#65d48b", sub: ["F1", "F2", "F3", "Карго", "Ночь"] },
       { id: "taxi", name: "Такси", color: "#ffd166", sub: [] },
+    ],
+    expense: [
+      { id: "auto", name: "Автомобиль", color: "#ffd166", sub: ["Бензин", "Масла", "Фильтра", "Мойка", "Автозапчасти"] },
+      { id: "food", name: "Еда", color: "#ff6b6b", sub: [] },
+      { id: "other", name: "Прочее", color: "#9aa0a7", sub: [] },
+    ],
+  },
+  pinHash: null,
+};
+
+let settings = JSON.parse(localStorage.getItem(SETTINGS_KEY)) || DEFAULTS;
+let allTx = [];
+
+// --- ПОМОЩНИКИ ---
+const todayISO = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+const fmtKZT = (n) => (n || 0).toLocaleString("ru-RU") + " ₸";
+
+// --- FIREBASE ОПЕРАЦИИ ---
+async function addTransaction(tx) {
+  try { await addDoc(collection(db, "transactions"), tx); } 
+  catch (e) { console.error("Ошибка добавления:", e); }
+}
+
+async function deleteTransaction(id) {
+  try { await deleteDoc(doc(db, "transactions", id)); } 
+  catch (e) { console.error("Ошибка удаления:", e); }
+}
+
+function listenToUpdates() {
+  const q = query(collection(db, "transactions"), orderBy("date", "desc"));
+  onSnapshot(q, (snapshot) => {
+    allTx = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    render();
+  });
+}
+
+// --- ИНТЕРФЕЙС ---
+const elList = document.getElementById("list");
+const elType = document.getElementById("type");
+const elCategory = document.getElementById("category");
+const elAccount = document.getElementById("account");
+const subcatWrap = document.getElementById("subcatWrap");
+const elSubcategory = document.getElementById("subcategory");
+
+function renderSelects() {
+  elAccount.innerHTML = settings.accounts.map(a => `<option value="${a.id}">${a.name}</option>`).join("");
+  elAccount.value = "cash";
+  const cats = settings.categoriesByType[elType.value] || [];
+  elCategory.innerHTML = cats.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
+  updateSubcatUI();
+}
+
+function updateSubcatUI() {
+  const cat = settings.categoriesByType[elType.value].find(c => c.id === elCategory.value);
+  if (cat?.sub?.length) {
+    subcatWrap.classList.remove("hidden");
+    elSubcategory.innerHTML = cat.sub.map(s => `<option value="${s}">${s}</option>`).join("");
+  } else {
+    subcatWrap.classList.add("hidden");
+  }
+}
+
+function render() {
+  const queryText = document.getElementById("search")?.value.toLowerCase() || "";
+  const filtered = allTx.filter(t => 
+    (t.note || "").toLowerCase().includes(queryText) || 
+    (t.subcategory || "").toLowerCase().includes(queryText)
+  );
+
+  let inc = 0, exp = 0;
+  elList.innerHTML = filtered.length ? "" : `<div class="muted">Записей не найдено</div>`;
+  
+  filtered.forEach(t => {
+    t.type === "income" ? inc += t.amount : exp += t.amount;
+    const cat = settings.categoriesByType[t.type].find(c => c.id === t.categoryId) || {name: "???"};
+    
+    const div = document.createElement("div");
+    div.className = "item";
+    div.innerHTML = `
+      <div class="meta">
+        <div class="line1">
+          <span class="amt ${t.type === "income" ? "pos" : "neg"}">${t.type === "income" ? "+" : "−"} ${fmtKZT(t.amount)}</span>
+          <span class="tag">${t.date} • ${t.accountId === 'cash' ? 'Нал' : 'Kaspi'}</span>
+        </div>
+        <div class="tag"><span class="dot" style="background:${cat.color}"></span> ${cat.name} ${t.subcategory ? '• '+t.subcategory : ''}</div>
+      </div>
+      <button class="iconbtn danger btn-del" data-id="${t.id}">✕</button>`;
+    elList.appendChild(div);
+  });
+
+  document.getElementById("totalIncome").textContent = fmtKZT(inc);
+  document.getElementById("totalExpense").textContent = fmtKZT(exp);
+  document.getElementById("balance").textContent = fmtKZT(inc - exp);
+}
+
+// --- СОБЫТИЯ ---
+document.getElementById("txForm").onsubmit = async (e) => {
+  e.preventDefault();
+  const amountEl = document.getElementById("amount");
+  const noteEl = document.getElementById("note");
+  const amount = Number(amountEl.value);
+  if (!amount) return;
+
+  await addTransaction({
+    type: elType.value,
+    amount: amount,
+    accountId: elAccount.value,
+    categoryId: elCategory.value,
+    subcategory: subcatWrap.classList.contains("hidden") ? "" : elSubcategory.value,
+    note: noteEl.value,
+    date: document.getElementById("date").value,
+    createdAt: Date.now()
+  });
+  
+  amountEl.value = "";
+  noteEl.value = "";
+};
+
+elList.onclick = (e) => {
+  if (e.target.classList.contains('btn-del')) {
+    if (confirm("Удалить запись?")) deleteTransaction(e.target.dataset.id);
+  }
+};
+
+elType.onchange = renderSelects;
+elCategory.onchange = updateSubcatUI;
+if (document.getElementById("search")) {
+    document.getElementById("search").oninput = render;
+}
+
+document.getElementById("quickAmounts").onclick = (e) => {
+  if (e.target.dataset.add) {
+    const el = document.getElementById("amount");
+    el.value = (Number(el.value) || 0) + Number(e.target.dataset.add);
+  }
+};
+
+// PIN & Modal
+document.getElementById("btnSettings").onclick = () => document.getElementById("modal").classList.remove("hidden");
+document.getElementById("btnCloseModal").onclick = () => document.getElementById("modal").classList.add("hidden");
+
+// Инициализация
+document.getElementById("date").value = todayISO();
+renderSelects();
+listenToUpdates();
     ],
     expense: [
       { id: "auto", name: "Автомобиль", color: "#ffd166", sub: ["Бензин", "Масла", "Фильтра", "Мойка", "Автозапчасти"] },
