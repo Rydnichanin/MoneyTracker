@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Учёт денег Online</title>
+
+  <link rel="manifest" href="./manifest.json" />
+  <meta name="theme-color" content="#111111" />
+  <link rel="stylesheet" href="./style.css" />
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div id="lock" class="lock hidden">
+    <div class="lock-card">
+      <div class="lock-title">Введите PIN</div>
+      <div class="lock-sub muted">4 цифры</div>
+      <input id="pinInput" class="pin" inputmode="numeric" maxlength="4" placeholder="••••" />
+      <button id="pinBtn" type="button">Открыть</button>
+      <div id="pinErr" class="err hidden">Неверный PIN</div>
+    </div>
+  </div>
+
+  <header class="wrap header">
+    <div>
+      <h1>Учёт денег</h1>
+      <p class="muted">Online Cloud • Firebase Edition</p>
+    </div>
+    <div class="header-actions">
+      <button id="btnSettings" type="button">Настройки</button>
+      <button id="btnBackup" type="button">Экспорт</button>
+    </div>
+  </header>
+
+  <main class="wrap grid">
+    <section class="card">
+      <h2>Добавить запись</h2>
+      <form id="txForm" class="form">
+        <div class="row2">
+          <label>Тип
+            <select id="type" required>
+              <option value="income">Приход</option>
+              <option value="expense" selected>Расход</option>
+            </select>
+          </label>
+          <label>Счёт
+            <select id="account" required></select>
+          </label>
+        </div>
+        <label>Категория
+          <select id="category"></select>
+        </label>
+        <label id="subcatWrap" class="hidden">Подкатегория
+          <select id="subcategory"></select>
+        </label>
+        <label>Сумма
+          <input id="amount" type="number" inputmode="numeric" step="1" min="1" required />
+        </label>
+        <div id="quickAmounts" class="quick">
+          <button class="chip" type="button" data-add="150">+150</button>
+          <button class="chip" type="button" data-add="500">+500</button>
+          <button class="chip" type="button" data-add="1000">+1000</button>
+          <button class="chip" type="button" data-add="2000">+2000</button>
+          <button class="chip" type="button" data-add="5000">+5000</button>
+        </div>
+        <label>Комментарий
+          <input id="note" type="text" placeholder="по желанию" />
+        </label>
+        <label>Дата
+          <input id="date" type="date" required />
+        </label>
+        <button type="submit">Сохранить</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>Итоги</h2>
+      <div class="stats">
+        <div class="stat">
+          <div class="muted">Баланс</div>
+          <div id="balance" class="big">0 ₸</div>
+        </div>
+        <div class="stat">
+          <div class="muted">Приход</div>
+          <div id="totalIncome" class="pos">0 ₸</div>
+        </div>
+        <div class="stat">
+          <div class="muted">Расход</div>
+          <div id="totalExpense" class="neg">0 ₸</div>
+        </div>
+      </div>
+      <div class="row" style="margin-top:15px;">
+        <input id="search" type="search" placeholder="Поиск..." />
+      </div>
+    </section>
+
+    <section class="card full">
+      <h2>История (Облако)</h2>
+      <div id="list" class="list"></div>
+    </section>
+  </main>
+
+  <div id="modal" class="modal hidden">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div class="modal-title">Настройки</div>
+        <button id="btnCloseModal" class="iconbtn" type="button">✕</button>
+      </div>
+      <div class="tabpane">
+        <div class="row">
+          <input id="pinNew" class="pin" inputmode="numeric" maxlength="4" placeholder="Новый PIN" />
+          <button id="setPin" type="button">ОК</button>
+        </div>
+        <button id="removePin" class="danger" style="margin-top:10px;">Удалить PIN</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./app.js"></script>
+</body>
+            </html>
+            
