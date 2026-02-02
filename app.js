@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { 
-  getFirestore, collection, addDoc, getDocs, deleteDoc, doc, 
-  query, orderBy, enableMultiTabIndexedDbPersistence, onSnapshot 
+import {
+  getFirestore, collection, addDoc, deleteDoc,
+  query, orderBy, enableMultiTabIndexedDbPersistence, onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 // --- КОНФИГУРАЦИЯ FIREBASE ---
@@ -14,13 +14,13 @@ const firebaseConfig = {
   appId: "1:440589448883:web:5ad507b270fa414731a2c6"
 };
 
-// Инициализация
+// Инициализация Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// Включение оффлайн-режима
+// Включение оффлайн-режима (может быть недоступен — это нормально)
 enableMultiTabIndexedDbPersistence(db).catch((err) => {
-    console.warn("Оффлайн-режим недоступен:", err.code);
+  console.warn("Оффлайн-режим недоступен:", err.code);
 });
 
 // --- НАСТРОЙКИ ---
@@ -35,6 +35,256 @@ const DEFAULTS = {
       { id: "delivery", name: "Доставка", color: "#65d48b", sub: ["F1", "F2", "F3", "Карго", "Ночь"] },
       { id: "taxi", name: "Такси", color: "#ffd166", sub: [] },
     ],
+    expense: [
+      { id: "auto", name: "Автомобиль", color: "#ffd166", sub: ["Бензин", "Масла", "Фильтра", "Мойка", "Автозапчасти"] },
+      { id: "food", name: "Еда", color: "#ff6b6b", sub: [] },
+      { id: "other", name: "Прочее", color: "#9aa0a7", sub: [] },
+    ],
+  },
+  pinHash: null,
+};
+
+let settings = JSON.parse(localStorage.getItem(SETTINGS_KEY)) || DEFAULTS;
+let allTx = [];
+
+// --- ПОМОЩНИКИ ---
+const todayISO = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+const fmtKZT = (n) => (Number(n) || 0).toLocaleString("ru-RU") + " ₸";
+
+function mustEl(id) {
+  const el = document.getElementById(id);
+  if (!el) console.error("Не найден элемент в HTML:", id);
+  return el;
+}
+
+// --- FIREBASE ОПЕРАЦИИ ---
+async function addTransaction(tx) {
+  try {
+    await addDoc(collection(db, "transactions"), tx);
+  } catch (e) {
+    console.error("Ошибка добавления:", e);
+    alert("Ошибка добавления. Смотри консоль.");
+  }
+}
+
+async function deleteTransaction(id) {
+  try {
+    // doc(db, "transactions", id) — можно, но deleteDoc принимает DocumentReference
+    // проще так:
+    await deleteDoc((await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js")).doc(db, "transactions", id));
+  } catch (e) {
+    console.error("Ошибка удаления:", e);
+    alert("Ошибка удаления. Смотри консоль.");
+  }
+}
+
+function listenToUpdates() {
+  // ВАЖНО: сортируем по createdAt, чтобы не падало из-за отсутствующего поля date в старых документах
+  const q = query(collection(db, "transactions"), orderBy("createdAt", "desc"));
+
+  onSnapshot(
+    q,
+    (snapshot) => {
+      allTx = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+      render();
+    },
+    (err) => {
+      console.error("Ошибка слушателя Firestore:", err);
+      alert("Firestore ошибка. Смотри консоль.");
+    }
+  );
+}
+
+// --- UI ЭЛЕМЕНТЫ ---
+let elList, elType, elCategory, elAccount, subcatWrap, elSubcategory;
+
+function renderSelects() {
+  if (!elAccount || !elType || !elCategory) return;
+
+  elAccount.innerHTML = settings.accounts
+    .map((a) => `<option value="${a.id}">${a.name}</option>`)
+    .join("");
+
+  // дефолт
+  if (!elAccount.value) elAccount.value = "cash";
+
+  const cats = settings.categoriesByType[elType.value] || [];
+  elCategory.innerHTML = cats.map((c) => `<option value="${c.id}">${c.name}</option>`).join("");
+
+  // если после смены типа пусто — подстрахуемся
+  if (cats.length && !elCategory.value) elCategory.value = cats[0].id;
+
+  updateSubcatUI();
+}
+
+function updateSubcatUI() {
+  if (!subcatWrap || !elSubcategory || !elType || !elCategory) return;
+
+  const cats = settings.categoriesByType[elType.value] || [];
+  const cat = cats.find((c) => c.id === elCategory.value);
+
+  if (cat && Array.isArray(cat.sub) && cat.sub.length) {
+    subcatWrap.classList.remove("hidden");
+    elSubcategory.innerHTML = cat.sub.map((s) => `<option value="${s}">${s}</option>`).join("");
+  } else {
+    subcatWrap.classList.add("hidden");
+    elSubcategory.innerHTML = "";
+  }
+}
+
+function render() {
+  const searchEl = document.getElementById("search");
+  const queryText = (searchEl?.value || "").toLowerCase();
+
+  const filtered = allTx.filter((t) => {
+    const note = (t.note || "").toLowerCase();
+    const sub = (t.subcategory || "").toLowerCase();
+    return note.includes(queryText) || sub.includes(queryText);
+  });
+
+  let inc = 0;
+  let exp = 0;
+
+  if (!elList) return;
+
+  elList.innerHTML = filtered.length ? "" : `<div class="muted" style="padding:8px 2px;">Записей не найдено</div>`;
+
+  for (const t of filtered) {
+    const amountNum = Number(t.amount) || 0;
+
+    if (t.type === "income") inc += amountNum;
+    else exp += Math.abs(amountNum);
+
+    const cat = (settings.categoriesByType[t.type] || []).find((c) => c.id === t.categoryId) || {
+      name: "???",
+      color: "#9aa0a7",
+    };
+
+    const div = document.createElement("div");
+    div.className = "item";
+
+    const accName = t.accountId === "cash" ? "Нал" : "Kaspi";
+
+    div.innerHTML = `
+      <div class="meta">
+        <div class="line1">
+          <span class="amt ${t.type === "income" ? "pos" : "neg"}">
+            ${t.type === "income" ? "+" : "−"} ${fmtKZT(Math.abs(amountNum))}
+          </span>
+          <span class="tag">${t.date || "—"} • ${accName}</span>
+        </div>
+        <div class="tag">
+          <span class="dot" style="background:${cat.color}"></span>
+          ${cat.name} ${t.subcategory ? "• " + t.subcategory : ""}
+          ${t.note ? "• " + t.note : ""}
+        </div>
+      </div>
+      <button class="iconbtn danger btn-del" data-id="${t.id}">✕</button>
+    `;
+
+    elList.appendChild(div);
+  }
+
+  const totalIncomeEl = document.getElementById("totalIncome");
+  const totalExpenseEl = document.getElementById("totalExpense");
+  const balanceEl = document.getElementById("balance");
+
+  if (totalIncomeEl) totalIncomeEl.textContent = fmtKZT(inc);
+  if (totalExpenseEl) totalExpenseEl.textContent = fmtKZT(exp);
+  if (balanceEl) balanceEl.textContent = fmtKZT(inc - exp);
+}
+
+// --- ИНИЦИАЛИЗАЦИЯ ПОСЛЕ DOM ---
+window.addEventListener("DOMContentLoaded", () => {
+  // Забираем элементы (и сразу ловим если чего-то нет)
+  elList = mustEl("list");
+  elType = mustEl("type");
+  elCategory = mustEl("category");
+  elAccount = mustEl("account");
+  subcatWrap = mustEl("subcatWrap");
+  elSubcategory = mustEl("subcategory");
+
+  const txForm = mustEl("txForm");
+  const dateEl = mustEl("date");
+  const amountEl = mustEl("amount");
+  const noteEl = mustEl("note");
+  const searchEl = document.getElementById("search");
+  const quickAmounts = document.getElementById("quickAmounts");
+
+  const btnSettings = document.getElementById("btnSettings");
+  const btnCloseModal = document.getElementById("btnCloseModal");
+  const modal = document.getElementById("modal");
+
+  // Дата по умолчанию
+  if (dateEl) dateEl.value = todayISO();
+
+  // Селекты
+  renderSelects();
+
+  // События
+  if (elType) elType.onchange = renderSelects;
+  if (elCategory) elCategory.onchange = updateSubcatUI;
+
+  if (searchEl) searchEl.oninput = render;
+
+  if (quickAmounts) {
+    quickAmounts.onclick = (e) => {
+      const btn = e.target.closest("[data-add]");
+      if (!btn) return;
+      if (!amountEl) return;
+      amountEl.value = (Number(amountEl.value) || 0) + Number(btn.dataset.add);
+    };
+  }
+
+  if (txForm) {
+    txForm.onsubmit = async (e) => {
+      e.preventDefault();
+      if (!amountEl) return;
+
+      const amount = Number(amountEl.value);
+      if (!amount) return;
+
+      const tx = {
+        type: elType?.value || "income",
+        amount: amount,
+        accountId: elAccount?.value || "cash",
+        categoryId: elCategory?.value || "",
+        subcategory: subcatWrap?.classList.contains("hidden") ? "" : (elSubcategory?.value || ""),
+        note: noteEl?.value || "",
+        date: dateEl?.value || todayISO(),
+        createdAt: Date.now(),
+      };
+
+      await addTransaction(tx);
+
+      amountEl.value = "";
+      if (noteEl) noteEl.value = "";
+    };
+  }
+
+  if (elList) {
+    elList.onclick = (e) => {
+      const delBtn = e.target.closest(".btn-del");
+      if (!delBtn) return;
+      if (confirm("Удалить запись?")) deleteTransaction(delBtn.dataset.id);
+    };
+  }
+
+  // Модалка
+  if (btnSettings && modal) btnSettings.onclick = () => modal.classList.remove("hidden");
+  if (btnCloseModal && modal) btnCloseModal.onclick = () => modal.classList.add("hidden");
+  if (modal) {
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) modal.classList.add("hidden");
+    });
+  }
+
+  // Запуск слушателя
+  listenToUpdates();
+});    ],
     expense: [
       { id: "auto", name: "Автомобиль", color: "#ffd166", sub: ["Бензин", "Масла", "Фильтра", "Мойка", "Автозапчасти"] },
       { id: "food", name: "Еда", color: "#ff6b6b", sub: [] },
