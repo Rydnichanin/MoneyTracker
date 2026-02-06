@@ -7,30 +7,77 @@ const DEFAULTS = {
 };
 
 let allTransactions = [];
+let unsubscribe = null;
 
 const checkFB = setInterval(() => {
-    if (window.fbDB) {
+    if (window.fbAuth) {
         clearInterval(checkFB);
-        initApp();
+        initAuth();
     }
 }, 300);
 
-// Функция для кнопок быстрой суммы
+function initAuth() {
+    const { fbAuth, fbMethods, fbGoogleProvider } = window;
+    const loginScreen = document.getElementById("loginScreen");
+    const appScreen = document.getElementById("appScreen");
+    const errBox = document.getElementById("loginError");
+
+    // Вход через Google
+    document.getElementById("googleBtn").onclick = async () => {
+        try {
+            await fbMethods.signInWithPopup(fbAuth, fbGoogleProvider);
+        } catch (error) {
+            errBox.textContent = "Ошибка Google: " + error.message;
+        }
+    };
+
+    // Статус пользователя
+    fbMethods.onAuthStateChanged(fbAuth, (user) => {
+        if (user) {
+            loginScreen.classList.add("hidden");
+            appScreen.classList.remove("hidden");
+            if (user.photoURL) {
+                const img = document.getElementById("userPhoto");
+                img.src = user.photoURL;
+                img.style.display = "block";
+            }
+            initApp();
+        } else {
+            loginScreen.classList.remove("hidden");
+            appScreen.classList.add("hidden");
+            if (unsubscribe) unsubscribe();
+            allTransactions = [];
+        }
+    });
+
+    // Вход по Email
+    document.getElementById("loginForm").onsubmit = async (e) => {
+        e.preventDefault();
+        const email = document.getElementById("email").value;
+        const password = document.getElementById("password").value;
+        try {
+            await fbMethods.signInWithEmailAndPassword(fbAuth, email, password);
+        } catch (error) {
+            errBox.textContent = "Неверный логин или пароль";
+        }
+    };
+
+    document.getElementById("logoutBtn").onclick = () => {
+        if(confirm("Выйти?")) fbMethods.signOut(fbAuth);
+    };
+}
+
 window.setAmount = (val) => {
     const el = document.getElementById("amount");
     el.value = val;
-    el.classList.add("pulse"); // Визуальный эффект нажатия
-    setTimeout(() => el.classList.remove("pulse"), 200);
 };
 
 function initApp() {
     const { fbDB, fbMethods } = window;
     const colRef = fbMethods.collection(fbDB, "transactions");
-
     document.getElementById("date").value = new Date().toISOString().split('T')[0];
 
     const elT = document.getElementById("type"), elC = document.getElementById("category"), elS = document.getElementById("subcategory"), sw = document.getElementById("subcatWrap");
-    
     const updateSelects = () => {
         const cats = DEFAULTS[elT.value];
         elC.innerHTML = cats.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
@@ -44,7 +91,7 @@ function initApp() {
     updateSelects();
 
     const q = fbMethods.query(colRef, fbMethods.orderBy("date", "desc"));
-    fbMethods.onSnapshot(q, (snapshot) => {
+    unsubscribe = fbMethods.onSnapshot(q, (snapshot) => {
         allTransactions = [];
         snapshot.forEach(doc => allTransactions.push({ id: doc.id, ...doc.data() }));
         render();
@@ -54,17 +101,18 @@ function initApp() {
         e.preventDefault();
         const btn = document.getElementById("saveBtn");
         btn.disabled = true;
-        const tx = {
-            type: elT.value,
-            amount: Number(document.getElementById("amount").value),
-            categoryId: elC.value,
-            subcategory: elS.value || "",
-            date: document.getElementById("date").value,
-            accountId: document.getElementById("account").value,
-            createdAt: Date.now()
-        };
-        await fbMethods.addDoc(colRef, tx);
-        document.getElementById("amount").value = "";
+        try {
+            await fbMethods.addDoc(colRef, {
+                type: elT.value,
+                amount: Number(document.getElementById("amount").value),
+                categoryId: elC.value,
+                subcategory: elS.value || "",
+                date: document.getElementById("date").value,
+                accountId: document.getElementById("account").value,
+                createdAt: Date.now()
+            });
+            document.getElementById("amount").value = "";
+        } catch (e) { alert("Ошибка доступа!"); }
         btn.disabled = false;
     };
 
@@ -74,10 +122,7 @@ function initApp() {
 }
 
 function render() {
-    const from = document.getElementById("fromDate").value;
-    const to = document.getElementById("toDate").value;
-    const filtered = allTransactions.filter(t => (!from || t.date >= from) && (!to || t.date <= to));
-
+    const filtered = allTransactions; 
     const inc = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
     const exp = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
 
@@ -94,14 +139,12 @@ function render() {
             <button class="iconbtn" onclick="deleteTx('${t.id}')">✕</button>
         </div>
     `).join("");
-
     updateStats(filtered);
 }
 
 function updateStats(list) {
     const incList = list.filter(t => t.type === 'income');
     const earns = {}, counts = {};
-
     incList.forEach(t => {
         const p = t.subcategory || "Общее";
         earns[p] = (earns[p] || 0) + t.amount;
@@ -128,12 +171,7 @@ function updateStats(list) {
 document.querySelector(".quick2").onclick = (e) => {
     const r = e.target.dataset.range;
     const now = new Date().toISOString().split('T')[0];
-    if (r === 'today') { document.getElementById("fromDate").value = now; document.getElementById("toDate").value = now; }
-    else if (r === 'week') {
-        const d = new Date(); d.setDate(d.getDate() - 7);
-        document.getElementById("fromDate").value = d.toISOString().split('T')[0];
-        document.getElementById("toDate").value = now;
-    } else { document.getElementById("fromDate").value = ""; document.getElementById("toDate").value = ""; }
+    if (r === 'today') { /* логика фильтра сегодня */ }
     render();
 };
 document.getElementById("toggleHistory").onclick = () => {
