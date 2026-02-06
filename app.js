@@ -1,6 +1,9 @@
 const DEFAULTS = {
     income: [{ id: "delivery", name: "Доставка", sub: ["F1", "F2", "F3", "Карго", "Ночь"] }],
-    expense: [{ id: "auto", name: "Авто", sub: ["Бензин", "Ремонт", "Мойка"] }, { id: "food", name: "Еда", sub: [] }]
+    expense: [
+        { id: "auto", name: "Авто", sub: ["Бензин", "Ремонт", "Запчасти", "Мойка"] },
+        { id: "food", name: "Еда", sub: [] }
+    ]
 };
 
 let allTransactions = [];
@@ -11,6 +14,14 @@ const checkFB = setInterval(() => {
         initApp();
     }
 }, 300);
+
+// Функция для кнопок быстрой суммы
+window.setAmount = (val) => {
+    const el = document.getElementById("amount");
+    el.value = val;
+    el.classList.add("pulse"); // Визуальный эффект нажатия
+    setTimeout(() => el.classList.remove("pulse"), 200);
+};
 
 function initApp() {
     const { fbDB, fbMethods } = window;
@@ -92,20 +103,24 @@ function updateStats(list) {
     const earns = {}, counts = {};
 
     incList.forEach(t => {
-        const p = t.subcategory || "Доставка";
+        const p = t.subcategory || "Общее";
         earns[p] = (earns[p] || 0) + t.amount;
         if (!counts[p]) counts[p] = {};
         counts[p][t.amount] = (counts[p][t.amount] || 0) + 1;
     });
 
     document.getElementById("earningsDetails").innerHTML = Object.keys(earns).sort((a,b)=>earns[b]-earns[a]).map(k => `
-        <div class="stat-row"><span>${k}</span><b>${earns[k].toLocaleString()} ₸</b></div>
+        <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #2c2c2e;">
+            <span style="color:#65d48b">${k}</span><b>${earns[k].toLocaleString()} ₸</b>
+        </div>
     `).join("");
 
     let h = "";
     for (const p in counts) {
-        h += `<div class="count-block"><b>${p}:</b>` + Object.keys(counts[p]).sort((a,b)=>b-a).map(pr => `
-            <div class="count-row"><span>${pr} ₸</span><span class="muted">${counts[p][pr]} шт.</span></div>`).join("") + `</div>`;
+        h += `<div style="margin-top:10px;"><b>${p}:</b>` + Object.keys(counts[p]).sort((a,b)=>b-a).map(pr => `
+            <div style="display:flex; justify-content:space-between; padding-left:10px; font-size:13px; color:#aaa;">
+                <span>${pr} ₸</span><span>${counts[p][pr]} шт.</span>
+            </div>`).join("") + `</div>`;
     }
     document.getElementById("countDetails").innerHTML = h || "Нет данных";
 }
