@@ -6,19 +6,19 @@ body { background: var(--bg); color: var(--text); margin: 0; padding: 10px; }
 .card { background: var(--card); border-radius: 16px; padding: 16px; margin-bottom: 15px; }
 .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
 input, select { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #333; background: #2c2c2e; color: #fff; font-size: 16px; outline: none; }
-.btn-main { width: 100%; padding: 14px; border: none; border-radius: 10px; background: var(--pos); color: #000; font-weight: bold; }
+.btn-main { width: 100%; padding: 14px; border: none; border-radius: 10px; background: var(--pos); color: #000; font-weight: bold; cursor: pointer; }
 .quick-amounts { display: flex; gap: 8px; margin: 10px 0; }
-.chip-sum { flex: 1; background: #2c2c2e; border: 1px solid #444; color: var(--accent); padding: 8px 0; border-radius: 8px; font-weight: bold; }
+.chip-sum { flex: 1; background: #2c2c2e; border: 1px solid #444; color: var(--accent); padding: 8px 0; border-radius: 8px; font-weight: bold; cursor: pointer; }
 .balance-line { display: flex; justify-content: space-between; text-align: center; }
 .pos { color: var(--pos); } .neg { color: var(--neg); } .muted { color: #888; } .small { font-size: 11px; }
 .mt-10 { margin-top: 10px; }
 .date-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .quick2 { display: flex; gap: 8px; }
-.chip { background: #333; color: #fff; border: none; padding: 8px 0; border-radius: 10px; flex: 1; font-size: 12px; }
+.chip { background: #333; color: #fff; border: none; padding: 8px 0; border-radius: 10px; flex: 1; font-size: 12px; cursor: pointer; }
 .item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #333; }
-.iconbtn { background: none; border: none; color: #444; font-size: 18px; }
+.iconbtn { background: none; border: none; color: #444; font-size: 18px; cursor: pointer; }
 .stat-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #222; }
 .hidden { display: none; }
 .login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 1000; display: flex; align-items: center; justify-content: center; }
 .login-box { background: var(--card); padding: 30px; border-radius: 20px; width: 90%; max-width: 350px; text-align: center; }
-.btn-google { width: 100%; padding: 12px; border: none; border-radius: 10px; background: #fff; color: #000; font-weight: bold; display: flex; align-items: center; justify-content: center; }
+.btn-google { width: 100%; padding: 12px; border: none; border-radius: 10px; background: #fff; color: #000; font-weight: bold; display: flex; align-items: center; justify-content: center; cursor: pointer; }
