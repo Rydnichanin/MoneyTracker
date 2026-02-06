@@ -1,33 +1,24 @@
-:root { --bg: #111111; --card: #1c1c1e; --text: #ffffff; --pos: #65d48b; --neg: #ff6b6b; --accent: #ffd166; }
+:root { --bg: #000000; --card: #1c1c1e; --text: #ffffff; --pos: #65d48b; --neg: #ff6b6b; --accent: #ffd166; }
 * { box-sizing: border-box; font-family: -apple-system, sans-serif; }
-body { background: var(--bg); color: var(--text); margin: 0; padding: 15px; }
+body { background: var(--bg); color: var(--text); margin: 0; padding: 10px; }
+
+.login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 1000; display: flex; align-items: center; justify-content: center; }
+.login-box { background: var(--card); padding: 30px; border-radius: 24px; width: 90%; max-width: 360px; text-align: center; }
+
+.btn-google { 
+  width: 100%; padding: 12px; border: none; border-radius: 12px; background: #fff; color: #000; 
+  font-weight: 600; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+
 .wrap { max-width: 500px; margin: 0 auto; }
-.header { margin-bottom: 20px; }
+.header { display: flex; justify-content: space-between; align-items: center; padding: 10px 0 20px; }
 .card { background: var(--card); border-radius: 16px; padding: 16px; margin-bottom: 15px; }
 .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
-select, input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #333; background: #2c2c2e; color: #fff; font-size: 16px; outline: none; }
-input:focus { border-color: var(--pos); }
-
-/* Быстрые суммы */
+select, input { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #333; background: #2c2c2e; color: #fff; font-size: 16px; outline: none; }
+.btn-main { width: 100%; padding: 14px; border: none; border-radius: 10px; background: var(--pos); color: #000; font-weight: bold; font-size: 16px; }
 .quick-amounts { display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap; }
-.chip-sum { background: #2c2c2e; border: 1px solid #444; color: var(--accent); padding: 8px 12px; border-radius: 8px; font-size: 14px; cursor: pointer; transition: 0.2s; }
-.chip-sum:active { background: var(--accent); color: #000; }
-
-.btn-main { width: 100%; padding: 14px; border: none; border-radius: 8px; background: var(--pos); color: #000; font-weight: bold; font-size: 16px; cursor: pointer; }
-.btn-main:disabled { opacity: 0.5; }
-
-.balance-line { display: flex; justify-content: space-between; border-bottom: 1px solid #333; padding-bottom: 10px; }
-.pos { color: var(--pos); } .neg { color: var(--neg); } .muted { color: #8e8e93; } .small { font-size: 12px; }
-.item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #2c2c2e; }
-.iconbtn { background: none; border: none; color: #ff3b30; font-size: 18px; cursor: pointer; }
-.hidden { display: none; }
-.mt-10 { margin-top: 10px; }
-.chip { background: #2c2c2e; border: none; color: #fff; padding: 6px 12px; border-radius: 20px; font-size: 12px; margin-right: 5px; cursor: pointer; }
-
-/* Эффект пульсации для ввода */
-@keyframes pulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.02); border-color: var(--accent); }
-    100% { transform: scale(1); }
-}
-.pulse { animation: pulse 0.2s ease-in-out; }
+.chip-sum { background: #2c2c2e; border: 1px solid #444; color: var(--accent); padding: 8px 12px; border-radius: 8px; font-size: 14px; }
+.balance-line { display: flex; justify-content: space-between; text-align: center; }
+.pos { color: var(--pos); } .neg { color: var(--neg); } .muted { color: #8e8e93; } .small { font-size: 11px; }
+.item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #2c2c2e; }
+.hidden { display: none !important; }
