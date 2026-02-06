@@ -1,717 +1,167 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import {
-  getFirestore, collection, addDoc, deleteDoc,
-  query, orderBy, enableMultiTabIndexedDbPersistence, onSnapshot
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
-// --- КОНФИГУРАЦИЯ FIREBASE ---
-const firebaseConfig = {
-  apiKey: "AIzaSyBYvSsrzjgkrBwhaBAt0KlCGrAtzgOPYx8",
-  authDomain: "moneytracker-5335b.firebaseapp.com",
-  projectId: "moneytracker-5335b",
-  storageBucket: "moneytracker-5335b.firebasestorage.app",
-  messagingSenderId: "440589448883",
-  appId: "1:440589448883:web:5ad507b270fa414731a2c6"
-};
-
-// Инициализация Firebase
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-// Включение оффлайн-режима (может быть недоступен — это нормально)
-enableMultiTabIndexedDbPersistence(db).catch((err) => {
-  console.warn("Оффлайн-режим недоступен:", err.code);
-});
-
-// --- НАСТРОЙКИ ---
 const SETTINGS_KEY = "money_tracker_settings_main";
 const DEFAULTS = {
-  accounts: [
-    { id: "cash", name: "Наличные" },
-    { id: "kaspi", name: "Kaspi" },
-  ],
-  categoriesByType: {
-    income: [
-      { id: "delivery", name: "Доставка", color: "#65d48b", sub: ["F1", "F2", "F3", "Карго", "Ночь"] },
-      { id: "taxi", name: "Такси", color: "#ffd166", sub: [] },
-    ],
-    expense: [
-      { id: "auto", name: "Автомобиль", color: "#ffd166", sub: ["Бензин", "Масла", "Фильтра", "Мойка", "Автозапчасти"] },
-      { id: "food", name: "Еда", color: "#ff6b6b", sub: [] },
-      { id: "other", name: "Прочее", color: "#9aa0a7", sub: [] },
-    ],
-  },
-  pinHash: null,
-};
-
-let settings = JSON.parse(localStorage.getItem(SETTINGS_KEY)) || DEFAULTS;
-let allTx = [];
-
-// --- ПОМОЩНИКИ ---
-const todayISO = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-};
-const fmtKZT = (n) => (Number(n) || 0).toLocaleString("ru-RU") + " ₸";
-
-function mustEl(id) {
-  const el = document.getElementById(id);
-  if (!el) console.error("Не найден элемент в HTML:", id);
-  return el;
-}
-
-// --- FIREBASE ОПЕРАЦИИ ---
-async function addTransaction(tx) {
-  try {
-    await addDoc(collection(db, "transactions"), tx);
-  } catch (e) {
-    console.error("Ошибка добавления:", e);
-    alert("Ошибка добавления. Смотри консоль.");
-  }
-}
-
-async function deleteTransaction(id) {
-  try {
-    // doc(db, "transactions", id) — можно, но deleteDoc принимает DocumentReference
-    // проще так:
-    await deleteDoc((await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js")).doc(db, "transactions", id));
-  } catch (e) {
-    console.error("Ошибка удаления:", e);
-    alert("Ошибка удаления. Смотри консоль.");
-  }
-}
-
-function listenToUpdates() {
-  // ВАЖНО: сортируем по createdAt, чтобы не падало из-за отсутствующего поля date в старых документах
-  const q = query(collection(db, "transactions"), orderBy("createdAt", "desc"));
-
-  onSnapshot(
-    q,
-    (snapshot) => {
-      allTx = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
-      render();
-    },
-    (err) => {
-      console.error("Ошибка слушателя Firestore:", err);
-      alert("Firestore ошибка. Смотри консоль.");
+    categoriesByType: {
+        income: [{ id: "delivery", name: "Доставка", sub: ["F1", "F2", "F3", "Карго", "Ночь"] }, { id: "taxi", name: "Такси", sub: [] }],
+        expense: [{ id: "auto", name: "Авто", sub: ["Бензин", "Ремонт", "Мойка"] }, { id: "food", name: "Еда", sub: [] }]
     }
-  );
-}
+};
 
-// --- UI ЭЛЕМЕНТЫ ---
-let elList, elType, elCategory, elAccount, subcatWrap, elSubcategory;
+let settings = JSON.parse(localStorage.getItem(SETTINGS_KEY)) || DEFAULTS;
+let allTransactions = [];
 
-function renderSelects() {
-  if (!elAccount || !elType || !elCategory) return;
+// Ждем инициализации Firebase
+const waitFB = setInterval(() => {
+    if (window.fbDB) {
+        clearInterval(waitFB);
+        startApp();
+    }
+}, 100);
 
-  elAccount.innerHTML = settings.accounts
-    .map((a) => `<option value="${a.id}">${a.name}</option>`)
-    .join("");
+function startApp() {
+    const { fbDB, fbMethods } = window;
+    const colRef = fbMethods.collection(fbDB, "transactions");
 
-  // дефолт
-  if (!elAccount.value) elAccount.value = "cash";
+    // Первоначальная настройка формы
+    initFormLogic();
 
-  const cats = settings.categoriesByType[elType.value] || [];
-  elCategory.innerHTML = cats.map((c) => `<option value="${c.id}">${c.name}</option>`).join("");
-
-  // если после смены типа пусто — подстрахуемся
-  if (cats.length && !elCategory.value) elCategory.value = cats[0].id;
-
-  updateSubcatUI();
-}
-
-function updateSubcatUI() {
-  if (!subcatWrap || !elSubcategory || !elType || !elCategory) return;
-
-  const cats = settings.categoriesByType[elType.value] || [];
-  const cat = cats.find((c) => c.id === elCategory.value);
-
-  if (cat && Array.isArray(cat.sub) && cat.sub.length) {
-    subcatWrap.classList.remove("hidden");
-    elSubcategory.innerHTML = cat.sub.map((s) => `<option value="${s}">${s}</option>`).join("");
-  } else {
-    subcatWrap.classList.add("hidden");
-    elSubcategory.innerHTML = "";
-  }
-}
-
-function render() {
-  const searchEl = document.getElementById("search");
-  const queryText = (searchEl?.value || "").toLowerCase();
-
-  const filtered = allTx.filter((t) => {
-    const note = (t.note || "").toLowerCase();
-    const sub = (t.subcategory || "").toLowerCase();
-    return note.includes(queryText) || sub.includes(queryText);
-  });
-
-  let inc = 0;
-  let exp = 0;
-
-  if (!elList) return;
-
-  elList.innerHTML = filtered.length ? "" : `<div class="muted" style="padding:8px 2px;">Записей не найдено</div>`;
-
-  for (const t of filtered) {
-    const amountNum = Number(t.amount) || 0;
-
-    if (t.type === "income") inc += amountNum;
-    else exp += Math.abs(amountNum);
-
-    const cat = (settings.categoriesByType[t.type] || []).find((c) => c.id === t.categoryId) || {
-      name: "???",
-      color: "#9aa0a7",
-    };
-
-    const div = document.createElement("div");
-    div.className = "item";
-
-    const accName = t.accountId === "cash" ? "Нал" : "Kaspi";
-
-    div.innerHTML = `
-      <div class="meta">
-        <div class="line1">
-          <span class="amt ${t.type === "income" ? "pos" : "neg"}">
-            ${t.type === "income" ? "+" : "−"} ${fmtKZT(Math.abs(amountNum))}
-          </span>
-          <span class="tag">${t.date || "—"} • ${accName}</span>
-        </div>
-        <div class="tag">
-          <span class="dot" style="background:${cat.color}"></span>
-          ${cat.name} ${t.subcategory ? "• " + t.subcategory : ""}
-          ${t.note ? "• " + t.note : ""}
-        </div>
-      </div>
-      <button class="iconbtn danger btn-del" data-id="${t.id}">✕</button>
-    `;
-
-    elList.appendChild(div);
-  }
-
-  const totalIncomeEl = document.getElementById("totalIncome");
-  const totalExpenseEl = document.getElementById("totalExpense");
-  const balanceEl = document.getElementById("balance");
-
-  if (totalIncomeEl) totalIncomeEl.textContent = fmtKZT(inc);
-  if (totalExpenseEl) totalExpenseEl.textContent = fmtKZT(exp);
-  if (balanceEl) balanceEl.textContent = fmtKZT(inc - exp);
-}
-
-// --- ИНИЦИАЛИЗАЦИЯ ПОСЛЕ DOM ---
-window.addEventListener("DOMContentLoaded", () => {
-  // Забираем элементы (и сразу ловим если чего-то нет)
-  elList = mustEl("list");
-  elType = mustEl("type");
-  elCategory = mustEl("category");
-  elAccount = mustEl("account");
-  subcatWrap = mustEl("subcatWrap");
-  elSubcategory = mustEl("subcategory");
-
-  const txForm = mustEl("txForm");
-  const dateEl = mustEl("date");
-  const amountEl = mustEl("amount");
-  const noteEl = mustEl("note");
-  const searchEl = document.getElementById("search");
-  const quickAmounts = document.getElementById("quickAmounts");
-
-  const btnSettings = document.getElementById("btnSettings");
-  const btnCloseModal = document.getElementById("btnCloseModal");
-  const modal = document.getElementById("modal");
-
-  // Дата по умолчанию
-  if (dateEl) dateEl.value = todayISO();
-
-  // Селекты
-  renderSelects();
-
-  // События
-  if (elType) elType.onchange = renderSelects;
-  if (elCategory) elCategory.onchange = updateSubcatUI;
-
-  if (searchEl) searchEl.oninput = render;
-
-  if (quickAmounts) {
-    quickAmounts.onclick = (e) => {
-      const btn = e.target.closest("[data-add]");
-      if (!btn) return;
-      if (!amountEl) return;
-      amountEl.value = (Number(amountEl.value) || 0) + Number(btn.dataset.add);
-    };
-  }
-
-  if (txForm) {
-    txForm.onsubmit = async (e) => {
-      e.preventDefault();
-      if (!amountEl) return;
-
-      const amount = Number(amountEl.value);
-      if (!amount) return;
-
-      const tx = {
-        type: elType?.value || "income",
-        amount: amount,
-        accountId: elAccount?.value || "cash",
-        categoryId: elCategory?.value || "",
-        subcategory: subcatWrap?.classList.contains("hidden") ? "" : (elSubcategory?.value || ""),
-        note: noteEl?.value || "",
-        date: dateEl?.value || todayISO(),
-        createdAt: Date.now(),
-      };
-
-      await addTransaction(tx);
-
-      amountEl.value = "";
-      if (noteEl) noteEl.value = "";
-    };
-  }
-
-  if (elList) {
-    elList.onclick = (e) => {
-      const delBtn = e.target.closest(".btn-del");
-      if (!delBtn) return;
-      if (confirm("Удалить запись?")) deleteTransaction(delBtn.dataset.id);
-    };
-  }
-
-  // Модалка
-  if (btnSettings && modal) btnSettings.onclick = () => modal.classList.remove("hidden");
-  if (btnCloseModal && modal) btnCloseModal.onclick = () => modal.classList.add("hidden");
-  if (modal) {
-    modal.addEventListener("click", (e) => {
-      if (e.target === modal) modal.classList.add("hidden");
+    // Слушатель данных из Firebase
+    const q = fbMethods.query(colRef, fbMethods.orderBy("date", "desc"));
+    fbMethods.onSnapshot(q, (snapshot) => {
+        allTransactions = [];
+        snapshot.forEach(doc => allTransactions.push({ id: doc.id, ...doc.data() }));
+        renderAll();
     });
-  }
 
-  // Запуск слушателя
-  listenToUpdates();
-});    ],
-    expense: [
-      { id: "auto", name: "Автомобиль", color: "#ffd166", sub: ["Бензин", "Масла", "Фильтра", "Мойка", "Автозапчасти"] },
-      { id: "food", name: "Еда", color: "#ff6b6b", sub: [] },
-      { id: "other", name: "Прочее", color: "#9aa0a7", sub: [] },
-    ],
-  },
-  pinHash: null,
-};
+    // Сохранение
+    document.getElementById("txForm").onsubmit = async (e) => {
+        e.preventDefault();
+        const tx = {
+            type: document.getElementById("type").value,
+            amount: Number(document.getElementById("amount").value),
+            categoryId: document.getElementById("category").value,
+            subcategory: document.getElementById("subcategory").value,
+            date: document.getElementById("date").value,
+            accountId: document.getElementById("account").value,
+            serverTime: Date.now()
+        };
+        await fbMethods.addDoc(colRef, tx);
+        document.getElementById("amount").value = "";
+    };
 
-let settings = JSON.parse(localStorage.getItem(SETTINGS_KEY)) || DEFAULTS;
-let allTx = [];
-
-// --- ПОМОЩНИКИ ---
-const todayISO = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-};
-const fmtKZT = (n) => (n || 0).toLocaleString("ru-RU") + " ₸";
-
-// --- FIREBASE ОПЕРАЦИИ ---
-async function addTransaction(tx) {
-  try { await addDoc(collection(db, "transactions"), tx); } 
-  catch (e) { console.error("Ошибка добавления:", e); }
+    window.deleteTx = async (id) => {
+        if (confirm("Удалить запись из облака?")) {
+            await fbMethods.deleteDoc(fbMethods.doc(fbDB, "transactions", id));
+        }
+    };
 }
 
-async function deleteTransaction(id) {
-  try { await deleteDoc(doc(db, "transactions", id)); } 
-  catch (e) { console.error("Ошибка удаления:", e); }
-}
-
-function listenToUpdates() {
-  const q = query(collection(db, "transactions"), orderBy("date", "desc"));
-  onSnapshot(q, (snapshot) => {
-    allTx = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-    render();
-  });
-}
-
-// --- ИНТЕРФЕЙС ---
-const elList = document.getElementById("list");
-const elType = document.getElementById("type");
-const elCategory = document.getElementById("category");
-const elAccount = document.getElementById("account");
-const subcatWrap = document.getElementById("subcatWrap");
-const elSubcategory = document.getElementById("subcategory");
-
-function renderSelects() {
-  elAccount.innerHTML = settings.accounts.map(a => `<option value="${a.id}">${a.name}</option>`).join("");
-  elAccount.value = "cash";
-  const cats = settings.categoriesByType[elType.value] || [];
-  elCategory.innerHTML = cats.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
-  updateSubcatUI();
-}
-
-function updateSubcatUI() {
-  const cat = settings.categoriesByType[elType.value].find(c => c.id === elCategory.value);
-  if (cat?.sub?.length) {
-    subcatWrap.classList.remove("hidden");
-    elSubcategory.innerHTML = cat.sub.map(s => `<option value="${s}">${s}</option>`).join("");
-  } else {
-    subcatWrap.classList.add("hidden");
-  }
-}
-
-function render() {
-  const queryText = document.getElementById("search")?.value.toLowerCase() || "";
-  const filtered = allTx.filter(t => 
-    (t.note || "").toLowerCase().includes(queryText) || 
-    (t.subcategory || "").toLowerCase().includes(queryText)
-  );
-
-  let inc = 0, exp = 0;
-  elList.innerHTML = filtered.length ? "" : `<div class="muted">Записей не найдено</div>`;
-  
-  filtered.forEach(t => {
-    t.type === "income" ? inc += t.amount : exp += t.amount;
-    const cat = settings.categoriesByType[t.type].find(c => c.id === t.categoryId) || {name: "???"};
+function renderAll() {
+    const from = document.getElementById("fromDate").value;
+    const to = document.getElementById("toDate").value;
     
-    const div = document.createElement("div");
-    div.className = "item";
-    div.innerHTML = `
-      <div class="meta">
-        <div class="line1">
-          <span class="amt ${t.type === "income" ? "pos" : "neg"}">${t.type === "income" ? "+" : "−"} ${fmtKZT(t.amount)}</span>
-          <span class="tag">${t.date} • ${t.accountId === 'cash' ? 'Нал' : 'Kaspi'}</span>
+    const filtered = allTransactions.filter(t => {
+        if (from && t.date < from) return false;
+        if (to && t.date > to) return false;
+        return true;
+    });
+
+    const inc = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+    const exp = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+
+    document.getElementById("balance").textContent = (inc - exp).toLocaleString() + " ₸";
+    document.getElementById("totalIncome").textContent = inc.toLocaleString() + " ₸";
+    document.getElementById("totalExpense").textContent = exp.toLocaleString() + " ₸";
+
+    // Рендер списка
+    document.getElementById("list").innerHTML = filtered.map(t => `
+        <div class="item">
+            <div class="meta">
+                <b class="${t.type === 'income' ? 'pos' : 'neg'}">${t.amount.toLocaleString()} ₸</b>
+                <div class="small muted">${t.date} • ${t.subcategory || t.categoryId}</div>
+            </div>
+            <button class="iconbtn" onclick="deleteTx('${t.id}')">✕</button>
         </div>
-        <div class="tag"><span class="dot" style="background:${cat.color}"></span> ${cat.name} ${t.subcategory ? '• '+t.subcategory : ''}</div>
-      </div>
-      <button class="iconbtn danger btn-del" data-id="${t.id}">✕</button>`;
-    elList.appendChild(div);
-  });
+    `).join("");
 
-  document.getElementById("totalIncome").textContent = fmtKZT(inc);
-  document.getElementById("totalExpense").textContent = fmtKZT(exp);
-  document.getElementById("balance").textContent = fmtKZT(inc - exp);
+    updateStats(filtered);
 }
 
-// --- СОБЫТИЯ ---
-document.getElementById("txForm").onsubmit = async (e) => {
-  e.preventDefault();
-  const amountEl = document.getElementById("amount");
-  const noteEl = document.getElementById("note");
-  const amount = Number(amountEl.value);
-  if (!amount) return;
+let cIE, cCat;
+function updateStats(list) {
+    const inc = list.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+    const exp = list.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
 
-  await addTransaction({
-    type: elType.value,
-    amount: amount,
-    accountId: elAccount.value,
-    categoryId: elCategory.value,
-    subcategory: subcatWrap.classList.contains("hidden") ? "" : elSubcategory.value,
-    note: noteEl.value,
-    date: document.getElementById("date").value,
-    createdAt: Date.now()
-  });
-  
-  amountEl.value = "";
-  noteEl.value = "";
-};
+    if (cIE) cIE.destroy();
+    cIE = new Chart(document.getElementById("chartIE"), {
+        type: 'bar',
+        data: { labels: ['Доход', 'Расход'], datasets: [{ data: [inc, exp], backgroundColor: ['#65d48b', '#ff6b6b'] }] },
+        options: { maintainAspectRatio: false, plugins: { legend: { display: false } } }
+    });
 
-elList.onclick = (e) => {
-  if (e.target.classList.contains('btn-del')) {
-    if (confirm("Удалить запись?")) deleteTransaction(e.target.dataset.id);
-  }
-};
+    // Статистика по суммам и штукам
+    const incList = list.filter(t => t.type === 'income');
+    const earnsMap = {};
+    const countMap = {};
 
-elType.onchange = renderSelects;
-elCategory.onchange = updateSubcatUI;
-if (document.getElementById("search")) {
-    document.getElementById("search").oninput = render;
-}
+    incList.forEach(t => {
+        const p = t.subcategory || "Общее";
+        earnsMap[p] = (earnsMap[p] || 0) + t.amount;
+        if (!countMap[p]) countMap[p] = {};
+        countMap[p][t.amount] = (countMap[p][t.amount] || 0) + 1;
+    });
 
-document.getElementById("quickAmounts").onclick = (e) => {
-  if (e.target.dataset.add) {
-    const el = document.getElementById("amount");
-    el.value = (Number(el.value) || 0) + Number(e.target.dataset.add);
-  }
-};
-
-// PIN & Modal
-document.getElementById("btnSettings").onclick = () => document.getElementById("modal").classList.remove("hidden");
-document.getElementById("btnCloseModal").onclick = () => document.getElementById("modal").classList.add("hidden");
-
-// Инициализация
-document.getElementById("date").value = todayISO();
-renderSelects();
-listenToUpdates();
-    ],
-    expense: [
-      { id: "auto", name: "Автомобиль", color: "#ffd166", sub: ["Бензин", "Масла", "Фильтра", "Мойка", "Автозапчасти"] },
-      { id: "food", name: "Еда", color: "#ff6b6b", sub: [] },
-      { id: "other", name: "Прочее", color: "#9aa0a7", sub: [] },
-    ],
-  },
-  pinHash: null,
-};
-
-let settings = JSON.parse(localStorage.getItem(SETTINGS_KEY)) || DEFAULTS;
-let allTx = [];
-
-// --- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ---
-const todayISO = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-};
-
-const fmtKZT = (n) => (n || 0).toLocaleString("ru-RU") + " ₸";
-
-// --- РАБОТА С FIREBASE ---
-async function dbAdd(tx) {
-  try {
-    await addDoc(collection(db, "transactions"), tx);
-  } catch (e) {
-    console.error("Ошибка добавления в Firebase:", e);
-  }
-}
-
-async function dbDelete(id) {
-  try {
-    await deleteDoc(doc(db, "transactions", id));
-  } catch (e) {
-    console.error("Ошибка удаления:", e);
-  }
-}
-
-// Слушатель обновлений в реальном времени
-function listenToUpdates() {
-  const q = query(collection(db, "transactions"), orderBy("date", "desc"));
-  onSnapshot(q, (snapshot) => {
-    allTx = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-    render();
-  });
-}
-
-// --- ИНТЕРФЕЙС (UI) ---
-const elList = document.getElementById("list");
-const elType = document.getElementById("type");
-const elCategory = document.getElementById("category");
-const elAccount = document.getElementById("account");
-const subcatWrap = document.getElementById("subcatWrap");
-const elSubcategory = document.getElementById("subcategory");
-
-function renderSelects() {
-  elAccount.innerHTML = settings.accounts.map(a => `<option value="${a.id}">${a.name}</option>`).join("");
-  elAccount.value = "cash";
-  
-  const cats = settings.categoriesByType[elType.value] || [];
-  elCategory.innerHTML = cats.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
-  updateSubcatUI();
-}
-
-function updateSubcatUI() {
-  const cat = settings.categoriesByType[elType.value].find(c => c.id === elCategory.value);
-  if (cat?.sub?.length) {
-    subcatWrap.classList.remove("hidden");
-    elSubcategory.innerHTML = cat.sub.map(s => `<option value="${s}">${s}</option>`).join("");
-  } else {
-    subcatWrap.classList.add("hidden");
-  }
-}
-
-function render() {
-  let inc = 0, exp = 0;
-  elList.innerHTML = allTx.length ? "" : `<div class="muted">Записей нет</div>`;
-  
-  allTx.forEach(t => {
-    t.type === "income" ? inc += t.amount : exp += t.amount;
-    const cat = settings.categoriesByType[t.type].find(c => c.id === t.categoryId) || {name: "???"};
-    
-    const div = document.createElement("div");
-    div.className = "item";
-    div.innerHTML = `
-      <div class="meta">
-        <div class="line1">
-          <span class="amt ${t.type === "income" ? "pos" : "neg"}">${fmtKZT(t.amount)}</span>
-          <span class="tag">${t.date} • ${t.accountId === 'cash' ? 'Нал' : 'Kaspi'}</span>
+    document.getElementById("earningsDetails").innerHTML = Object.keys(earnsMap).map(k => `
+        <div style="display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px solid #2a2a2f;">
+            <span style="color:#65d48b">${k}</span><b>${earnsMap[k].toLocaleString()} ₸</b>
         </div>
-        <div class="tag"><span class="dot" style="background:${cat.color}"></span> ${cat.name} ${t.subcategory ? '• '+t.subcategory : ''}</div>
-      </div>
-      <button class="iconbtn danger btn-del" data-id="${t.id}">✕</button>`;
-    elList.appendChild(div);
-  });
+    `).join("");
 
-  document.getElementById("totalIncome").textContent = fmtKZT(inc);
-  document.getElementById("totalExpense").textContent = fmtKZT(exp);
-  document.getElementById("balance").textContent = fmtKZT(inc - exp);
+    let cntH = "";
+    for (const p in countMap) {
+        cntH += `<div style="margin-top:10px;"><b>${p}:</b>`;
+        Object.keys(countMap[p]).sort((a,b)=>b-a).forEach(price => {
+            cntH += `<div style="display:flex; justify-content:space-between; font-size:13px; padding-left:10px;">
+                <span>${price} ₸</span><span class="muted">${countMap[p][price]} шт.</span>
+            </div>`;
+        });
+        cntH += `</div>`;
+    }
+    document.getElementById("countDetails").innerHTML = cntH || "Нет данных";
 }
 
-// --- ОБРАБОТЧИКИ СОБЫТИЙ ---
-document.getElementById("txForm").onsubmit = async (e) => {
-  e.preventDefault();
-  const amount = Number(document.getElementById("amount").value);
-  if (!amount) return;
-
-  await dbAdd({
-    type: elType.value,
-    amount: amount,
-    accountId: elAccount.value,
-    categoryId: elCategory.value,
-    subcategory: subcatWrap.classList.contains("hidden") ? "" : elSubcategory.value,
-    note: document.getElementById("note").value,
-    date: document.getElementById("date").value,
-    createdAt: Date.now()
-  });
-  
-  document.getElementById("amount").value = "";
-  document.getElementById("note").value = "";
-};
-
-elList.onclick = (e) => {
-  if (e.target.classList.contains('btn-del')) {
-    if (confirm("Удалить запись?")) dbDelete(e.target.dataset.id);
-  }
-};
-
-elType.onchange = renderSelects;
-elCategory.onchange = updateSubcatUI;
-
-// Быстрые суммы
-document.getElementById("quickAmounts").onclick = (e) => {
-  if (e.target.dataset.add) {
-    const el = document.getElementById("amount");
-    el.value = (Number(el.value) || 0) + Number(e.target.dataset.add);
-  }
-};
-
-// Инициализация
-document.getElementById("date").value = todayISO();
-renderSelects();
-listenToUpdates();
-  },
-  pinHash: null
-};
-
-let settings = JSON.parse(localStorage.getItem(SETTINGS_KEY)) || DEFAULTS;
-let allTx = [];
-
-// --- HELPERS ---
-const todayISO = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-};
-const fmtKZT = (n) => (n || 0).toLocaleString("ru-RU") + " ₸";
-
-// --- FIREBASE OPS ---
-async function addTransaction(tx) {
-  try { await addDoc(collection(db, "transactions"), tx); } 
-  catch (e) { console.error("Error adding document: ", e); }
+function initFormLogic() {
+    const elT = document.getElementById("type"), elC = document.getElementById("category"), elS = document.getElementById("subcategory"), sw = document.getElementById("subcatWrap");
+    elT.value = "income";
+    const up = () => {
+        const cats = settings.categoriesByType[elT.value];
+        elC.innerHTML = cats.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
+        const cur = cats.find(c => c.id === elC.value);
+        if (cur && cur.sub.length) { sw.classList.remove("hidden"); elS.innerHTML = cur.sub.map(s => `<option value="${s}">${s}</option>`).join(""); }
+        else sw.classList.add("hidden");
+    };
+    elT.onchange = up; elC.onchange = up;
+    document.getElementById("date").value = new Date().toISOString().split('T')[0];
+    up();
 }
 
-async function deleteTransaction(id) {
-  try { await deleteDoc(doc(db, "transactions", id)); } 
-  catch (e) { console.error("Error deleting document: ", e); }
-}
-
-// Real-time listener
-function listenToUpdates() {
-  const q = query(collection(db, "transactions"), orderBy("date", "desc"));
-  onSnapshot(q, (snapshot) => {
-    allTx = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-    render();
-  });
-}
-
-// --- UI LOGIC ---
-const elList = document.getElementById("list");
-const elType = document.getElementById("type");
-const elCategory = document.getElementById("category");
-const elAccount = document.getElementById("account");
-const subcatWrap = document.getElementById("subcatWrap");
-const elSubcategory = document.getElementById("subcategory");
-
-function renderSelects() {
-  elAccount.innerHTML = settings.accounts.map(a => `<option value="${a.id}">${a.name}</option>`).join("");
-  elAccount.value = "cash";
-  const cats = settings.categoriesByType[elType.value] || [];
-  elCategory.innerHTML = cats.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
-  updateSubcatUI();
-}
-
-function updateSubcatUI() {
-  const cat = settings.categoriesByType[elType.value].find(c => c.id === elCategory.value);
-  if (cat?.sub?.length) {
-    subcatWrap.classList.remove("hidden");
-    elSubcategory.innerHTML = cat.sub.map(s => `<option value="${s}">${s}</option>`).join("");
-  } else {
-    subcatWrap.classList.add("hidden");
-  }
-}
-
-function render() {
-  const queryText = document.getElementById("search").value.toLowerCase();
-  const filtered = allTx.filter(t => 
-    t.note?.toLowerCase().includes(queryText) || 
-    t.subcategory?.toLowerCase().includes(queryText)
-  );
-
-  let inc = 0, exp = 0;
-  elList.innerHTML = "";
-  
-  filtered.forEach(t => {
-    t.type === "income" ? inc += t.amount : exp += t.amount;
-    const cat = settings.categoriesByType[t.type].find(c => c.id === t.categoryId) || {name: "???"};
-    
-    const div = document.createElement("div");
-    div.className = "item";
-    div.innerHTML = `
-      <div class="meta">
-        <div class="line1">
-          <span class="amt ${t.type === "income" ? "pos" : "neg"}">${t.type === "income" ? "+" : "−"} ${fmtKZT(t.amount)}</span>
-          <span class="tag">${t.date} • ${t.accountId === 'cash' ? 'Нал' : 'Kaspi'}</span>
-        </div>
-        <div class="tag"><span class="dot" style="background:${cat.color}"></span> ${cat.name} ${t.subcategory ? '• '+t.subcategory : ''}</div>
-      </div>
-      <button class="iconbtn danger btn-del" data-id="${t.id}">✕</button>`;
-    elList.appendChild(div);
-  });
-
-  document.getElementById("totalIncome").textContent = fmtKZT(inc);
-  document.getElementById("totalExpense").textContent = fmtKZT(exp);
-  document.getElementById("balance").textContent = fmtKZT(inc - exp);
-}
-
-// --- EVENTS ---
-document.getElementById("txForm").onsubmit = async (e) => {
-  e.preventDefault();
-  const amount = Number(document.getElementById("amount").value);
-  if (!amount) return;
-
-  await addTransaction({
-    type: elType.value,
-    amount: amount,
-    accountId: elAccount.value,
-    categoryId: elCategory.value,
-    subcategory: subcatWrap.classList.contains("hidden") ? "" : elSubcategory.value,
-    note: document.getElementById("note").value,
-    date: document.getElementById("date").value,
-    createdAt: Date.now()
-  });
-  
-  e.target.reset();
-  document.getElementById("date").value = todayISO();
-  renderSelects();
+// Фильтры
+document.querySelector(".quick2").onclick = (e) => {
+    const r = e.target.dataset.range;
+    const today = new Date().toISOString().split('T')[0];
+    if (r === 'today') { document.getElementById("fromDate").value = today; document.getElementById("toDate").value = today; }
+    else if (r === 'week') {
+        const d = new Date(); d.setDate(d.getDate() - 7);
+        document.getElementById("fromDate").value = d.toISOString().split('T')[0];
+        document.getElementById("toDate").value = today;
+    } else { document.getElementById("fromDate").value = ""; document.getElementById("toDate").value = ""; }
+    renderAll();
 };
+document.getElementById("fromDate").onchange = renderAll;
+document.getElementById("toDate").onchange = renderAll;
 
-elList.onclick = (e) => {
-  if (e.target.classList.contains('btn-del')) {
-    if (confirm("Удалить?")) deleteTransaction(e.target.dataset.id);
-  }
+// Сворачивание
+document.getElementById("toggleHistory").onclick = () => {
+    const c = document.getElementById("histContent");
+    const isH = c.classList.toggle("hidden");
+    document.getElementById("histArrow").textContent = isH ? "▲" : "▼";
 };
-
-elType.onchange = renderSelects;
-elCategory.onchange = updateSubcatUI;
-document.getElementById("search").oninput = render;
-document.getElementById("quickAmounts").onclick = (e) => {
-  if (e.target.dataset.add) {
-    const el = document.getElementById("amount");
-    el.value = (Number(el.value) || 0) + Number(e.target.dataset.add);
-  }
-};
-
-// PIN & Modal
-document.getElementById("btnSettings").onclick = () => document.getElementById("modal").classList.remove("hidden");
-document.getElementById("btnCloseModal").onclick = () => document.getElementById("modal").classList.add("hidden");
-
-// Init
-document.getElementById("date").value = todayISO();
-renderSelects();
-listenToUpdates();
-  
