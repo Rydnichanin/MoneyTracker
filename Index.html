@@ -23,7 +23,6 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // Экспортируем для app.js
     window.fbDB = db;
     window.fbMethods = { collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc };
   </script>
@@ -31,9 +30,6 @@
 <body>
   <header class="wrap header">
     <h1>Учёт денег <span style="font-size:12px; color:#65d48b;">● ONLINE</span></h1>
-    <div class="header-actions">
-      <button id="btnSettings" type="button">⚙️</button>
-    </div>
   </header>
 
   <main class="wrap grid">
@@ -59,7 +55,7 @@
           <input id="amount" type="number" inputmode="decimal" placeholder="Сумма" required />
           <input id="date" type="date" required />
         </div>
-        <button class="btn-main" type="submit">Сохранить в облако</button>
+        <button class="btn-main" type="submit" id="saveBtn">Добавить в облако</button>
       </form>
     </section>
 
@@ -81,13 +77,6 @@
     </section>
 
     <section class="card full">
-      <div class="charts">
-        <div class="chart-card"><canvas id="chartIE"></canvas></div>
-        <div class="chart-card"><canvas id="chartCat"></canvas></div>
-      </div>
-    </section>
-
-    <section class="card full">
       <div class="modal-head"><h2>💰 Доход по точкам</h2></div>
       <div id="earningsDetails" class="stats-details mt-10"></div>
     </section>
@@ -99,10 +88,12 @@
 
     <section class="card full">
       <div class="modal-head" id="toggleHistory" style="cursor:pointer">
-        <h2>История транзакций (Облако)</h2>
+        <h2>История транзакций</h2>
         <span id="histArrow">▼</span>
       </div>
-      <div id="histContent"><div id="list" class="list"></div></div>
+      <div id="histContent" class="hidden">
+        <div id="list" class="list"></div>
+      </div>
     </section>
   </main>
 
