@@ -17,6 +17,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBYvSsrzjgkrBwhaBAt0KlCGrAtzgOPYx8",
@@ -28,90 +29,111 @@
     };
 
     const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-
-    window.fbDB = db;
-    window.fbMethods = { collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc };
+    window.fbDB = getFirestore(app);
+    window.fbAuth = getAuth(app);
+    window.fbGoogleProvider = new GoogleAuthProvider();
+    window.fbMethods = { collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, signInWithEmailAndPassword, onAuthStateChanged, signOut, signInWithPopup };
   </script>
 </head>
 <body>
-  <header class="wrap header">
-    <h1>Учёт денег <span style="font-size:12px; color:#65d48b;">● ONLINE</span></h1>
-  </header>
 
-  <main class="wrap grid">
-    <section class="card">
-      <form id="txForm">
-        <div class="row2">
-          <select id="type">
-            <option value="income">Приход</option>
-            <option value="expense">Расход</option>
-          </select>
-          <select id="account">
-            <option value="cash">Наличные</option>
-            <option value="kaspi">Kaspi</option>
-          </select>
-        </div>
-        <div class="row2">
-          <select id="category"></select>
-          <div id="subcatWrap" class="hidden">
-            <select id="subcategory"></select>
-          </div>
-        </div>
-        <div class="row2">
-          <input id="amount" type="number" inputmode="decimal" placeholder="Сумма" required />
-          <input id="date" type="date" required />
-        </div>
+  <div id="loginScreen" class="login-overlay">
+    <div class="login-box">
+      <h2>🔐 Вход в систему</h2>
+      
+      <button id="googleBtn" type="button" class="btn-google">
+        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/action/google.svg" width="18" style="margin-right:10px;">
+        Войти через Google
+      </button>
 
-        <div class="quick-amounts">
-          <button type="button" class="chip-sum" onclick="setAmount(150)">150</button>
-          <button type="button" class="chip-sum" onclick="setAmount(300)">300</button>
-          <button type="button" class="chip-sum" onclick="setAmount(600)">600</button>
-          <button type="button" class="chip-sum" onclick="setAmount(700)">700</button>
-          <button type="button" class="chip-sum" onclick="setAmount(4500)">4500</button>
-        </div>
+      <div style="margin: 20px 0; color: #444; font-size: 12px;">— ИЛИ ПО ПАРОЛЮ —</div>
 
-        <button class="btn-main" type="submit" id="saveBtn">Добавить в облако</button>
+      <form id="loginForm">
+        <input type="email" id="email" placeholder="Email" autocomplete="email">
+        <input type="password" id="password" placeholder="Пароль" autocomplete="current-password">
+        <button type="submit" class="btn-main">Войти</button>
+        <p id="loginError" style="color:var(--neg); margin-top:10px; font-size:14px;"></p>
       </form>
-    </section>
+    </div>
+  </div>
 
-    <section class="card">
-      <div class="balance-line">
-        <div class="bal-item"><span class="small muted">Баланс:</span><b id="balance">0 ₸</b></div>
-        <div class="bal-item"><span class="small muted">Приход:</span><b id="totalIncome" class="pos">0 ₸</b></div>
-        <div class="bal-item"><span class="small muted">Расход:</span><b id="totalExpense" class="neg">0 ₸</b></div>
+  <div id="appScreen" class="hidden">
+    <header class="wrap header">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <img id="userPhoto" src="" style="width:32px; height:32px; border-radius:50%; border:1px solid #333; display:none;">
+        <h1>Учёт денег <span style="font-size:12px; color:#65d48b;">● SECURE</span></h1>
       </div>
-      <div class="quick2 mt-10">
-        <button class="chip" data-range="today">Сегодня</button>
-        <button class="chip" data-range="week">7 дн.</button>
-        <button class="chip" data-range="all">Всё</button>
-      </div>
-      <div class="row2 mt-10">
-        <input id="fromDate" type="date" />
-        <input id="toDate" type="date" />
-      </div>
-    </section>
+      <button id="logoutBtn" style="background:none; border:none; font-size:22px; cursor:pointer;">🚪</button>
+    </header>
 
-    <section class="card full">
-      <div class="modal-head"><h2>💰 Доход по точкам</h2></div>
-      <div id="earningsDetails" class="stats-details mt-10"></div>
-    </section>
+    <main class="wrap grid">
+      <section class="card">
+        <form id="txForm">
+          <div class="row2">
+            <select id="type">
+              <option value="income">Приход</option>
+              <option value="expense">Расход</option>
+            </select>
+            <select id="account">
+              <option value="cash">Наличные</option>
+              <option value="kaspi">Kaspi</option>
+            </select>
+          </div>
+          <div class="row2">
+            <select id="category"></select>
+            <div id="subcatWrap" class="hidden">
+              <select id="subcategory"></select>
+            </div>
+          </div>
+          <div class="row2">
+            <input id="amount" type="number" inputmode="decimal" placeholder="Сумма" required />
+            <input id="date" type="date" required />
+          </div>
+          <div class="quick-amounts">
+            <button type="button" class="chip-sum" onclick="setAmount(150)">150</button>
+            <button type="button" class="chip-sum" onclick="setAmount(300)">300</button>
+            <button type="button" class="chip-sum" onclick="setAmount(600)">600</button>
+            <button type="button" class="chip-sum" onclick="setAmount(700)">700</button>
+            <button type="button" class="chip-sum" onclick="setAmount(4500)">4500</button>
+          </div>
+          <button class="btn-main" type="submit" id="saveBtn">Добавить</button>
+        </form>
+      </section>
 
-    <section class="card full">
-      <div class="modal-head"><h2>📊 Кол-во заказов</h2></div>
-      <div id="countDetails" class="stats-details mt-10"></div>
-    </section>
+      <section class="card">
+        <div class="balance-line">
+          <div class="bal-item"><span class="small muted">Баланс:</span><br><b id="balance">0 ₸</b></div>
+          <div class="bal-item"><span class="small muted">Приход:</span><br><b id="totalIncome" class="pos">0 ₸</b></div>
+          <div class="bal-item"><span class="small muted">Расход:</span><br><b id="totalExpense" class="neg">0 ₸</b></div>
+        </div>
+        <div class="quick2 mt-10">
+          <button class="chip" data-range="today">Сегодня</button>
+          <button class="chip" data-range="week">7 дн.</button>
+          <button class="chip" data-range="all">Всё</button>
+        </div>
+      </section>
 
-    <section class="card full">
-      <div class="modal-head" id="toggleHistory" style="cursor:pointer">
-        <h2>История транзакций</h2>
-        <span id="histArrow">▼</span>
-      </div>
-      <div id="histContent" class="hidden">
-        <div id="list" class="list"></div>
-      </div>
-    </section>
-  </main>
+      <section class="card full">
+        <div class="modal-head"><h2>💰 Доход по точкам</h2></div>
+        <div id="earningsDetails" class="stats-details mt-10"></div>
+      </section>
+
+      <section class="card full">
+        <div class="modal-head"><h2>📊 Кол-во заказов</h2></div>
+        <div id="countDetails" class="stats-details mt-10"></div>
+      </section>
+
+      <section class="card full">
+        <div class="modal-head" id="toggleHistory" style="cursor:pointer">
+          <h2>История транзакций</h2>
+          <span id="histArrow">▼</span>
+        </div>
+        <div id="histContent" class="hidden">
+          <div id="list" class="list"></div>
+        </div>
+      </section>
+    </main>
+  </div>
 
   <script type="module" src="./app.js"></script>
 </body>
