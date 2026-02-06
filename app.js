@@ -18,59 +18,39 @@ const checkFB = setInterval(() => {
 
 function initAuth() {
     const { fbAuth, fbMethods, fbGoogleProvider } = window;
-    const loginScreen = document.getElementById("loginScreen");
-    const appScreen = document.getElementById("appScreen");
-    const errBox = document.getElementById("loginError");
-
-    // Вход через Google
+    
     document.getElementById("googleBtn").onclick = async () => {
-        try {
-            await fbMethods.signInWithPopup(fbAuth, fbGoogleProvider);
-        } catch (error) {
-            errBox.textContent = "Ошибка Google: " + error.message;
-        }
+        try { await fbMethods.signInWithPopup(fbAuth, fbGoogleProvider); } catch (e) { console.error(e); }
     };
 
-    // Статус пользователя
     fbMethods.onAuthStateChanged(fbAuth, (user) => {
         if (user) {
-            loginScreen.classList.add("hidden");
-            appScreen.classList.remove("hidden");
+            document.getElementById("loginScreen").classList.add("hidden");
+            document.getElementById("appScreen").classList.remove("hidden");
             if (user.photoURL) {
                 const img = document.getElementById("userPhoto");
-                img.src = user.photoURL;
-                img.style.display = "block";
+                img.src = user.photoURL; img.style.display = "block";
             }
             initApp();
         } else {
-            loginScreen.classList.remove("hidden");
-            appScreen.classList.add("hidden");
+            document.getElementById("loginScreen").classList.remove("hidden");
+            document.getElementById("appScreen").classList.add("hidden");
             if (unsubscribe) unsubscribe();
             allTransactions = [];
         }
     });
 
-    // Вход по Email
     document.getElementById("loginForm").onsubmit = async (e) => {
         e.preventDefault();
-        const email = document.getElementById("email").value;
-        const password = document.getElementById("password").value;
         try {
-            await fbMethods.signInWithEmailAndPassword(fbAuth, email, password);
-        } catch (error) {
-            errBox.textContent = "Неверный логин или пароль";
-        }
+            await fbMethods.signInWithEmailAndPassword(fbAuth, document.getElementById("email").value, document.getElementById("password").value);
+        } catch (err) { document.getElementById("loginError").textContent = "Ошибка входа"; }
     };
 
-    document.getElementById("logoutBtn").onclick = () => {
-        if(confirm("Выйти?")) fbMethods.signOut(fbAuth);
-    };
+    document.getElementById("logoutBtn").onclick = () => { if(confirm("Выйти?")) fbMethods.signOut(fbAuth); };
 }
 
-window.setAmount = (val) => {
-    const el = document.getElementById("amount");
-    el.value = val;
-};
+window.setAmount = (val) => { document.getElementById("amount").value = val; };
 
 function initApp() {
     const { fbDB, fbMethods } = window;
@@ -112,7 +92,7 @@ function initApp() {
                 createdAt: Date.now()
             });
             document.getElementById("amount").value = "";
-        } catch (e) { alert("Ошибка доступа!"); }
+        } catch (e) { alert("Ошибка!"); }
         btn.disabled = false;
     };
 
@@ -122,7 +102,11 @@ function initApp() {
 }
 
 function render() {
-    const filtered = allTransactions; 
+    const from = document.getElementById("fromDate").value;
+    const to = document.getElementById("toDate").value;
+    
+    const filtered = allTransactions.filter(t => (!from || t.date >= from) && (!to || t.date <= to));
+
     const inc = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
     const exp = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
 
@@ -144,36 +128,37 @@ function render() {
 
 function updateStats(list) {
     const incList = list.filter(t => t.type === 'income');
-    const earns = {}, counts = {};
+    const earns = {};
     incList.forEach(t => {
         const p = t.subcategory || "Общее";
         earns[p] = (earns[p] || 0) + t.amount;
-        if (!counts[p]) counts[p] = {};
-        counts[p][t.amount] = (counts[p][t.amount] || 0) + 1;
     });
-
     document.getElementById("earningsDetails").innerHTML = Object.keys(earns).sort((a,b)=>earns[b]-earns[a]).map(k => `
         <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #2c2c2e;">
             <span style="color:#65d48b">${k}</span><b>${earns[k].toLocaleString()} ₸</b>
         </div>
     `).join("");
-
-    let h = "";
-    for (const p in counts) {
-        h += `<div style="margin-top:10px;"><b>${p}:</b>` + Object.keys(counts[p]).sort((a,b)=>b-a).map(pr => `
-            <div style="display:flex; justify-content:space-between; padding-left:10px; font-size:13px; color:#aaa;">
-                <span>${pr} ₸</span><span>${counts[p][pr]} шт.</span>
-            </div>`).join("") + `</div>`;
-    }
-    document.getElementById("countDetails").innerHTML = h || "Нет данных";
 }
 
 document.querySelector(".quick2").onclick = (e) => {
+    if (!e.target.dataset.range) return;
     const r = e.target.dataset.range;
-    const now = new Date().toISOString().split('T')[0];
-    if (r === 'today') { /* логика фильтра сегодня */ }
+    const now = new Date();
+    const nowStr = now.toISOString().split('T')[0];
+    if (r === 'today') {
+        document.getElementById("fromDate").value = nowStr;
+        document.getElementById("toDate").value = nowStr;
+    } else if (r === 'week') {
+        const d = new Date(); d.setDate(d.getDate() - 7);
+        document.getElementById("fromDate").value = d.toISOString().split('T')[0];
+        document.getElementById("toDate").value = nowStr;
+    } else {
+        document.getElementById("fromDate").value = "";
+        document.getElementById("toDate").value = "";
+    }
     render();
 };
+
 document.getElementById("toggleHistory").onclick = () => {
     const c = document.getElementById("histContent");
     c.classList.toggle("hidden");
