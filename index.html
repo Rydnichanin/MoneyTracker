@@ -9,7 +9,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, GoogleAuthProvider, signInWithRedirect, getRedirectResult } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBYvSsrzjgkrBwhaBAt0KlCGrAtzgOPYx8",
@@ -24,24 +24,20 @@
     window.fbDB = getFirestore(app);
     window.fbAuth = getAuth(app);
     window.fbGoogleProvider = new GoogleAuthProvider();
-    window.fbMethods = { collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, signInWithEmailAndPassword, onAuthStateChanged, signOut, signInWithRedirect, getRedirectResult };
+    window.fbMethods = { collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, signInWithEmailAndPassword, onAuthStateChanged, signOut, signInWithPopup };
   </script>
 </head>
 <body>
 
   <div id="loginScreen" class="login-overlay">
     <div class="login-box">
-      <h2>🔐 Вход в систему</h2>
-      <button id="googleBtn" type="button" class="btn-google">
-        <svg width="18" height="18" viewBox="0 0 18 18" style="margin-right:10px;"><path d="M17.64 9.2c0-.63-.06-1.25-.16-1.84H9v3.47h4.84c-.21 1.12-.84 2.07-1.79 2.7l2.73 2.11c1.6-1.48 2.53-3.66 2.53-6.44z" fill="#4285F4"/><path d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.73-2.11c-.76.51-1.73.81-3.23.81-2.48 0-4.58-1.68-5.33-3.94L.89 12.74C2.38 15.69 5.44 18 9 18z" fill="#34A853"/><path d="M3.67 10.58c-.19-.58-.3-1.19-.3-1.83s.11-1.25.3-1.83L.89 4.76C.32 5.88 0 7.15 0 8.5s.32 2.62.89 3.74l2.78-2.16z" fill="#FBBC05"/><path d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.47.89 11.43 0 9 0 5.44 0 2.38 2.31.89 5.26l2.78 2.16C4.42 5.26 6.52 3.58 9 3.58z" fill="#EA4335"/></svg>
-        Войти через Google
-      </button>
-      <div style="margin: 15px 0; color: #555; font-size: 12px;">ИЛИ</div>
-      <form id="loginForm">
+      <h2>🔐 Вход</h2>
+      <button id="googleBtn" type="button" class="btn-google">Войти через Google</button>
+      <form id="loginForm" style="margin-top:20px">
         <input type="email" id="email" placeholder="Email">
         <input type="password" id="password" placeholder="Пароль">
         <button type="submit" class="btn-main">Войти</button>
-        <p id="loginError" class="error-text"></p>
+        <p id="loginError" style="color:red; font-size:12px;"></p>
       </form>
     </div>
   </div>
@@ -49,10 +45,10 @@
   <div id="appScreen" class="hidden">
     <header class="wrap header">
       <div style="display:flex; align-items:center; gap:10px;">
-        <img id="userPhoto" src="" class="user-avatar">
-        <h1>Учёт <span class="status-dot">● ONLINE</span></h1>
+        <img id="userPhoto" src="" style="width:32px; height:32px; border-radius:50%; display:none;">
+        <h1>Учёт денег</h1>
       </div>
-      <button id="logoutBtn" class="logout-icon">🚪</button>
+      <button id="logoutBtn" style="background:none; border:none; font-size:22px;">🚪</button>
     </header>
 
     <main class="wrap">
@@ -70,14 +66,7 @@
             <input id="amount" type="number" inputmode="decimal" placeholder="Сумма" required />
             <input id="date" type="date" required />
           </div>
-          <div class="quick-amounts">
-            <button type="button" class="chip-sum" onclick="setAmount(150)">150</button>
-            <button type="button" class="chip-sum" onclick="setAmount(300)">300</button>
-            <button type="button" class="chip-sum" onclick="setAmount(600)">600</button>
-            <button type="button" class="chip-sum" onclick="setAmount(700)">700</button>
-            <button type="button" class="chip-sum" onclick="setAmount(4500)">4500</button>
-          </div>
-          <button class="btn-main" type="submit" id="saveBtn">Добавить запись</button>
+          <button class="btn-main" type="submit" id="saveBtn">Добавить</button>
         </form>
       </section>
 
@@ -87,14 +76,17 @@
           <div><span class="small muted">Приход</span><br><b id="totalIncome" class="pos">0 ₸</b></div>
           <div><span class="small muted">Расход</span><br><b id="totalExpense" class="neg">0 ₸</b></div>
         </div>
-        <div class="quick2 mt-10">
-          <button class="chip" data-range="today">Сегодня</button>
-          <button class="chip" data-range="week">7 дн.</button>
-          <button class="chip" data-range="all">Всё время</button>
-        </div>
-        <div class="date-inputs mt-10">
-          <input type="date" id="fromDate">
-          <input type="date" id="toDate">
+
+        <div class="filter-box mt-10">
+          <div class="quick2">
+            <button class="chip" data-range="today">Сегодня</button>
+            <button class="chip" data-range="week">7 дн.</button>
+            <button class="chip" data-range="all">Всё</button>
+          </div>
+          <div class="date-inputs mt-10">
+            <input type="date" id="fromDate" placeholder="От">
+            <input type="date" id="toDate" placeholder="До">
+          </div>
         </div>
       </section>
 
@@ -104,11 +96,10 @@
       </section>
 
       <section class="card">
-        <div id="toggleHistory" class="history-header">
-          <h3 style="margin:0">История</h3>
-          <span id="histArrow">▼</span>
+        <div id="toggleHistory" style="cursor:pointer; display:flex; justify-content:space-between;">
+          <h3>История транзакций</h3> <span id="histArrow">▼</span>
         </div>
-        <div id="histContent" class="hidden mt-10">
+        <div id="histContent" class="hidden">
           <div id="list"></div>
         </div>
       </section>
