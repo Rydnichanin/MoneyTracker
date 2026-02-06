@@ -55,6 +55,15 @@
           <input id="amount" type="number" inputmode="decimal" placeholder="Сумма" required />
           <input id="date" type="date" required />
         </div>
+
+        <div class="quick-amounts">
+          <button type="button" class="chip-sum" onclick="setAmount(150)">150</button>
+          <button type="button" class="chip-sum" onclick="setAmount(300)">300</button>
+          <button type="button" class="chip-sum" onclick="setAmount(600)">600</button>
+          <button type="button" class="chip-sum" onclick="setAmount(700)">700</button>
+          <button type="button" class="chip-sum" onclick="setAmount(4500)">4500</button>
+        </div>
+
         <button class="btn-main" type="submit" id="saveBtn">Добавить в облако</button>
       </form>
     </section>
@@ -99,4 +108,4 @@
 
   <script type="module" src="./app.js"></script>
 </body>
-  </html>
+</html>
