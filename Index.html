@@ -2,304 +2,110 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Money Tracker</title>
-  <style>
-    :root{
-      --bg:#0b0c10; --card:#12141b; --muted:#9aa0a7;
-      --pos:#65d48b; --neg:#ff6b6b; --line:#232634;
-      --btn:#1b1f2a; --btn2:#20263a;
-    }
-    *{ box-sizing:border-box; }
-    body{
-      margin:0; background:var(--bg); color:#fff;
-      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-    }
-    .wrap{ max-width:760px; margin:0 auto; padding:14px; }
-    .topbar{
-      display:flex; align-items:center; justify-content:space-between;
-      gap:10px; margin-bottom:12px;
-    }
-    .title{ font-size:18px; font-weight:700; }
-    .btn{
-      border:1px solid var(--line); background:var(--btn);
-      color:#fff; padding:10px 12px; border-radius:12px;
-      cursor:pointer; user-select:none;
-    }
-    .btn:active{ transform:translateY(1px); }
-    .grid{
-      display:grid; gap:10px;
-    }
-    .card{
-      background:var(--card); border:1px solid var(--line);
-      border-radius:16px; padding:12px;
-      box-shadow:0 10px 25px rgba(0,0,0,.25);
-    }
-    label{ display:block; font-size:12px; color:var(--muted); margin:6px 0 4px; }
-    input, select, textarea{
-      width:100%; border:1px solid var(--line);
-      background:#0f1118; color:#fff;
-      padding:10px 12px; border-radius:12px;
-      outline:none;
-    }
-    textarea{ resize:vertical; min-height:46px; }
-    .row{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-    @media (max-width:520px){ .row{ grid-template-columns:1fr; } }
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Учёт денег ONLINE</title>
+  <link rel="stylesheet" href="./style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-    .quick{
-      display:flex; flex-wrap:wrap; gap:8px; margin-top:10px;
-    }
-    .chip{
-      background:var(--btn2); border:1px solid var(--line);
-      padding:8px 10px; border-radius:999px;
-      cursor:pointer; font-size:13px;
-    }
+    const firebaseConfig = {
+      apiKey: "AIzaSyBYvSsrzjgkrBwhaBAt0KlCGrAtzgOPYx8",
+      authDomain: "moneytracker-5335b.firebaseapp.com",
+      projectId: "moneytracker-5335b",
+      storageBucket: "moneytracker-5335b.firebasestorage.app",
+      messagingSenderId: "440589448883",
+      appId: "1:440589448883:web:5ad507b270fa414731a2c6"
+    };
 
-    .stats{
-      display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;
-      margin-top:10px;
-    }
-    @media (max-width:720px){ .stats{ grid-template-columns:1fr; } }
-    .stat{
-      background:#0f1118; border:1px solid var(--line);
-      padding:10px_ax; border-radius:14px; padding:12px;
-    }
-    .stat .k{ font-size:12px; color:var(--muted); }
-    .stat .v{ font-size:18px; font-weight:700; margin-top:6px; }
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
 
-    .search{
-      display:flex; gap:10px; margin-top:10px;
-    }
-    .search input{ flex:1; }
-
-    .muted{ color:var(--muted); }
-    .hidden{ display:none; }
-
-    .item{
-      display:flex; align-items:center; justify-content:space-between;
-      gap:10px; padding:10px; border:1px solid var(--line);
-      background:#0f1118; border-radius:14px; margin-top:10px;
-    }
-    .meta{ flex:1; min-width:0; }
-    .line1{
-      display:flex; align-items:baseline; justify-content:space-between; gap:10px;
-    }
-    .amt{ font-size:16px; font-weight:800; white-space:nowrap; }
-    .amt.pos{ color:var(--pos); }
-    .amt.neg{ color:var(--neg); }
-    .tag{ color:var(--muted); font-size:12px; margin-top:6px; }
-    .dot{
-      display:inline-block; width:10px; height:10px; border-radius:50%;
-      margin-right:6px;
-    }
-    .iconbtn{
-      border:1px solid var(--line); background:var(--btn);
-      color:#fff; border-radius:12px; padding:8px 10px;
-      cursor:pointer;
-    }
-    .iconbtn.danger{ border-color:#3a1f27; background:#1b0f13; color:#ff9aa6; }
-
-    /* Modal */
-    .modal-back{
-      position:fixed; inset:0; background:rgba(0,0,0,.55);
-      display:flex; align-items:center; justify-content:center;
-      padding:14px; z-index:50;
-    }
-    .modal{
-      width:min(520px, 100%); background:var(--card);
-      border:1px solid var(--line); border-radius:18px; padding:14px;
-    }
-    .modal h3{ margin:0 0 10px; font-size:16px; }
-  </style>
+    // Экспортируем для app.js
+    window.fbDB = db;
+    window.fbMethods = { collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc };
+  </script>
 </head>
-
 <body>
-  <div class="wrap">
-    <div class="topbar">
-      <div class="title">Учёт денег</div>
-      <button id="btnSettings" class="btn">Настройки</button>
+  <header class="wrap header">
+    <h1>Учёт денег <span style="font-size:12px; color:#65d48b;">● ONLINE</span></h1>
+    <div class="header-actions">
+      <button id="btnSettings" type="button">⚙️</button>
     </div>
+  </header>
 
-    <div class="card">
-      <form id="txForm" class="grid">
-        <div class="row">
-          <div>
-            <label>Тип</label>
-            <select id="type">
-              <option value="income">Доход</option>
-              <option value="expense">Расход</option>
-            </select>
-          </div>
-          <div>
-            <label>Дата</label>
-            <input id="date" type="date" />
-          </div>
-        </div>
-
-        <div class="row">
-          <div>
-            <label>Категория</label>
-            <select id="category"></select>
-          </div>
-          <div>
-            <label>Счёт</label>
-            <select id="account"></select>
-          </div>
-        </div>
-
-        <div id="subcatWrap" class="hidden">
-          <label>Подкатегория</label>
-          <select id="subcategory"></select>
-        </div>
-
-        <div class="row">
-          <div>
-            <label>Сумма</label>
-            <input id="amount" type="number" inputmode="numeric" placeholder="Например 5000" />
-          </div>
-          <div>
-            <label>Комментарий</label>
-            <input id="note" type="text" placeholder="Например: смена / бензин / мойка" />
-          </div>
-        </div>
-
-        <button class="btn" type="submit">Добавить</button>
-
-        <div id="quickAmounts" class="quick">
-          <div class="chip" data-add="500">+500</div>
-          <div class="chip" data-add="1000">+1000</div>
-          <div class="chip" data-add="2000">+2000</div>
-          <div class="chip" data-add="5000">+5000</div>
-          <div class="chip" data-add="10000">+10000</div>
-        </div>
-
-        <div class="stats">
-          <div class="stat">
-            <div class="k">Доход</div>
-            <div class="v" id="totalIncome">0 ₸</div>
-          </div>
-          <div class="stat">
-            <div class="k">Расход</div>
-            <div class="v" id="totalExpense">0 ₸</div>
-          </div>
-          <div class="stat">
-            <div class="k">Баланс</div>
-            <div class="v" id="balance">0 ₸</div>
-          </div>
-        </div>
-
-        <div class="search">
-          <input id="search" type="text" placeholder="Поиск по комментарию/подкатегории..." />
-        </div>
-      </form>
-    </div>
-
-    <div class="card" style="margin-top:12px;">
-      <div class="muted">История</div>
-      <div id="list"></div>
-    </div>
-  </div>
-
-  <!-- MODAL -->
-  <div id="modal" class="modal-back hidden">
-    <div class="modal">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
-        <h3>Настройки</h3>
-        <button id="btnCloseModal" class="iconbtn">Закрыть</button>
-      </div>
-      <div class="muted" style="font-size:13px; line-height:1.45;">
-        Пока здесь заглушка. Позже добавим: PIN, категории, счета, экспорт/импорт и т.д.
-      </div>
-    </div>
-  </div>
-
-  <!-- ВАЖНО: type="module" и подключение app.js -->
-  <script type="module" src="./app.js?v=1"></script>
-</body>
-</html>    <section class="card">
-      <h2>Добавить запись</h2>
-      <form id="txForm" class="form">
+  <main class="wrap grid">
+    <section class="card">
+      <form id="txForm">
         <div class="row2">
-          <label>Тип
-            <select id="type" required>
-              <option value="income">Приход</option>
-              <option value="expense" selected>Расход</option>
-            </select>
-          </label>
-          <label>Счёт
-            <select id="account" required></select>
-          </label>
+          <select id="type">
+            <option value="income">Приход</option>
+            <option value="expense">Расход</option>
+          </select>
+          <select id="account">
+            <option value="cash">Наличные</option>
+            <option value="kaspi">Kaspi</option>
+          </select>
         </div>
-        <label>Категория
+        <div class="row2">
           <select id="category"></select>
-        </label>
-        <label id="subcatWrap" class="hidden">Подкатегория
-          <select id="subcategory"></select>
-        </label>
-        <label>Сумма
-          <input id="amount" type="number" inputmode="numeric" step="1" min="1" required />
-        </label>
-        <div id="quickAmounts" class="quick">
-          <button class="chip" type="button" data-add="150">+150</button>
-          <button class="chip" type="button" data-add="500">+500</button>
-          <button class="chip" type="button" data-add="1000">+1000</button>
-          <button class="chip" type="button" data-add="2000">+2000</button>
-          <button class="chip" type="button" data-add="5000">+5000</button>
+          <div id="subcatWrap" class="hidden">
+            <select id="subcategory"></select>
+          </div>
         </div>
-        <label>Комментарий
-          <input id="note" type="text" placeholder="по желанию" />
-        </label>
-        <label>Дата
+        <div class="row2">
+          <input id="amount" type="number" inputmode="decimal" placeholder="Сумма" required />
           <input id="date" type="date" required />
-        </label>
-        <button type="submit">Сохранить</button>
+        </div>
+        <button class="btn-main" type="submit">Сохранить в облако</button>
       </form>
     </section>
 
     <section class="card">
-      <h2>Итоги</h2>
-      <div class="stats">
-        <div class="stat">
-          <div class="muted">Баланс</div>
-          <div id="balance" class="big">0 ₸</div>
-        </div>
-        <div class="stat">
-          <div class="muted">Приход</div>
-          <div id="totalIncome" class="pos">0 ₸</div>
-        </div>
-        <div class="stat">
-          <div class="muted">Расход</div>
-          <div id="totalExpense" class="neg">0 ₸</div>
-        </div>
+      <div class="balance-line">
+        <div class="bal-item"><span class="small muted">Баланс:</span><b id="balance">0 ₸</b></div>
+        <div class="bal-item"><span class="small muted">Приход:</span><b id="totalIncome" class="pos">0 ₸</b></div>
+        <div class="bal-item"><span class="small muted">Расход:</span><b id="totalExpense" class="neg">0 ₸</b></div>
       </div>
-      <div class="row" style="margin-top:15px;">
-        <input id="search" type="search" placeholder="Поиск..." />
+      <div class="quick2 mt-10">
+        <button class="chip" data-range="today">Сегодня</button>
+        <button class="chip" data-range="week">7 дн.</button>
+        <button class="chip" data-range="all">Всё</button>
+      </div>
+      <div class="row2 mt-10">
+        <input id="fromDate" type="date" />
+        <input id="toDate" type="date" />
       </div>
     </section>
 
     <section class="card full">
-      <h2>История (Облако)</h2>
-      <div id="list" class="list"></div>
+      <div class="charts">
+        <div class="chart-card"><canvas id="chartIE"></canvas></div>
+        <div class="chart-card"><canvas id="chartCat"></canvas></div>
+      </div>
+    </section>
+
+    <section class="card full">
+      <div class="modal-head"><h2>💰 Доход по точкам</h2></div>
+      <div id="earningsDetails" class="stats-details mt-10"></div>
+    </section>
+
+    <section class="card full">
+      <div class="modal-head"><h2>📊 Кол-во заказов</h2></div>
+      <div id="countDetails" class="stats-details mt-10"></div>
+    </section>
+
+    <section class="card full">
+      <div class="modal-head" id="toggleHistory" style="cursor:pointer">
+        <h2>История транзакций (Облако)</h2>
+        <span id="histArrow">▼</span>
+      </div>
+      <div id="histContent"><div id="list" class="list"></div></div>
     </section>
   </main>
 
-  <div id="modal" class="modal hidden">
-    <div class="modal-card">
-      <div class="modal-head">
-        <div class="modal-title">Настройки</div>
-        <button id="btnCloseModal" class="iconbtn" type="button">✕</button>
-      </div>
-      <div class="tabpane">
-        <div class="row">
-          <input id="pinNew" class="pin" inputmode="numeric" maxlength="4" placeholder="Новый PIN" />
-          <button id="setPin" type="button">ОК</button>
-        </div>
-        <button id="removePin" class="danger" style="margin-top:10px;">Удалить PIN</button>
-      </div>
-    </div>
-  </div>
-
   <script type="module" src="./app.js"></script>
 </body>
-            </html>
-            
+</html>
