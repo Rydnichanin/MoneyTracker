@@ -40,17 +40,14 @@
   <div id="loginScreen" class="login-overlay">
     <div class="login-box">
       <h2>🔐 Вход в систему</h2>
-      
       <button id="googleBtn" type="button" class="btn-google">
         <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/action/google.svg" width="18" style="margin-right:10px;">
         Войти через Google
       </button>
-
       <div style="margin: 20px 0; color: #444; font-size: 12px;">— ИЛИ ПО ПАРОЛЮ —</div>
-
       <form id="loginForm">
-        <input type="email" id="email" placeholder="Email" autocomplete="email">
-        <input type="password" id="password" placeholder="Пароль" autocomplete="current-password">
+        <input type="email" id="email" placeholder="Email">
+        <input type="password" id="password" placeholder="Пароль">
         <button type="submit" class="btn-main">Войти</button>
         <p id="loginError" style="color:var(--neg); margin-top:10px; font-size:14px;"></p>
       </form>
@@ -61,7 +58,7 @@
     <header class="wrap header">
       <div style="display:flex; align-items:center; gap:10px;">
         <img id="userPhoto" src="" style="width:32px; height:32px; border-radius:50%; border:1px solid #333; display:none;">
-        <h1>Учёт денег <span style="font-size:12px; color:#65d48b;">● SECURE</span></h1>
+        <h1>Учёт <span style="font-size:12px; color:#65d48b;">● SECURE</span></h1>
       </div>
       <button id="logoutBtn" style="background:none; border:none; font-size:22px; cursor:pointer;">🚪</button>
     </header>
@@ -111,16 +108,13 @@
           <button class="chip" data-range="week">7 дн.</button>
           <button class="chip" data-range="all">Всё</button>
         </div>
+        <input type="hidden" id="fromDate">
+        <input type="hidden" id="toDate">
       </section>
 
       <section class="card full">
         <div class="modal-head"><h2>💰 Доход по точкам</h2></div>
         <div id="earningsDetails" class="stats-details mt-10"></div>
-      </section>
-
-      <section class="card full">
-        <div class="modal-head"><h2>📊 Кол-во заказов</h2></div>
-        <div id="countDetails" class="stats-details mt-10"></div>
       </section>
 
       <section class="card full">
@@ -134,7 +128,6 @@
       </section>
     </main>
   </div>
-
   <script type="module" src="./app.js"></script>
 </body>
 </html>
