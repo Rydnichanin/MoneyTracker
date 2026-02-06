@@ -10,15 +10,26 @@ const checkFB = setInterval(() => {
     if (window.fbAuth) { clearInterval(checkFB); initAuth(); }
 }, 300);
 
-function initAuth() {
+async function initAuth() {
     const { fbAuth, fbMethods, fbGoogleProvider } = window;
     const errBox = document.getElementById("loginError");
+
+    // Обработка возврата после выбора Google аккаунта
+    try {
+        await fbMethods.getRedirectResult(fbAuth);
+    } catch (e) {
+        errBox.textContent = "Ошибка входа: " + e.message;
+    }
 
     fbMethods.onAuthStateChanged(fbAuth, (user) => {
         if (user) {
             document.getElementById("loginScreen").classList.add("hidden");
             document.getElementById("appScreen").classList.remove("hidden");
-            if (user.photoURL) { document.getElementById("userPhoto").src = user.photoURL; document.getElementById("userPhoto").style.display = "block"; }
+            if (user.photoURL) { 
+                const img = document.getElementById("userPhoto");
+                img.src = user.photoURL; 
+                img.style.display = "block"; 
+            }
             initApp();
         } else {
             document.getElementById("loginScreen").classList.remove("hidden");
@@ -27,20 +38,20 @@ function initAuth() {
     });
 
     document.getElementById("googleBtn").onclick = async () => {
-        errBox.textContent = "Запуск Google...";
+        errBox.textContent = "Переход в Google...";
         try {
-            await fbMethods.signInWithPopup(fbAuth, fbGoogleProvider);
+            await fbMethods.signInWithRedirect(fbAuth, fbGoogleProvider);
         } catch (e) {
-            errBox.textContent = "Ошибка: " + e.code;
-            console.error(e);
+            errBox.textContent = "Ошибка запуска: " + e.code;
         }
     };
 
     document.getElementById("loginForm").onsubmit = async (e) => {
         e.preventDefault();
+        errBox.textContent = "Проверка...";
         try {
             await fbMethods.signInWithEmailAndPassword(fbAuth, document.getElementById("email").value, document.getElementById("password").value);
-        } catch (err) { errBox.textContent = "Неверный логин/пароль"; }
+        } catch (err) { errBox.textContent = "Неверный логин или пароль"; }
     };
 
     document.getElementById("logoutBtn").onclick = () => fbMethods.signOut(fbAuth);
