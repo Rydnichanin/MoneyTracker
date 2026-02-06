@@ -15,7 +15,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, GoogleAuthProvider, signInWithRedirect, getRedirectResult } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBYvSsrzjgkrBwhaBAt0KlCGrAtzgOPYx8",
@@ -30,7 +30,7 @@
     window.fbDB = getFirestore(app);
     window.fbAuth = getAuth(app);
     window.fbGoogleProvider = new GoogleAuthProvider();
-    window.fbMethods = { collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, signInWithEmailAndPassword, onAuthStateChanged, signOut, signInWithPopup };
+    window.fbMethods = { collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, signInWithEmailAndPassword, onAuthStateChanged, signOut, signInWithRedirect, getRedirectResult };
   </script>
 </head>
 <body>
@@ -47,7 +47,7 @@
         <input type="email" id="email" placeholder="Email">
         <input type="password" id="password" placeholder="Пароль">
         <button type="submit" class="btn-main">Войти</button>
-        <p id="loginError" style="color:var(--neg); margin-top:15px; font-size:13px; font-weight:bold; min-height: 20px;"></p>
+        <p id="loginError" style="color:var(--neg); margin-top:15px; font-size:13px; font-weight:bold; min-height:20px;"></p>
       </form>
     </div>
   </div>
@@ -58,7 +58,7 @@
         <img id="userPhoto" src="" style="width:32px; height:32px; border-radius:50%; border:1px solid #333; display:none;">
         <h1>Учёт <span style="font-size:12px; color:#65d48b;">● ONLINE</span></h1>
       </div>
-      <button id="logoutBtn" style="background:none; border:none; font-size:22px;">🚪</button>
+      <button id="logoutBtn" style="background:none; border:none; font-size:22px; cursor:pointer;">🚪</button>
     </header>
 
     <main class="wrap">
