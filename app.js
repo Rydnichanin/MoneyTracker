@@ -7,20 +7,26 @@ let allTransactions = [];
 let unsubscribe = null;
 
 const checkFB = setInterval(() => {
-    if (window.fbAuth) { clearInterval(checkFB); initAuth(); }
+    if (window.fbAuth && window.fbMethods) { 
+        clearInterval(checkFB); 
+        initAuth(); 
+    }
 }, 300);
 
 async function initAuth() {
     const { fbAuth, fbMethods, fbGoogleProvider } = window;
     const errBox = document.getElementById("loginError");
 
-    // Обработка возврата после выбора Google аккаунта
+    // Пытаемся получить результат входа после редиректа
     try {
-        await fbMethods.getRedirectResult(fbAuth);
+        const result = await fbMethods.getRedirectResult(fbAuth);
+        if (result) console.log("Вход выполнен успешно");
     } catch (e) {
-        errBox.textContent = "Ошибка входа: " + e.message;
+        console.error("Ошибка редиректа:", e);
+        errBox.textContent = "Ошибка: " + (e.message || "Сбой связи с Google");
     }
 
+    // Следим за состоянием пользователя
     fbMethods.onAuthStateChanged(fbAuth, (user) => {
         if (user) {
             document.getElementById("loginScreen").classList.add("hidden");
@@ -37,24 +43,30 @@ async function initAuth() {
         }
     });
 
+    // Кнопка Google
     document.getElementById("googleBtn").onclick = async () => {
         errBox.textContent = "Переход в Google...";
         try {
             await fbMethods.signInWithRedirect(fbAuth, fbGoogleProvider);
         } catch (e) {
-            errBox.textContent = "Ошибка запуска: " + e.code;
+            errBox.textContent = "Ошибка запуска: " + (e.code || "unknown");
         }
     };
 
+    // Обычный вход
     document.getElementById("loginForm").onsubmit = async (e) => {
         e.preventDefault();
         errBox.textContent = "Проверка...";
         try {
             await fbMethods.signInWithEmailAndPassword(fbAuth, document.getElementById("email").value, document.getElementById("password").value);
-        } catch (err) { errBox.textContent = "Неверный логин или пароль"; }
+        } catch (err) { 
+            errBox.textContent = "Неверные данные для входа"; 
+        }
     };
 
-    document.getElementById("logoutBtn").onclick = () => fbMethods.signOut(fbAuth);
+    document.getElementById("logoutBtn").onclick = () => {
+        if(confirm("Выйти?")) fbMethods.signOut(fbAuth);
+    };
 }
 
 window.setAmount = (val) => { document.getElementById("amount").value = val; };
@@ -65,16 +77,20 @@ function initApp() {
     document.getElementById("date").value = new Date().toISOString().split('T')[0];
 
     const elT = document.getElementById("type"), elC = document.getElementById("category"), elS = document.getElementById("subcategory"), sw = document.getElementById("subcatWrap");
+    
     const updateSelects = () => {
         const cats = DEFAULTS[elT.value];
         elC.innerHTML = cats.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
         const cur = cats.find(c => c.id === elC.value);
-        if (cur?.sub?.length) { sw.classList.remove("hidden"); elS.innerHTML = cur.sub.map(s => `<option value="${s}">${s}</option>`).join(""); }
-        else sw.classList.add("hidden");
+        if (cur?.sub?.length) { 
+            sw.classList.remove("hidden"); 
+            elS.innerHTML = cur.sub.map(s => `<option value="${s}">${s}</option>`).join(""); 
+        } else sw.classList.add("hidden");
     };
     elT.onchange = updateSelects; elC.onchange = updateSelects;
     updateSelects();
 
+    if (unsubscribe) unsubscribe();
     const q = fbMethods.query(colRef, fbMethods.orderBy("date", "desc"));
     unsubscribe = fbMethods.onSnapshot(q, (snapshot) => {
         allTransactions = [];
@@ -87,15 +103,22 @@ function initApp() {
 
     document.getElementById("txForm").onsubmit = async (e) => {
         e.preventDefault();
-        await fbMethods.addDoc(colRef, {
-            type: elT.value, amount: Number(document.getElementById("amount").value),
-            categoryId: elC.value, subcategory: elS.value || "",
-            date: document.getElementById("date").value, accountId: document.getElementById("account").value,
-            createdAt: Date.now()
-        });
-        document.getElementById("amount").value = "";
+        const btn = document.getElementById("saveBtn");
+        btn.disabled = true;
+        try {
+            await fbMethods.addDoc(colRef, {
+                type: elT.value, 
+                amount: Number(document.getElementById("amount").value),
+                categoryId: elC.value, 
+                subcategory: elS.value || "",
+                date: document.getElementById("date").value, 
+                accountId: document.getElementById("account").value,
+                createdAt: Date.now()
+            });
+            document.getElementById("amount").value = "";
+        } catch (e) { alert("Ошибка сохранения"); }
+        btn.disabled = false;
     };
-    window.deleteTx = async (id) => { if(confirm("Удалить?")) await fbMethods.deleteDoc(fbMethods.doc(fbDB, "transactions", id)); };
 }
 
 function render() {
@@ -113,7 +136,7 @@ function render() {
     document.getElementById("list").innerHTML = filtered.map(t => `
         <div class="item">
             <div><b class="${t.type==='income'?'pos':'neg'}">${t.amount.toLocaleString()} ₸</b><br><small class="muted">${t.date} • ${t.subcategory || t.categoryId}</small></div>
-            <button class="iconbtn" onclick="deleteTx('${t.id}')">✕</button>
+            <button class="del-btn" onclick="deleteTx('${t.id}')">✕</button>
         </div>`).join("");
 
     const earns = {};
@@ -125,15 +148,27 @@ function render() {
         <div class="stat-row"><span>${k}</span><b>${earns[k].toLocaleString()} ₸</b></div>`).join("");
 }
 
+window.deleteTx = async (id) => {
+    if(confirm("Удалить?")) {
+        try { await window.fbMethods.deleteDoc(window.fbMethods.doc(window.fbDB, "transactions", id)); } 
+        catch(e) { alert("Ошибка удаления"); }
+    }
+};
+
 document.querySelector(".quick2").onclick = (e) => {
     const r = e.target.dataset.range; if (!r) return;
     const now = new Date().toISOString().split('T')[0];
-    if (r === 'today') { document.getElementById("fromDate").value = now; document.getElementById("toDate").value = now; }
-    else if (r === 'week') {
+    if (r === 'today') { 
+        document.getElementById("fromDate").value = now; 
+        document.getElementById("toDate").value = now; 
+    } else if (r === 'week') {
         const d = new Date(); d.setDate(d.getDate() - 7);
         document.getElementById("fromDate").value = d.toISOString().split('T')[0];
         document.getElementById("toDate").value = now;
-    } else { document.getElementById("fromDate").value = ""; document.getElementById("toDate").value = ""; }
+    } else { 
+        document.getElementById("fromDate").value = ""; 
+        document.getElementById("toDate").value = ""; 
+    }
     render();
 };
 
