@@ -4,15 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <title>Учёт денег ONLINE</title>
-  
-  <link rel="icon" type="image/png" href="icon.png">
-  <link rel="manifest" href="manifest.json">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="apple-touch-icon" href="icon.png">
-
   <link rel="stylesheet" href="./style.css" />
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -39,17 +31,13 @@
 
   <div id="loginScreen" class="login-overlay">
     <div class="login-box">
-      <h2>🔐 Вход в систему</h2>
-      <button id="googleBtn" type="button" class="btn-google">
-        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/action/google.svg" width="18" style="margin-right:10px;">
-        Войти через Google
-      </button>
-      <div style="margin: 20px 0; color: #444; font-size: 12px;">— ИЛИ ПО ПАРОЛЮ —</div>
-      <form id="loginForm">
+      <h2>🔐 Вход</h2>
+      <button id="googleBtn" type="button" class="btn-google">Войти через Google</button>
+      <form id="loginForm" style="margin-top:20px">
         <input type="email" id="email" placeholder="Email">
         <input type="password" id="password" placeholder="Пароль">
         <button type="submit" class="btn-main">Войти</button>
-        <p id="loginError" style="color:var(--neg); margin-top:10px; font-size:14px;"></p>
+        <p id="loginError" style="color:red; font-size:12px;"></p>
       </form>
     </div>
   </div>
@@ -57,41 +45,26 @@
   <div id="appScreen" class="hidden">
     <header class="wrap header">
       <div style="display:flex; align-items:center; gap:10px;">
-        <img id="userPhoto" src="" style="width:32px; height:32px; border-radius:50%; border:1px solid #333; display:none;">
-        <h1>Учёт <span style="font-size:12px; color:#65d48b;">● SECURE</span></h1>
+        <img id="userPhoto" src="" style="width:32px; height:32px; border-radius:50%; display:none;">
+        <h1>Учёт денег</h1>
       </div>
-      <button id="logoutBtn" style="background:none; border:none; font-size:22px; cursor:pointer;">🚪</button>
+      <button id="logoutBtn" style="background:none; border:none; font-size:22px;">🚪</button>
     </header>
 
-    <main class="wrap grid">
+    <main class="wrap">
       <section class="card">
         <form id="txForm">
           <div class="row2">
-            <select id="type">
-              <option value="income">Приход</option>
-              <option value="expense">Расход</option>
-            </select>
-            <select id="account">
-              <option value="cash">Наличные</option>
-              <option value="kaspi">Kaspi</option>
-            </select>
+            <select id="type"><option value="income">Приход</option><option value="expense">Расход</option></select>
+            <select id="account"><option value="cash">Наличные</option><option value="kaspi">Kaspi</option></select>
           </div>
           <div class="row2">
             <select id="category"></select>
-            <div id="subcatWrap" class="hidden">
-              <select id="subcategory"></select>
-            </div>
+            <div id="subcatWrap" class="hidden"><select id="subcategory"></select></div>
           </div>
           <div class="row2">
             <input id="amount" type="number" inputmode="decimal" placeholder="Сумма" required />
             <input id="date" type="date" required />
-          </div>
-          <div class="quick-amounts">
-            <button type="button" class="chip-sum" onclick="setAmount(150)">150</button>
-            <button type="button" class="chip-sum" onclick="setAmount(300)">300</button>
-            <button type="button" class="chip-sum" onclick="setAmount(600)">600</button>
-            <button type="button" class="chip-sum" onclick="setAmount(700)">700</button>
-            <button type="button" class="chip-sum" onclick="setAmount(4500)">4500</button>
           </div>
           <button class="btn-main" type="submit" id="saveBtn">Добавить</button>
         </form>
@@ -99,31 +72,35 @@
 
       <section class="card">
         <div class="balance-line">
-          <div class="bal-item"><span class="small muted">Баланс:</span><br><b id="balance">0 ₸</b></div>
-          <div class="bal-item"><span class="small muted">Приход:</span><br><b id="totalIncome" class="pos">0 ₸</b></div>
-          <div class="bal-item"><span class="small muted">Расход:</span><br><b id="totalExpense" class="neg">0 ₸</b></div>
+          <div><span class="small muted">Баланс</span><br><b id="balance">0 ₸</b></div>
+          <div><span class="small muted">Приход</span><br><b id="totalIncome" class="pos">0 ₸</b></div>
+          <div><span class="small muted">Расход</span><br><b id="totalExpense" class="neg">0 ₸</b></div>
         </div>
-        <div class="quick2 mt-10">
-          <button class="chip" data-range="today">Сегодня</button>
-          <button class="chip" data-range="week">7 дн.</button>
-          <button class="chip" data-range="all">Всё</button>
+
+        <div class="filter-box mt-10">
+          <div class="quick2">
+            <button class="chip" data-range="today">Сегодня</button>
+            <button class="chip" data-range="week">7 дн.</button>
+            <button class="chip" data-range="all">Всё</button>
+          </div>
+          <div class="date-inputs mt-10">
+            <input type="date" id="fromDate" placeholder="От">
+            <input type="date" id="toDate" placeholder="До">
+          </div>
         </div>
-        <input type="hidden" id="fromDate">
-        <input type="hidden" id="toDate">
       </section>
 
-      <section class="card full">
-        <div class="modal-head"><h2>💰 Доход по точкам</h2></div>
-        <div id="earningsDetails" class="stats-details mt-10"></div>
+      <section class="card">
+        <h3>💰 Доход по точкам</h3>
+        <div id="earningsDetails"></div>
       </section>
 
-      <section class="card full">
-        <div class="modal-head" id="toggleHistory" style="cursor:pointer">
-          <h2>История транзакций</h2>
-          <span id="histArrow">▼</span>
+      <section class="card">
+        <div id="toggleHistory" style="cursor:pointer; display:flex; justify-content:space-between;">
+          <h3>История транзакций</h3> <span id="histArrow">▼</span>
         </div>
         <div id="histContent" class="hidden">
-          <div id="list" class="list"></div>
+          <div id="list"></div>
         </div>
       </section>
     </main>
