@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <title>Учёт денег ONLINE</title>
+  
   <link rel="stylesheet" href="./style.css" />
   
   <script type="module">
@@ -28,7 +29,7 @@
 
   <div id="appScreen">
     <header class="wrap header">
-      <h1>Учёт денег <span style="font-size:12px; color:#65d48b;">● СВОБОДНЫЙ ДОСТУП</span></h1>
+      <h1>Учёт денег <span class="status-dot">● ONLINE</span></h1>
     </header>
 
     <main class="wrap">
@@ -53,7 +54,7 @@
             <button type="button" class="chip-sum" onclick="setAmount(700)">700</button>
             <button type="button" class="chip-sum" onclick="setAmount(4500)">4500</button>
           </div>
-          <button class="btn-main" type="submit" id="saveBtn">Добавить запись</button>
+          <button class="btn-main" type="submit" id="saveBtn">Добавить</button>
         </form>
       </section>
 
@@ -80,8 +81,8 @@
       </section>
 
       <section class="card">
-        <div id="toggleHistory" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
-          <h3 style="margin:0">История транзакций</h3>
+        <div id="toggleHistory" class="history-header">
+          <h3 style="margin:0">История</h3>
           <span id="histArrow">▼</span>
         </div>
         <div id="histContent" class="hidden mt-10">
@@ -90,6 +91,7 @@
       </section>
     </main>
   </div>
+
   <script type="module" src="./app.js"></script>
 </body>
 </html>
