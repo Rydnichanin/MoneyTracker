@@ -31,17 +31,13 @@ function initApp() {
           elS = document.getElementById("subcategory"), 
           sw = document.getElementById("subcatWrap");
 
-    // 1. Функция только для обновления списка КАТЕГОРИЙ (Авто, Еда и т.д.)
-    // Вызывается только когда меняем ПРИХОД / РАСХОД
     const fillCategories = () => {
         const type = elT.value;
         const cats = DEFAULTS[type] || [];
         elC.innerHTML = cats.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
-        fillSubcategories(); // После смены списка категорий обновляем и подкатегории
+        fillSubcategories();
     };
 
-    // 2. Функция только для обновления ПОДКАТЕГОРИЙ (F1, Бензин и т.д.)
-    // Вызывается когда меняем категорию или тип
     const fillSubcategories = () => {
         const type = elT.value;
         const cats = DEFAULTS[type] || [];
@@ -56,11 +52,8 @@ function initApp() {
         }
     };
 
-    // Вешаем события правильным образом
-    elT.onchange = fillCategories;     // Если сменили Приход/Расход -> перерисовать всё
-    elC.onchange = fillSubcategories;  // Если сменили Категорию -> перерисовать только подкатегории
-
-    // Инициализация при запуске
+    elT.onchange = fillCategories;
+    elC.onchange = fillSubcategories;
     fillCategories();
 
     document.getElementById("date").value = new Date().toISOString().split('T')[0];
@@ -111,6 +104,7 @@ function render() {
     document.getElementById("totalIncome").textContent = inc.toLocaleString() + " ₸";
     document.getElementById("totalExpense").textContent = exp.toLocaleString() + " ₸";
 
+    // ИСТОРИЯ
     document.getElementById("list").innerHTML = filtered.map(t => `
         <div class="item">
             <div>
@@ -120,9 +114,10 @@ function render() {
             <button class="del-btn" onclick="deleteTx('${t.id}')">✕</button>
         </div>`).join("");
 
+    // --- СТАТИСТИКА ДОХОДОВ ---
     const earns = {};
     filtered.filter(t => t.type === 'income').forEach(t => {
-        const k = t.subcategory || "Прочий доход";
+        const k = t.subcategory || t.categoryName || "Прочий доход";
         if (!earns[k]) earns[k] = { sum: 0, count: 0, breakdown: {} };
         earns[k].sum += t.amount;
         earns[k].count += 1;
@@ -145,6 +140,23 @@ function render() {
                 <div style="font-size: 11px; color: #ffd166; opacity: 0.8;">${details}</div>
             </div>`;
         }).join("");
+
+    // --- СТАТИСТИКА РАСХОДОВ ---
+    const expStats = {};
+    filtered.filter(t => t.type === 'expense').forEach(t => {
+        const k = t.categoryName || "Прочее";
+        if (!expStats[k]) expStats[k] = { sum: 0, count: 0 };
+        expStats[k].sum += t.amount;
+        expStats[k].count += 1;
+    });
+
+    document.getElementById("expenseDetails").innerHTML = Object.keys(expStats)
+        .sort((a,b) => expStats[b].sum - expStats[a].sum)
+        .map(k => `
+            <div class="stat-row" style="padding: 10px 0; border-bottom: 1px solid #222; display: flex; justify-content: space-between;">
+                <span>${k} <small style="color:#888;">(${expStats[k].count} раз)</small></span>
+                <b class="neg">${expStats[k].sum.toLocaleString()} ₸</b>
+            </div>`).join("");
 }
 
 window.setAmount = (val) => { document.getElementById("amount").value = val; };
@@ -155,17 +167,12 @@ window.deleteTx = async (id) => {
 document.querySelector(".quick2").onclick = (e) => {
     const r = e.target.dataset.range; if (!r) return;
     const now = new Date().toISOString().split('T')[0];
-    if (r === 'today') {
-        document.getElementById("fromDate").value = now;
-        document.getElementById("toDate").value = now;
-    } else if (r === 'week') {
+    if (r === 'today') { document.getElementById("fromDate").value = now; document.getElementById("toDate").value = now; }
+    else if (r === 'week') {
         const d = new Date(); d.setDate(d.getDate() - 7);
         document.getElementById("fromDate").value = d.toISOString().split('T')[0];
         document.getElementById("toDate").value = now;
-    } else {
-        document.getElementById("fromDate").value = "";
-        document.getElementById("toDate").value = "";
-    }
+    } else { document.getElementById("fromDate").value = ""; document.getElementById("toDate").value = ""; }
     render();
 };
 
