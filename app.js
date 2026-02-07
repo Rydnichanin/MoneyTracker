@@ -16,10 +16,7 @@ const DEFAULTS = {
 let allTransactions = [];
 
 const checkFB = setInterval(() => {
-    if (window.fbDB && window.fbMethods) { 
-        clearInterval(checkFB); 
-        initApp(); 
-    }
+    if (window.fbDB && window.fbMethods) { clearInterval(checkFB); initApp(); }
 }, 100);
 
 function initApp() {
@@ -29,59 +26,39 @@ function initApp() {
     const elT = document.getElementById("type"), elC = document.getElementById("category"), 
           elS = document.getElementById("subcategory"), sw = document.getElementById("subcatWrap");
 
-    const fillCategories = () => {
-        const type = elT.value;
-        const cats = DEFAULTS[type] || [];
-        elC.innerHTML = cats.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
-        fillSubcategories();
+    const fillCats = () => {
+        elC.innerHTML = DEFAULTS[elT.value].map(c => `<option value="${c.id}">${c.name}</option>`).join("");
+        fillSubs();
+    };
+    const fillSubs = () => {
+        const c = DEFAULTS[elT.value].find(i => i.id === elC.value);
+        if (c && c.sub.length > 0) {
+            sw.classList.remove("hidden");
+            elS.innerHTML = c.sub.map(s => `<option value="${s}">${s}</option>`).join("");
+        } else { sw.classList.add("hidden"); elS.innerHTML = ""; }
     };
 
-    const fillSubcategories = () => {
-        const cats = DEFAULTS[elT.value] || [];
-        const currentCat = cats.find(c => c.id === elC.value);
-        if (currentCat && currentCat.sub && currentCat.sub.length > 0) { 
-            sw.classList.remove("hidden"); 
-            elS.innerHTML = currentCat.sub.map(s => `<option value="${s}">${s}</option>`).join(""); 
-        } else {
-            sw.classList.add("hidden");
-            elS.innerHTML = ""; 
-        }
-    };
-
-    elT.onchange = fillCategories;
-    elC.onchange = fillSubcategories;
-    fillCategories();
+    elT.onchange = fillCats; elC.onchange = fillSubs;
+    fillCats();
 
     document.getElementById("date").value = new Date().toISOString().split('T')[0];
 
-    fbMethods.onSnapshot(fbMethods.query(colRef, fbMethods.orderBy("date", "desc")), (snapshot) => {
+    fbMethods.onSnapshot(fbMethods.query(colRef, fbMethods.orderBy("date", "desc")), (snap) => {
         allTransactions = [];
-        snapshot.forEach(doc => allTransactions.push({ id: doc.id, ...doc.data() }));
+        snap.forEach(d => allTransactions.push({ id: d.id, ...d.data() }));
         render();
     });
 
-    document.getElementById("fromDate").onchange = render;
-    document.getElementById("toDate").onchange = render;
-
     document.getElementById("txForm").onsubmit = async (e) => {
         e.preventDefault();
-        const amount = Number(document.getElementById("amount").value);
-        const type = elT.value;
-        const catObj = DEFAULTS[type].find(c => c.id === elC.value);
-        
-        try {
-            await fbMethods.addDoc(colRef, {
-                type: type,
-                amount: amount,
-                categoryId: elC.value,
-                categoryName: catObj ? catObj.name : elC.value,
-                subcategory: elS.value || "",
-                date: document.getElementById("date").value,
-                accountId: document.getElementById("account").value,
-                createdAt: Date.now()
-            });
-            document.getElementById("amount").value = "";
-        } catch (e) { alert("Ошибка!"); }
+        const amt = Number(document.getElementById("amount").value);
+        const cat = DEFAULTS[elT.value].find(i => i.id === elC.value);
+        await fbMethods.addDoc(colRef, {
+            type: elT.value, amount: amt, categoryName: cat.name,
+            subcategory: elS.value || "", date: document.getElementById("date").value,
+            createdAt: Date.now()
+        });
+        document.getElementById("amount").value = "";
     };
 }
 
@@ -98,106 +75,97 @@ function render() {
     document.getElementById("totalExpense").textContent = exp.toLocaleString() + " ₸";
 
     // --- ЛОГИКА ВОЗМОЖНОГО ЗАРАБОТКА ---
-    let potTotal = 0;
-    let realBaseForComp = 0; 
+    let possibleDotsSum = 0;   
+    let realIncomeNoCargo = 0; 
     const potBreakdown = {};
 
     filtered.filter(t => t.type === 'income').forEach(t => {
         const sub = t.subcategory || t.categoryName || "";
-        
-        // Фильтр: считаем только F1-F3 и Ночь. Карго и з/п игнорируем.
-        if (!["F1", "F2", "F3", "Ночь"].includes(sub) || [4000, 4500, 5000].includes(t.amount)) return;
+        const amt = t.amount;
 
-        realBaseForComp += t.amount;
-
-        let pAmount = t.amount;
-        if (["F1", "F2", "F3"].includes(sub)) {
-            if (t.amount === 150) pAmount = 600;
-            else if (t.amount === 300) pAmount = 900;
-        } else if (sub === "Ночь" && t.amount === 500) {
-            pAmount = 1000;
+        // В РЕАЛЬНОМ: Оставляем всё (включая 4500), кроме Карго
+        if (sub !== "Cargo" && sub !== "Карго") {
+            realIncomeNoCargo += amt;
         }
 
-        if (!potBreakdown[sub]) potBreakdown[sub] = { count: 0, sum: 0 };
-        potBreakdown[sub].count += 1;
-        potBreakdown[sub].sum += pAmount;
-        potTotal += pAmount;
+        // В ВОЗМОЖНОМ: Считаем только точки (600/900/1000)
+        if (["F1", "F2", "F3", "Ночь"].includes(sub) && ![4000, 4500, 5000].includes(amt)) {
+            let pAmount = 0;
+            if (["F1", "F2", "F3"].includes(sub)) {
+                if (amt === 150) pAmount = 600;
+                else if (amt === 300) pAmount = 900;
+            } else if (sub === "Ночь" && amt === 500) {
+                pAmount = 1000;
+            }
+
+            if (pAmount > 0) {
+                if (!potBreakdown[sub]) potBreakdown[sub] = { count: 0, sum: 0 };
+                potBreakdown[sub].count += 1;
+                potBreakdown[sub].sum += pAmount;
+                possibleDotsSum += pAmount;
+            }
+        }
     });
 
-    const diff = potTotal - realBaseForComp;
-
-    const breakdownHTML = Object.entries(potBreakdown)
-        .sort((a,b) => b[1].sum - a[1].sum)
-        .map(([name, data]) => `
-            <div style="display: flex; justify-content: space-between; font-size: 13px; color: #ccc; margin-top: 4px;">
-                <span>${name} <small style="color:#777">x${data.count}</small></span>
-                <span>${data.sum.toLocaleString()} ₸</span>
-            </div>
-        `).join("");
+    const breakdownHTML = Object.entries(potBreakdown).map(([name, data]) => `
+        <div style="display: flex; justify-content: space-between; font-size: 13px; margin-top: 4px;">
+            <span>${name} <small class="muted">x${data.count}</small></span>
+            <b>${data.sum.toLocaleString()} ₸</b>
+        </div>
+    `).join("");
 
     document.getElementById("potentialStats").innerHTML = `
         <div style="margin-bottom: 10px; border-bottom: 1px solid #333; padding-bottom: 8px;">
-            ${breakdownHTML || "<small class='muted'>Нет данных по точкам</small>"}
+            ${breakdownHTML || "<small class='muted'>Нет данных для пересчета</small>"}
         </div>
         <div style="display: flex; justify-content: space-between;">
-            <span style="color: #ffd166;">Возможно за точки:</span>
-            <b style="color: #ffd166;">${potTotal.toLocaleString()} ₸</b>
+            <span>Только точки (Возможно):</span>
+            <b style="color: var(--accent);">${possibleDotsSum.toLocaleString()} ₸</b>
         </div>
-        <div style="display: flex; justify-content: space-between; margin-top: 5px;">
-            <span class="muted">Чистая выгода:</span>
-            <b class="pos">+${diff.toLocaleString()} ₸</b>
+        <div style="display: flex; justify-content: space-between; margin-top: 8px; border-top: 1px solid #333; padding-top: 8px;">
+            <span class="muted">Реал (без Карго):</span>
+            <b>${realIncomeNoCargo.toLocaleString()} ₸</b>
         </div>
     `;
 
-    // --- ИСТОРИЯ И ОСТАЛЬНАЯ СТАТИСТИКА ---
+    // --- ИСТОРИЯ ---
     document.getElementById("list").innerHTML = filtered.map(t => `
         <div class="item">
             <div><b class="${t.type==='income'?'pos':'neg'}">${t.amount.toLocaleString()} ₸</b><br>
-            <small class="muted">${t.date} • ${t.subcategory || t.categoryName || t.categoryId}</small></div>
+            <small class="muted">${t.date} • ${t.subcategory || t.categoryName}</small></div>
             <button class="del-btn" onclick="deleteTx('${t.id}')">✕</button>
         </div>`).join("");
 
+    // --- СТАТИСТИКА ДОХОДА (ПО ТОЧКАМ) ---
     const earns = {};
     filtered.filter(t => t.type === 'income').forEach(t => {
-        const k = t.subcategory || t.categoryName || "Прочее";
-        if (!earns[k]) earns[k] = { sum: 0, count: 0, breakdown: {} };
-        earns[k].sum += t.amount;
-        earns[k].count += 1;
-        earns[k].breakdown[t.amount] = (earns[k].breakdown[t.amount] || 0) + 1;
+        const k = t.subcategory || t.categoryName;
+        if (!earns[k]) earns[k] = { sum: 0, count: 0, b: {} };
+        earns[k].sum += t.amount; earns[k].count++;
+        earns[k].b[t.amount] = (earns[k].b[t.amount] || 0) + 1;
     });
-    
-    document.getElementById("earningsDetails").innerHTML = Object.keys(earns).sort((a,b)=>earns[b].sum-earns[a].sum).map(k => {
-        const det = Object.entries(earns[k].breakdown).sort((a,b)=>b[0]-a[0]).map(([p, c]) => `${p}×${c}шт`).join(" | ");
-        return `<div class="stat-row-complex">
-            <div class="stat-main"><span>${k} <small>(${earns[k].count} шт.)</small></span><b>${earns[k].sum.toLocaleString()} ₸</b></div>
-            <div class="stat-sub">${det}</div>
-        </div>`;
-    }).join("");
+    document.getElementById("earningsDetails").innerHTML = Object.entries(earns).map(([k, d]) => `
+        <div class="stat-row-complex">
+            <div class="stat-main"><span>${k} (${d.count})</span><b>${d.sum.toLocaleString()} ₸</b></div>
+            <div class="stat-sub">${Object.entries(d.b).map(([p, c]) => `${p}×${c}`).join(" | ")}</div>
+        </div>
+    `).join("");
 
-    const expStats = {};
+    // --- СТАТИСТИКА РАСХОДОВ ---
+    const exps = {};
     filtered.filter(t => t.type === 'expense').forEach(t => {
-        const mainCat = t.categoryName || "Прочее";
-        const subCat = t.subcategory || "";
-        if (!expStats[mainCat]) expStats[mainCat] = { total: 0, subs: {} };
-        expStats[mainCat].total += t.amount;
-        if (subCat) expStats[mainCat].subs[subCat] = (expStats[mainCat].subs[subCat] || 0) + t.amount;
+        if (!exps[t.categoryName]) exps[t.categoryName] = { total: 0, subs: {} };
+        exps[t.categoryName].total += t.amount;
+        if (t.subcategory) exps[t.categoryName].subs[t.subcategory] = (exps[t.categoryName].subs[t.subcategory] || 0) + t.amount;
     });
-
-    document.getElementById("expenseDetails").innerHTML = Object.keys(expStats).sort((a,b) => expStats[b].total - expStats[a].total).map(cat => {
-        const data = expStats[cat];
-        const hasSubs = Object.keys(data.subs).length > 0;
-        if (hasSubs) {
-            const subRows = Object.entries(data.subs).sort((a,b) => b[1] - a[1]).map(([n, s]) => `
-                <div class="stat-sub-row"><span>${n}</span><span>${s.toLocaleString()} ₸</span></div>
-            `).join("");
-            return `<details class="exp-details">
-                <summary class="stat-main"><span>${cat} <small>▼</small></span><b class="neg">${data.total.toLocaleString()} ₸</b></summary>
-                <div class="exp-subs-content">${subRows}</div>
-            </details>`;
-        } else {
-            return `<div class="stat-main" style="padding: 12px 0; border-bottom: 1px solid #222;"><span>${cat}</span><b class="neg">${data.total.toLocaleString()} ₸</b></div>`;
-        }
-    }).join("");
+    document.getElementById("expenseDetails").innerHTML = Object.entries(exps).map(([cat, d]) => `
+        <details class="exp-details">
+            <summary class="stat-main"><span>${cat}</span><b class="neg">${d.total.toLocaleString()} ₸</b></summary>
+            <div class="exp-subs-content">
+                ${Object.entries(d.subs).map(([n, s]) => `<div class="stat-sub-row"><span>${n}</span><span>${s} ₸</span></div>`).join("")}
+            </div>
+        </details>
+    `).join("");
 }
 
 window.setAmount = (v) => { document.getElementById("amount").value = v; };
@@ -216,13 +184,10 @@ document.querySelector(".quick2").onclick = (e) => {
 };
 
 document.getElementById("toggleHistory").onclick = () => {
-    const c = document.getElementById("histContent");
-    c.classList.toggle("hidden");
+    const c = document.getElementById("histContent"); c.classList.toggle("hidden");
     document.getElementById("histArrow").textContent = c.classList.contains("hidden") ? "▼" : "▲";
 };
-
 document.getElementById("togglePotential").onclick = () => {
-    const c = document.getElementById("potentialContent");
-    c.classList.toggle("hidden");
+    const c = document.getElementById("potentialContent"); c.classList.toggle("hidden");
     document.getElementById("potArrow").textContent = c.classList.contains("hidden") ? "▼" : "▲";
 };
