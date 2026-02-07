@@ -26,10 +26,8 @@ function initApp() {
     const { fbDB, fbMethods } = window;
     const colRef = fbMethods.collection(fbDB, "transactions");
 
-    const elT = document.getElementById("type"), 
-          elC = document.getElementById("category"), 
-          elS = document.getElementById("subcategory"), 
-          sw = document.getElementById("subcatWrap");
+    const elT = document.getElementById("type"), elC = document.getElementById("category"), 
+          elS = document.getElementById("subcategory"), sw = document.getElementById("subcatWrap");
 
     const fillCategories = () => {
         const type = elT.value;
@@ -39,10 +37,8 @@ function initApp() {
     };
 
     const fillSubcategories = () => {
-        const type = elT.value;
-        const cats = DEFAULTS[type] || [];
+        const cats = DEFAULTS[elT.value] || [];
         const currentCat = cats.find(c => c.id === elC.value);
-        
         if (currentCat && currentCat.sub && currentCat.sub.length > 0) { 
             sw.classList.remove("hidden"); 
             elS.innerHTML = currentCat.sub.map(s => `<option value="${s}">${s}</option>`).join(""); 
@@ -58,8 +54,7 @@ function initApp() {
 
     document.getElementById("date").value = new Date().toISOString().split('T')[0];
 
-    const q = fbMethods.query(colRef, fbMethods.orderBy("date", "desc"));
-    fbMethods.onSnapshot(q, (snapshot) => {
+    fbMethods.onSnapshot(fbMethods.query(colRef, fbMethods.orderBy("date", "desc")), (snapshot) => {
         allTransactions = [];
         snapshot.forEach(doc => allTransactions.push({ id: doc.id, ...doc.data() }));
         render();
@@ -71,24 +66,21 @@ function initApp() {
     document.getElementById("txForm").onsubmit = async (e) => {
         e.preventDefault();
         const amount = Number(document.getElementById("amount").value);
-        if (!amount) return;
-
         const catObj = DEFAULTS[elT.value].find(c => c.id === elC.value);
-        const catName = catObj ? catObj.name : elC.value;
-
+        
         try {
             await fbMethods.addDoc(colRef, {
                 type: elT.value,
                 amount: amount,
                 categoryId: elC.value,
-                categoryName: catName,
+                categoryName: catObj ? catObj.name : elC.value,
                 subcategory: elS.value || "",
                 date: document.getElementById("date").value,
                 accountId: document.getElementById("account").value,
                 createdAt: Date.now()
             });
             document.getElementById("amount").value = "";
-        } catch (e) { alert("Ошибка сохранения."); }
+        } catch (e) { alert("Ошибка!"); }
     };
 }
 
@@ -107,41 +99,30 @@ function render() {
     // ИСТОРИЯ
     document.getElementById("list").innerHTML = filtered.map(t => `
         <div class="item">
-            <div>
-                <b class="${t.type==='income'?'pos':'neg'}">${t.amount.toLocaleString()} ₸</b><br>
-                <small class="muted">${t.date} • ${t.subcategory || t.categoryName || t.categoryId}</small>
-            </div>
+            <div><b class="${t.type==='income'?'pos':'neg'}">${t.amount.toLocaleString()} ₸</b><br>
+            <small class="muted">${t.date} • ${t.subcategory || t.categoryName || t.categoryId}</small></div>
             <button class="del-btn" onclick="deleteTx('${t.id}')">✕</button>
         </div>`).join("");
 
-    // --- СТАТИСТИКА ДОХОДОВ ---
+    // СТАТИСТИКА ДОХОДОВ
     const earns = {};
     filtered.filter(t => t.type === 'income').forEach(t => {
-        const k = t.subcategory || t.categoryName || "Прочий доход";
+        const k = t.subcategory || t.categoryName || "Прочее";
         if (!earns[k]) earns[k] = { sum: 0, count: 0, breakdown: {} };
         earns[k].sum += t.amount;
         earns[k].count += 1;
         earns[k].breakdown[t.amount] = (earns[k].breakdown[t.amount] || 0) + 1;
     });
     
-    document.getElementById("earningsDetails").innerHTML = Object.keys(earns)
-        .sort((a,b) => earns[b].sum - earns[a].sum)
-        .map(k => {
-            const details = Object.entries(earns[k].breakdown)
-                .sort((a, b) => b[0] - a[0])
-                .map(([price, count]) => `${price} × ${count}шт`)
-                .join(" | ");
-            return `
-            <div class="stat-row" style="flex-direction: column; align-items: flex-start; gap: 4px; border-bottom: 1px solid #222; padding: 10px 0;">
-                <div style="display: flex; justify-content: space-between; width: 100%;">
-                    <span>${k} <small style="color:#888;">(${earns[k].count} шт.)</small></span>
-                    <b>${earns[k].sum.toLocaleString()} ₸</b>
-                </div>
-                <div style="font-size: 11px; color: #ffd166; opacity: 0.8;">${details}</div>
-            </div>`;
-        }).join("");
+    document.getElementById("earningsDetails").innerHTML = Object.keys(earns).sort((a,b)=>earns[b].sum-earns[a].sum).map(k => {
+        const det = Object.entries(earns[k].breakdown).sort((a,b)=>b[0]-a[0]).map(([p, c]) => `${p}×${c}шт`).join(" | ");
+        return `<div class="stat-row-complex">
+            <div class="stat-main"><span>${k} <small>(${earns[k].count} шт.)</small></span><b>${earns[k].sum.toLocaleString()} ₸</b></div>
+            <div class="stat-sub">${det}</div>
+        </div>`;
+    }).join("");
 
-    // --- СТАТИСТИКА РАСХОДОВ ---
+    // СТАТИСТИКА РАСХОДОВ
     const expStats = {};
     filtered.filter(t => t.type === 'expense').forEach(t => {
         const k = t.categoryName || "Прочее";
@@ -150,19 +131,15 @@ function render() {
         expStats[k].count += 1;
     });
 
-    document.getElementById("expenseDetails").innerHTML = Object.keys(expStats)
-        .sort((a,b) => expStats[b].sum - expStats[a].sum)
-        .map(k => `
-            <div class="stat-row" style="padding: 10px 0; border-bottom: 1px solid #222; display: flex; justify-content: space-between;">
-                <span>${k} <small style="color:#888;">(${expStats[k].count} раз)</small></span>
-                <b class="neg">${expStats[k].sum.toLocaleString()} ₸</b>
-            </div>`).join("");
+    document.getElementById("expenseDetails").innerHTML = Object.keys(expStats).sort((a,b)=>expStats[b].sum-expStats[a].sum).map(k => `
+        <div class="stat-main" style="padding: 8px 0; border-bottom: 1px solid #222;">
+            <span>${k} <small>(${expStats[k].count} раз)</small></span>
+            <b class="neg">${expStats[k].sum.toLocaleString()} ₸</b>
+        </div>`).join("");
 }
 
-window.setAmount = (val) => { document.getElementById("amount").value = val; };
-window.deleteTx = async (id) => {
-    if(confirm("Удалить?")) await window.fbMethods.deleteDoc(window.fbMethods.doc(window.fbDB, "transactions", id));
-};
+window.setAmount = (v) => { document.getElementById("amount").value = v; };
+window.deleteTx = async (id) => { if(confirm("Удалить?")) await window.fbMethods.deleteDoc(window.fbMethods.doc(window.fbDB, "transactions", id)); };
 
 document.querySelector(".quick2").onclick = (e) => {
     const r = e.target.dataset.range; if (!r) return;
