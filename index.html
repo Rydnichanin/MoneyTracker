@@ -4,7 +4,6 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <title>Учёт денег ONLINE</title>
-  
   <link rel="stylesheet" href="./style.css" />
   
   <script type="module">
@@ -27,12 +26,12 @@
 </head>
 <body>
 
-  <div id="appScreen">
-    <header class="wrap header">
+  <div id="appScreen" class="wrap">
+    <header class="header">
       <h1>Учёт денег <span class="status-dot">● ONLINE</span></h1>
     </header>
 
-    <main class="wrap">
+    <main>
       <section class="card">
         <form id="txForm">
           <div class="row2">
@@ -54,7 +53,7 @@
             <button type="button" class="chip-sum" onclick="setAmount(700)">700</button>
             <button type="button" class="chip-sum" onclick="setAmount(4500)">4500</button>
           </div>
-          <button class="btn-main" type="submit" id="saveBtn">Добавить</button>
+          <button class="btn-main" type="submit">Добавить запись</button>
         </form>
       </section>
 
@@ -76,13 +75,18 @@
       </section>
 
       <section class="card">
-        <h3>💰 Доход по точкам</h3>
+        <h3 class="stat-title">💰 Доход по точкам</h3>
         <div id="earningsDetails"></div>
       </section>
 
       <section class="card">
+        <h3 class="stat-title">📉 Расходы по категориям</h3>
+        <div id="expenseDetails"></div>
+      </section>
+
+      <section class="card">
         <div id="toggleHistory" class="history-header">
-          <h3 style="margin:0">История</h3>
+          <h3 style="margin:0">История транзакций</h3>
           <span id="histArrow">▼</span>
         </div>
         <div id="histContent" class="hidden mt-10">
@@ -91,17 +95,6 @@
       </section>
     </main>
   </div>
-
-       <section class="card">
-        <h3>💰 Доход по точкам</h3>
-        <div id="earningsDetails"></div>
-      </section>
-
-      <section class="card">
-        <h3>📉 Расходы по категориям</h3>
-        <div id="expenseDetails"></div>
-      </section>
-
 
   <script type="module" src="./app.js"></script>
 </body>
