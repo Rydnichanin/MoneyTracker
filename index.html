@@ -3,38 +3,37 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <title>Учёт денег ONLINE</title>
+  <title>Учёт Курьера Pro</title>
   
   <style>
     :root { --bg: #000; --card: #1c1c1e; --text: #fff; --pos: #65d48b; --neg: #ff6b6b; --accent: #ffd166; }
     * { box-sizing: border-box; font-family: -apple-system, sans-serif; }
-    body { background: var(--bg); color: var(--text); margin: 0; padding: 10px; }
+    body { background: var(--bg); color: var(--text); margin: 0; padding: 10px; padding-bottom: 50px; }
     .wrap { max-width: 500px; margin: 0 auto; }
-    .header { text-align: center; padding: 10px 0; border-bottom: 1px solid #222; margin-bottom: 15px; }
-    .status-dot { font-size: 11px; color: var(--pos); vertical-align: middle; }
-    .card { background: var(--card); border-radius: 16px; padding: 16px; margin-bottom: 15px; }
+    .header { text-align: center; padding: 5px 0; margin-bottom: 10px; }
+    .card { background: var(--card); border-radius: 16px; padding: 15px; margin-bottom: 12px; }
     .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
     input, select { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #333; background: #2c2c2e; color: #fff; font-size: 16px; outline: none; }
-    .btn-main { width: 100%; padding: 14px; border: none; border-radius: 10px; background: var(--pos); color: #000; font-weight: bold; cursor: pointer; }
-    .quick-amounts { display: flex; gap: 8px; margin: 10px 0; overflow-x: auto; padding-bottom: 5px; }
-    .chip-sum { flex: 1; min-width: 60px; background: #2c2c2e; border: 1px solid #444; color: var(--accent); padding: 8px 0; border-radius: 8px; font-weight: bold; border: none; }
-    .balance-line { display: flex; justify-content: space-between; text-align: center; }
-    .pos { color: var(--pos); } .neg { color: var(--neg); } .muted { color: #888; } .small { font-size: 11px; }
-    .mt-10 { margin-top: 10px; }
-    .date-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .quick2 { display: flex; gap: 8px; }
-    .chip { background: #333; color: #fff; border: none; padding: 8px 0; border-radius: 10px; flex: 1; font-size: 12px; }
-    .item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #333; }
-    .del-btn { background: none; border: none; color: #444; font-size: 18px; }
-    .stat-title { margin: 0 0 10px 0; font-size: 16px; color: #aaa; }
-    .stat-row-complex { border-bottom: 1px solid #222; padding: 10px 0; }
-    .stat-main { display: flex; justify-content: space-between; align-items: center; width: 100%; }
-    .stat-sub { font-size: 11px; color: var(--accent); opacity: 0.8; margin-top: 4px; }
-    .history-header { cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+    .btn-main { width: 100%; padding: 14px; border: none; border-radius: 10px; background: var(--pos); color: #000; font-weight: bold; font-size: 16px; }
+    .quick-amounts { display: flex; gap: 8px; margin: 10px 0; overflow-x: auto; }
+    .chip-sum { flex: 1; min-width: 65px; background: #333; color: var(--accent); padding: 10px 0; border-radius: 8px; font-weight: bold; border: none; }
+    
+    /* Сворачиваемые блоки */
+    .collapsible-header { cursor: pointer; display: flex; justify-content: space-between; align-items: center; padding: 5px 0; }
+    .collapsible-header h3 { margin: 0; font-size: 16px; }
+    .content { margin-top: 15px; transition: all 0.3s ease; }
     .hidden { display: none; }
-    .exp-details summary { list-style: none; padding: 12px 0; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
-    .exp-subs-content { background: #151517; border-radius: 8px; margin-bottom: 10px; padding: 5px 12px; }
-    .stat-sub-row { display: flex; justify-content: space-between; font-size: 13px; padding: 6px 0; color: #bbb; border-bottom: 1px solid #222; }
+    .arrow { font-size: 12px; transition: transform 0.3s; color: #666; }
+    .active .arrow { transform: rotate(180deg); }
+
+    .balance-line { display: flex; justify-content: space-between; text-align: center; margin-bottom: 15px; }
+    .pos { color: var(--pos); } .neg { color: var(--neg); } .muted { color: #888; }
+    .item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #333; align-items: center; }
+    .del-btn { background: none; border: none; color: #444; font-size: 18px; padding: 5px 10px; }
+    .stat-row { border-bottom: 1px solid #222; padding: 10px 0; }
+    .stat-main { display: flex; justify-content: space-between; width: 100%; font-weight: 500; }
+    .stat-sub { font-size: 11px; color: var(--accent); margin-top: 4px; }
+    .gain-box { background: #1a2e21; padding: 10px; border-radius: 10px; border: 1px solid var(--pos); margin-top: 10px; }
   </style>
 
   <script type="module">
@@ -57,85 +56,117 @@
 </head>
 <body>
 
-  <div id="appScreen" class="wrap">
+  <div class="wrap">
     <header class="header">
-      <h1>Учёт денег <span class="status-dot">● ONLINE</span></h1>
+      <h2 style="margin:0">Учёт Курьера <span style="color:var(--pos); font-size:12px;">●</span></h2>
     </header>
 
-    <main>
-      <section class="card">
-        <form id="txForm">
-          <div class="row2">
-            <select id="type"><option value="income">Приход</option><option value="expense">Расход</option></select>
-            <select id="account"><option value="cash">Наличные</option><option value="kaspi">Kaspi</option></select>
-          </div>
-          <div class="row2">
-            <select id="category"></select>
-            <div id="subcatWrap" class="hidden"><select id="subcategory"></select></div>
-          </div>
-          <div class="row2">
-            <input id="amount" type="number" inputmode="decimal" placeholder="Сумма" required />
-            <input id="date" type="date" required />
-          </div>
-          <div class="quick-amounts">
-            <button type="button" class="chip-sum" onclick="setAmount(150)">150</button>
-            <button type="button" class="chip-sum" onclick="setAmount(300)">300</button>
-            <button type="button" class="chip-sum" onclick="setAmount(600)">600</button>
-            <button type="button" class="chip-sum" onclick="setAmount(4500)">4500</button>
-          </div>
-          <button class="btn-main" type="submit">Добавить запись</button>
-        </form>
-      </section>
+    <section class="card">
+      <form id="txForm">
+        <div class="row2">
+          <select id="type"><option value="income">Приход</option><option value="expense">Расход</option></select>
+          <select id="category"></select>
+        </div>
+        <div id="subcatWrap" class="hidden" style="margin-bottom:10px;"><select id="subcategory"></select></div>
+        <div class="row2">
+          <input id="amount" type="number" inputmode="decimal" placeholder="Сумма" required />
+          <input id="date" type="date" required />
+        </div>
+        <div class="quick-amounts">
+          <button type="button" class="chip-sum" onclick="setAmount(150)">150</button>
+          <button type="button" class="chip-sum" onclick="setAmount(300)">300</button>
+          <button type="button" class="chip-sum" onclick="setAmount(600)">600</button>
+          <button type="button" class="chip-sum" onclick="setAmount(4500)">4500</button>
+        </div>
+        <button class="btn-main" type="submit">Записать</button>
+      </form>
+    </section>
 
-      <section class="card">
+    <section class="card">
+      <div class="collapsible-header" onclick="toggleBlock(this)">
+        <h3>💰 Баланс и Фильтры</h3>
+        <span class="arrow">▼</span>
+      </div>
+      <div class="content hidden">
         <div class="balance-line">
-          <div><span class="small muted">Баланс</span><br><b id="balance">0 ₸</b></div>
-          <div><span class="small muted">Приход</span><br><b id="totalIncome" class="pos">0 ₸</b></div>
-          <div><span class="small muted">Расход</span><br><b id="totalExpense" class="neg">0 ₸</b></div>
+          <div><small class="muted">Итог</small><br><b id="balance">0 ₸</b></div>
+          <div><small class="muted">Доход</small><br><b id="totalIncome" class="pos">0 ₸</b></div>
+          <div><small class="muted">Расход</small><br><b id="totalExpense" class="neg">0 ₸</b></div>
         </div>
-        <div class="quick2 mt-10">
-          <button class="chip" data-range="today">Сегодня</button>
-          <button class="chip" data-range="week">7 дн.</button>
-          <button class="chip" data-range="all">Всё</button>
-        </div>
-        <div class="date-inputs mt-10">
+        <div class="row2">
           <input type="date" id="fromDate">
           <input type="date" id="toDate">
         </div>
-      </section>
-
-      <section class="card" style="border: 1px solid #333;">
-        <div id="togglePotential" class="history-header">
-          <h3 style="margin:0; color: var(--accent);">🔮 Возможный заработок</h3>
-          <span id="potArrow">▼</span>
+        <div style="display:flex; gap:5px;">
+          <button class="chip-sum" style="font-size:12px;" onclick="setRange('today')">Сегодня</button>
+          <button class="chip-sum" style="font-size:12px;" onclick="setRange('week')">Неделя</button>
         </div>
-        <div id="potentialContent" class="hidden mt-10">
-          <div id="potentialStats"></div>
-        </div>
-      </section>
+      </div>
+    </section>
 
-      <section class="card">
-        <h3 class="stat-title">💰 Доход по точкам</h3>
+    <section class="card" style="border: 1px solid #444;">
+      <div class="collapsible-header" onclick="toggleBlock(this)">
+        <h3 style="color:var(--accent)">🔮 Возможный доход</h3>
+        <span class="arrow">▼</span>
+      </div>
+      <div class="content hidden">
+        <div id="potentialStats"></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="collapsible-header" onclick="toggleBlock(this)">
+        <h3>📈 Доход по точкам</h3>
+        <span class="arrow">▼</span>
+      </div>
+      <div class="content hidden">
         <div id="earningsDetails"></div>
-      </section>
+      </div>
+    </section>
 
-      <section class="card">
-        <h3 class="stat-title">📉 Расходы</h3>
+    <section class="card">
+      <div class="collapsible-header" onclick="toggleBlock(this)">
+        <h3>📉 Расходы</h3>
+        <span class="arrow">▼</span>
+      </div>
+      <div class="content hidden">
         <div id="expenseDetails"></div>
-      </section>
+      </div>
+    </section>
 
-      <section class="card">
-        <div id="toggleHistory" class="history-header">
-          <h3 style="margin:0">История транзакций</h3>
-          <span id="histArrow">▼</span>
-        </div>
-        <div id="histContent" class="hidden mt-10">
-          <div id="list"></div>
-        </div>
-      </section>
-    </main>
+    <section class="card">
+      <div class="collapsible-header" onclick="toggleBlock(this)">
+        <h3>📝 История</h3>
+        <span class="arrow">▼</span>
+      </div>
+      <div class="content hidden">
+        <div id="list"></div>
+      </div>
+    </section>
+
   </div>
 
   <script type="module" src="./app.js"></script>
+  <script>
+    function toggleBlock(el) {
+      el.parentElement.classList.toggle('active');
+      const content = el.nextElementSibling;
+      content.classList.toggle('hidden');
+    }
+    function setAmount(v) { document.getElementById('amount').value = v; }
+    function setRange(mode) {
+      const now = new Date().toISOString().split('T')[0];
+      if(mode === 'today') { 
+        document.getElementById('fromDate').value = now; 
+        document.getElementById('toDate').value = now; 
+      } else {
+        let d = new Date(); d.setDate(d.getDate() - 7);
+        document.getElementById('fromDate').value = d.toISOString().split('T')[0];
+        document.getElementById('toDate').value = now;
+      }
+      const event = new Event('change');
+      document.getElementById('fromDate').dispatchEvent(event);
+    }
+  </script>
 </body>
 </html>
