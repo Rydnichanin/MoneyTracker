@@ -66,11 +66,12 @@ function initApp() {
     document.getElementById("txForm").onsubmit = async (e) => {
         e.preventDefault();
         const amount = Number(document.getElementById("amount").value);
-        const catObj = DEFAULTS[elT.value].find(c => c.id === elC.value);
+        const type = elT.value;
+        const catObj = DEFAULTS[type].find(c => c.id === elC.value);
         
         try {
             await fbMethods.addDoc(colRef, {
-                type: elT.value,
+                type: type,
                 amount: amount,
                 categoryId: elC.value,
                 categoryName: catObj ? catObj.name : elC.value,
@@ -122,20 +123,58 @@ function render() {
         </div>`;
     }).join("");
 
-    // СТАТИСТИКА РАСХОДОВ
+    // --- СТАТИСТИКА РАСХОДОВ (СВОРАЧИВАЕМАЯ) ---
     const expStats = {};
     filtered.filter(t => t.type === 'expense').forEach(t => {
-        const k = t.categoryName || "Прочее";
-        if (!expStats[k]) expStats[k] = { sum: 0, count: 0 };
-        expStats[k].sum += t.amount;
-        expStats[k].count += 1;
+        const mainCat = t.categoryName || "Прочее";
+        const subCat = t.subcategory || "";
+
+        if (!expStats[mainCat]) {
+            expStats[mainCat] = { total: 0, subs: {} };
+        }
+        expStats[mainCat].total += t.amount;
+        
+        if (subCat) {
+            expStats[mainCat].subs[subCat] = (expStats[mainCat].subs[subCat] || 0) + t.amount;
+        }
     });
 
-    document.getElementById("expenseDetails").innerHTML = Object.keys(expStats).sort((a,b)=>expStats[b].sum-expStats[a].sum).map(k => `
-        <div class="stat-main" style="padding: 8px 0; border-bottom: 1px solid #222;">
-            <span>${k} <small>(${expStats[k].count} раз)</small></span>
-            <b class="neg">${expStats[k].sum.toLocaleString()} ₸</b>
-        </div>`).join("");
+    document.getElementById("expenseDetails").innerHTML = Object.keys(expStats)
+        .sort((a,b) => expStats[b].total - expStats[a].total)
+        .map(cat => {
+            const data = expStats[cat];
+            const hasSubs = Object.keys(data.subs).length > 0;
+
+            if (hasSubs) {
+                // Если есть подкатегории, рисуем сворачиваемый список
+                const subRows = Object.entries(data.subs)
+                    .sort((a,b) => b[1] - a[1])
+                    .map(([name, sum]) => `
+                        <div class="stat-sub-row">
+                            <span>${name}</span>
+                            <span>${sum.toLocaleString()} ₸</span>
+                        </div>
+                    `).join("");
+
+                return `
+                <details class="exp-details">
+                    <summary class="stat-main">
+                        <span>${cat} <small>▼</small></span>
+                        <b class="neg">${data.total.toLocaleString()} ₸</b>
+                    </summary>
+                    <div class="exp-subs-content">
+                        ${subRows}
+                    </div>
+                </details>`;
+            } else {
+                // Если подкатегорий нет, просто строка
+                return `
+                <div class="stat-main" style="padding: 12px 0; border-bottom: 1px solid #222;">
+                    <span>${cat}</span>
+                    <b class="neg">${data.total.toLocaleString()} ₸</b>
+                </div>`;
+            }
+        }).join("");
 }
 
 window.setAmount = (v) => { document.getElementById("amount").value = v; };
