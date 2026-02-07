@@ -32,14 +32,9 @@
     .stat-sub { font-size: 11px; color: var(--accent); opacity: 0.8; margin-top: 4px; }
     .history-header { cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
     .hidden { display: none; }
-
-    /* Стили для сворачиваемых расходов */
-    .exp-details { border-bottom: 1px solid #222; }
     .exp-details summary { list-style: none; padding: 12px 0; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
-    .exp-details summary::-webkit-details-marker { display: none; }
     .exp-subs-content { background: #151517; border-radius: 8px; margin-bottom: 10px; padding: 5px 12px; }
     .stat-sub-row { display: flex; justify-content: space-between; font-size: 13px; padding: 6px 0; color: #bbb; border-bottom: 1px solid #222; }
-    .stat-sub-row:last-child { border-bottom: none; }
   </style>
 
   <script type="module">
@@ -85,9 +80,7 @@
           <div class="quick-amounts">
             <button type="button" class="chip-sum" onclick="setAmount(150)">150</button>
             <button type="button" class="chip-sum" onclick="setAmount(300)">300</button>
-            <button type="button" class="chip-sum" onclick="setAmount(500)">500</button>
             <button type="button" class="chip-sum" onclick="setAmount(600)">600</button>
-            <button type="button" class="chip-sum" onclick="setAmount(700)">700</button>
             <button type="button" class="chip-sum" onclick="setAmount(4500)">4500</button>
           </div>
           <button class="btn-main" type="submit">Добавить запись</button>
@@ -111,24 +104,24 @@
         </div>
       </section>
 
+      <section class="card" style="border: 1px solid #333;">
+        <div id="togglePotential" class="history-header">
+          <h3 style="margin:0; color: var(--accent);">🔮 Возможный заработок</h3>
+          <span id="potArrow">▼</span>
+        </div>
+        <div id="potentialContent" class="hidden mt-10">
+          <div id="potentialStats"></div>
+        </div>
+      </section>
+
       <section class="card">
         <h3 class="stat-title">💰 Доход по точкам</h3>
         <div id="earningsDetails"></div>
       </section>
 
       <section class="card">
-        <h3 class="stat-title">📉 Расходы по категориям</h3>
+        <h3 class="stat-title">📉 Расходы</h3>
         <div id="expenseDetails"></div>
-      </section>
-
-      <section class="card">
-        <div id="togglePotential" class="history-header">
-          <h3 style="margin:0">🔮 Возможный заработок</h3>
-          <span id="potArrow">▼</span>
-        </div>
-        <div id="potentialContent" class="hidden mt-10">
-          <div id="potentialStats"></div>
-        </div>
       </section>
 
       <section class="card">
