@@ -15,6 +15,7 @@ const DEFAULTS = {
 
 let allTransactions = [];
 
+// Проверка подключения
 const checkFB = setInterval(() => {
     if (window.fbDB && window.fbMethods) { 
         clearInterval(checkFB); 
@@ -93,49 +94,69 @@ function render() {
     const inc = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
     const exp = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
 
-    // ОСНОВНОЙ БАЛАНС
+    // 1. ОСНОВНОЙ БАЛАНС
     document.getElementById("balance").textContent = (inc - exp).toLocaleString() + " ₸";
     document.getElementById("totalIncome").textContent = inc.toLocaleString() + " ₸";
     document.getElementById("totalExpense").textContent = exp.toLocaleString() + " ₸";
 
-    // --- ЛОГИКА ВОЗМОЖНОГО ЗАРАБОТКА ---
-    let potentialIncome = 0;
-    
-    filtered.filter(t => t.type === 'income').forEach(t => {
-        let pAmount = t.amount; // По умолчанию берем реальную сумму
-        const sub = t.subcategory || "";
+    // 2. ВОЗМОЖНЫЙ ЗАРАБОТОК (ДЕТАЛИЗАЦИЯ)
+    let potTotal = 0;
+    let realTotalForComp = 0; // Реальная сумма только по этим позициям (для сравнения)
+    const potBreakdown = {};
 
-        // Правило для F1, F2, F3
+    filtered.filter(t => t.type === 'income').forEach(t => {
+        // --- ИСКЛЮЧЕНИЯ ---
+        if ([4000, 4500, 5000].includes(t.amount)) return; // Эти суммы просто пропускаем
+
+        let pAmount = t.amount; 
+        const sub = t.subcategory || t.categoryName || "Прочее";
+
+        // --- ЛОГИКА ПЕРЕСЧЕТА ---
         if (["F1", "F2", "F3"].includes(sub)) {
             if (t.amount === 150) pAmount = 600;
             if (t.amount === 300) pAmount = 900;
         } 
-        // Правило для Ночь
         else if (sub === "Ночь") {
             if (t.amount === 500) pAmount = 1000;
         }
 
-        potentialIncome += pAmount;
+        // --- СБОР СТАТИСТИКИ ПО ТОЧКАМ ---
+        if (!potBreakdown[sub]) potBreakdown[sub] = { count: 0, sum: 0 };
+        potBreakdown[sub].count += 1;
+        potBreakdown[sub].sum += pAmount;
+
+        potTotal += pAmount;
+        realTotalForComp += t.amount;
     });
 
-    const diff = potentialIncome - inc; // Разница
-    
+    const diff = potTotal - realTotalForComp; // Разница между "Возможно" и "Факт" (без учета зарплат 4500)
+
+    // Генерируем список строк: "F1 ... 5 шт ... 3000"
+    const breakdownHTML = Object.entries(potBreakdown)
+        .sort((a,b) => b[1].sum - a[1].sum) // Сортируем: где больше денег - сверху
+        .map(([name, data]) => `
+            <div style="display: flex; justify-content: space-between; font-size: 13px; color: #ccc; margin-top: 4px;">
+                <span>${name} <small style="color:#777">x${data.count}</small></span>
+                <span>${data.sum.toLocaleString()} ₸</span>
+            </div>
+        `).join("");
+
     document.getElementById("potentialStats").innerHTML = `
-        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #333; padding: 8px 0;">
-            <span class="muted">Факт:</span>
-            <b>${inc.toLocaleString()} ₸</b>
+        <div style="margin-bottom: 10px; border-bottom: 1px solid #333; padding-bottom: 8px;">
+            ${breakdownHTML || "<small class='muted'>Нет подходящих записей</small>"}
         </div>
-        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #333; padding: 8px 0;">
-            <span style="color: #ffd166;">Возможно:</span>
-            <b style="color: #ffd166;">${potentialIncome.toLocaleString()} ₸</b>
+        
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="color: #ffd166;">Всего возможно:</span>
+            <b style="color: #ffd166; font-size: 16px;">${potTotal.toLocaleString()} ₸</b>
         </div>
-        <div style="display: flex; justify-content: space-between; padding-top: 10px;">
-            <span>Разница:</span>
+        <div style="display: flex; justify-content: space-between; margin-top: 5px;">
+            <span class="muted">Разница:</span>
             <b class="pos">+${diff.toLocaleString()} ₸</b>
         </div>
     `;
 
-    // ИСТОРИЯ
+    // 3. ИСТОРИЯ
     document.getElementById("list").innerHTML = filtered.map(t => `
         <div class="item">
             <div><b class="${t.type==='income'?'pos':'neg'}">${t.amount.toLocaleString()} ₸</b><br>
@@ -143,7 +164,7 @@ function render() {
             <button class="del-btn" onclick="deleteTx('${t.id}')">✕</button>
         </div>`).join("");
 
-    // СТАТИСТИКА ДОХОДОВ
+    // 4. СТАТИСТИКА ДОХОДОВ
     const earns = {};
     filtered.filter(t => t.type === 'income').forEach(t => {
         const k = t.subcategory || t.categoryName || "Прочее";
@@ -161,7 +182,7 @@ function render() {
         </div>`;
     }).join("");
 
-    // СТАТИСТИКА РАСХОДОВ (СВОРАЧИВАЕМАЯ)
+    // 5. СТАТИСТИКА РАСХОДОВ
     const expStats = {};
     filtered.filter(t => t.type === 'expense').forEach(t => {
         const mainCat = t.categoryName || "Прочее";
@@ -191,7 +212,6 @@ function render() {
 window.setAmount = (v) => { document.getElementById("amount").value = v; };
 window.deleteTx = async (id) => { if(confirm("Удалить?")) await window.fbMethods.deleteDoc(window.fbMethods.doc(window.fbDB, "transactions", id)); };
 
-// КНОПКИ БЫСТРОГО ВЫБОРА ДАТЫ
 document.querySelector(".quick2").onclick = (e) => {
     const r = e.target.dataset.range; if (!r) return;
     const now = new Date().toISOString().split('T')[0];
@@ -204,14 +224,12 @@ document.querySelector(".quick2").onclick = (e) => {
     render();
 };
 
-// СВОРАЧИВАНИЕ ИСТОРИИ
 document.getElementById("toggleHistory").onclick = () => {
     const c = document.getElementById("histContent");
     c.classList.toggle("hidden");
     document.getElementById("histArrow").textContent = c.classList.contains("hidden") ? "▼" : "▲";
 };
 
-// СВОРАЧИВАНИЕ "ВОЗМОЖНОГО ЗАРАБОТКА" (НОВОЕ)
 document.getElementById("togglePotential").onclick = () => {
     const c = document.getElementById("potentialContent");
     c.classList.toggle("hidden");
