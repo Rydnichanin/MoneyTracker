@@ -4,11 +4,8 @@ const DEFAULTS = {
         { id: "other_inc", name: "Прочий доход", sub: [] }
     ],
     expense: [
-        { id: "auto", name: "Авто", sub: ["Бензин", "Ремонт", "Запчасти", "Мойка"] },
+        { id: "auto", name: "Авто", sub: ["Бензин", "Ремонт", "Мойка", "Запчасти"] },
         { id: "food", name: "Еда", sub: [] },
-        { id: "drinks", name: "Напитки", sub: [] },
-        { id: "home", name: "Дом/Быт", sub: [] },
-        { id: "clothes", name: "Одежда", sub: [] },
         { id: "other_exp", name: "Прочее", sub: [] }
     ]
 };
@@ -22,7 +19,6 @@ const checkFB = setInterval(() => {
 function initApp() {
     const { fbDB, fbMethods } = window;
     const colRef = fbMethods.collection(fbDB, "transactions");
-
     const elT = document.getElementById("type"), elC = document.getElementById("category"), 
           elS = document.getElementById("subcategory"), sw = document.getElementById("subcatWrap");
 
@@ -32,10 +28,8 @@ function initApp() {
     };
     const fillSubs = () => {
         const c = DEFAULTS[elT.value].find(i => i.id === elC.value);
-        if (c && c.sub.length > 0) {
-            sw.classList.remove("hidden");
-            elS.innerHTML = c.sub.map(s => `<option value="${s}">${s}</option>`).join("");
-        } else { sw.classList.add("hidden"); elS.innerHTML = ""; }
+        if (c && c.sub.length > 0) { sw.classList.remove("hidden"); elS.innerHTML = c.sub.map(s => `<option value="${s}">${s}</option>`).join(""); }
+        else { sw.classList.add("hidden"); elS.innerHTML = ""; }
     };
 
     elT.onchange = fillCats; elC.onchange = fillSubs;
@@ -48,6 +42,9 @@ function initApp() {
         snap.forEach(d => allTransactions.push({ id: d.id, ...d.data() }));
         render();
     });
+
+    document.getElementById("fromDate").onchange = render;
+    document.getElementById("toDate").onchange = render;
 
     document.getElementById("txForm").onsubmit = async (e) => {
         e.preventDefault();
@@ -67,68 +64,67 @@ function render() {
     const to = document.getElementById("toDate").value;
     const filtered = allTransactions.filter(t => (!from || t.date >= from) && (!to || t.date <= to));
 
-    const inc = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-    const exp = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+    const incRealTotal = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+    const expTotal = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
 
-    document.getElementById("balance").textContent = (inc - exp).toLocaleString() + " ₸";
-    document.getElementById("totalIncome").textContent = inc.toLocaleString() + " ₸";
-    document.getElementById("totalExpense").textContent = exp.toLocaleString() + " ₸";
+    document.getElementById("balance").textContent = (incRealTotal - expTotal).toLocaleString() + " ₸";
+    document.getElementById("totalIncome").textContent = incRealTotal.toLocaleString() + " ₸";
+    document.getElementById("totalExpense").textContent = expTotal.toLocaleString() + " ₸";
 
-    // --- ЛОГИКА ВОЗМОЖНОГО ЗАРАБОТКА ---
+    // --- МАТЕМАТИКА ВОЗМОЖНОГО ЗАРАБОТКА ---
     let possibleDotsSum = 0;   
     let realIncomeNoCargo = 0; 
     const potBreakdown = {};
 
     filtered.filter(t => t.type === 'income').forEach(t => {
-        const sub = t.subcategory || t.categoryName || "";
+        const sub = t.subcategory || "";
         const amt = t.amount;
 
-        // В РЕАЛЬНОМ: Оставляем всё (включая 4500), кроме Карго
-        if (sub !== "Cargo" && sub !== "Карго") {
-            realIncomeNoCargo += amt;
-        }
+        // В Реальном: всё кроме Карго
+        if (sub !== "Карго") realIncomeNoCargo += amt;
 
-        // В ВОЗМОЖНОМ: Считаем только точки (600/900/1000)
+        // В Возможном: пересчет только точек
         if (["F1", "F2", "F3", "Ночь"].includes(sub) && ![4000, 4500, 5000].includes(amt)) {
-            let pAmount = 0;
-            if (["F1", "F2", "F3"].includes(sub)) {
-                if (amt === 150) pAmount = 600;
-                else if (amt === 300) pAmount = 900;
-            } else if (sub === "Ночь" && amt === 500) {
-                pAmount = 1000;
-            }
+            let pAmt = amt;
+            if (amt === 150) pAmt = 600;
+            else if (amt === 300) pAmt = 900;
+            else if (sub === "Ночь" && amt === 500) pAmt = 1000;
+            // 1000 и 2000 остаются как есть по умолчанию
 
-            if (pAmount > 0) {
-                if (!potBreakdown[sub]) potBreakdown[sub] = { count: 0, sum: 0 };
-                potBreakdown[sub].count += 1;
-                potBreakdown[sub].sum += pAmount;
-                possibleDotsSum += pAmount;
-            }
+            if (!potBreakdown[sub]) potBreakdown[sub] = { count: 0, sum: 0 };
+            potBreakdown[sub].count++;
+            potBreakdown[sub].sum += pAmt;
+            possibleDotsSum += pAmt;
         }
     });
 
-    const breakdownHTML = Object.entries(potBreakdown).map(([name, data]) => `
-        <div style="display: flex; justify-content: space-between; font-size: 13px; margin-top: 4px;">
-            <span>${name} <small class="muted">x${data.count}</small></span>
-            <b>${data.sum.toLocaleString()} ₸</b>
-        </div>
-    `).join("");
+    // Считаем разницу: (ВЗ за точки + Зарплаты) - Реальный доход без Карго
+    // Для простоты: Разница = Пересчитанные точки - Их реальная стоимость
+    const realDotsValue = filtered.filter(t => ["F1", "F2", "F3", "Ночь"].includes(t.subcategory) && ![4000, 4500, 5000].includes(t.amount)).reduce((s,t)=>s+t.amount, 0);
+    const pureGain = possibleDotsSum - realDotsValue;
 
     document.getElementById("potentialStats").innerHTML = `
-        <div style="margin-bottom: 10px; border-bottom: 1px solid #333; padding-bottom: 8px;">
-            ${breakdownHTML || "<small class='muted'>Нет данных для пересчета</small>"}
+        <div style="border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 10px;">
+            ${Object.entries(potBreakdown).map(([n, d]) => `
+                <div style="display:flex; justify-content:space-between; font-size:13px; margin-top:5px;">
+                    <span>${n} <small class="muted">x${d.count}</small></span>
+                    <b>${d.sum.toLocaleString()} ₸</b>
+                </div>
+            `).join("") || "<small class='muted'>Нет данных за период</small>"}
         </div>
-        <div style="display: flex; justify-content: space-between;">
-            <span>Только точки (Возможно):</span>
-            <b style="color: var(--accent);">${possibleDotsSum.toLocaleString()} ₸</b>
+        <div style="display:flex; justify-content:space-between; font-size:14px;">
+            <span>Всего (Возможно):</span>
+            <b style="color:var(--accent)">${(possibleDotsSum + (realIncomeNoCargo - realDotsValue)).toLocaleString()} ₸</b>
         </div>
-        <div style="display: flex; justify-content: space-between; margin-top: 8px; border-top: 1px solid #333; padding-top: 8px;">
-            <span class="muted">Реал (без Карго):</span>
-            <b>${realIncomeNoCargo.toLocaleString()} ₸</b>
+        <div class="gain-box">
+            <div style="display:flex; justify-content:space-between;">
+                <span>Чистая выгода:</span>
+                <b class="pos">+${pureGain.toLocaleString()} ₸</b>
+            </div>
         </div>
     `;
 
-    // --- ИСТОРИЯ ---
+    // --- ИСТОРИЯ И ДЕТАЛИ ---
     document.getElementById("list").innerHTML = filtered.map(t => `
         <div class="item">
             <div><b class="${t.type==='income'?'pos':'neg'}">${t.amount.toLocaleString()} ₸</b><br>
@@ -136,7 +132,6 @@ function render() {
             <button class="del-btn" onclick="deleteTx('${t.id}')">✕</button>
         </div>`).join("");
 
-    // --- СТАТИСТИКА ДОХОДА (ПО ТОЧКАМ) ---
     const earns = {};
     filtered.filter(t => t.type === 'income').forEach(t => {
         const k = t.subcategory || t.categoryName;
@@ -145,13 +140,11 @@ function render() {
         earns[k].b[t.amount] = (earns[k].b[t.amount] || 0) + 1;
     });
     document.getElementById("earningsDetails").innerHTML = Object.entries(earns).map(([k, d]) => `
-        <div class="stat-row-complex">
+        <div class="stat-row">
             <div class="stat-main"><span>${k} (${d.count})</span><b>${d.sum.toLocaleString()} ₸</b></div>
             <div class="stat-sub">${Object.entries(d.b).map(([p, c]) => `${p}×${c}`).join(" | ")}</div>
-        </div>
-    `).join("");
+        </div>`).join("");
 
-    // --- СТАТИСТИКА РАСХОДОВ ---
     const exps = {};
     filtered.filter(t => t.type === 'expense').forEach(t => {
         if (!exps[t.categoryName]) exps[t.categoryName] = { total: 0, subs: {} };
@@ -159,35 +152,9 @@ function render() {
         if (t.subcategory) exps[t.categoryName].subs[t.subcategory] = (exps[t.categoryName].subs[t.subcategory] || 0) + t.amount;
     });
     document.getElementById("expenseDetails").innerHTML = Object.entries(exps).map(([cat, d]) => `
-        <details class="exp-details">
-            <summary class="stat-main"><span>${cat}</span><b class="neg">${d.total.toLocaleString()} ₸</b></summary>
-            <div class="exp-subs-content">
-                ${Object.entries(d.subs).map(([n, s]) => `<div class="stat-sub-row"><span>${n}</span><span>${s} ₸</span></div>`).join("")}
-            </div>
-        </details>
-    `).join("");
+        <div class="stat-row">
+            <div class="stat-main"><span>${cat}</span><b class="neg">${d.total.toLocaleString()} ₸</b></div>
+        </div>`).join("");
 }
 
-window.setAmount = (v) => { document.getElementById("amount").value = v; };
 window.deleteTx = async (id) => { if(confirm("Удалить?")) await window.fbMethods.deleteDoc(window.fbMethods.doc(window.fbDB, "transactions", id)); };
-
-document.querySelector(".quick2").onclick = (e) => {
-    const r = e.target.dataset.range; if (!r) return;
-    const now = new Date().toISOString().split('T')[0];
-    if (r === 'today') { document.getElementById("fromDate").value = now; document.getElementById("toDate").value = now; }
-    else if (r === 'week') {
-        const d = new Date(); d.setDate(d.getDate() - 7);
-        document.getElementById("fromDate").value = d.toISOString().split('T')[0];
-        document.getElementById("toDate").value = now;
-    } else { document.getElementById("fromDate").value = ""; document.getElementById("toDate").value = ""; }
-    render();
-};
-
-document.getElementById("toggleHistory").onclick = () => {
-    const c = document.getElementById("histContent"); c.classList.toggle("hidden");
-    document.getElementById("histArrow").textContent = c.classList.contains("hidden") ? "▼" : "▲";
-};
-document.getElementById("togglePotential").onclick = () => {
-    const c = document.getElementById("potentialContent"); c.classList.toggle("hidden");
-    document.getElementById("potArrow").textContent = c.classList.contains("hidden") ? "▼" : "▲";
-};
