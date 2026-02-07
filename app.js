@@ -93,9 +93,47 @@ function render() {
     const inc = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
     const exp = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
 
+    // ОСНОВНОЙ БАЛАНС
     document.getElementById("balance").textContent = (inc - exp).toLocaleString() + " ₸";
     document.getElementById("totalIncome").textContent = inc.toLocaleString() + " ₸";
     document.getElementById("totalExpense").textContent = exp.toLocaleString() + " ₸";
+
+    // --- ЛОГИКА ВОЗМОЖНОГО ЗАРАБОТКА ---
+    let potentialIncome = 0;
+    
+    filtered.filter(t => t.type === 'income').forEach(t => {
+        let pAmount = t.amount; // По умолчанию берем реальную сумму
+        const sub = t.subcategory || "";
+
+        // Правило для F1, F2, F3
+        if (["F1", "F2", "F3"].includes(sub)) {
+            if (t.amount === 150) pAmount = 600;
+            if (t.amount === 300) pAmount = 900;
+        } 
+        // Правило для Ночь
+        else if (sub === "Ночь") {
+            if (t.amount === 500) pAmount = 1000;
+        }
+
+        potentialIncome += pAmount;
+    });
+
+    const diff = potentialIncome - inc; // Разница
+    
+    document.getElementById("potentialStats").innerHTML = `
+        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #333; padding: 8px 0;">
+            <span class="muted">Факт:</span>
+            <b>${inc.toLocaleString()} ₸</b>
+        </div>
+        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #333; padding: 8px 0;">
+            <span style="color: #ffd166;">Возможно:</span>
+            <b style="color: #ffd166;">${potentialIncome.toLocaleString()} ₸</b>
+        </div>
+        <div style="display: flex; justify-content: space-between; padding-top: 10px;">
+            <span>Разница:</span>
+            <b class="pos">+${diff.toLocaleString()} ₸</b>
+        </div>
+    `;
 
     // ИСТОРИЯ
     document.getElementById("list").innerHTML = filtered.map(t => `
@@ -123,63 +161,37 @@ function render() {
         </div>`;
     }).join("");
 
-    // --- СТАТИСТИКА РАСХОДОВ (СВОРАЧИВАЕМАЯ) ---
+    // СТАТИСТИКА РАСХОДОВ (СВОРАЧИВАЕМАЯ)
     const expStats = {};
     filtered.filter(t => t.type === 'expense').forEach(t => {
         const mainCat = t.categoryName || "Прочее";
         const subCat = t.subcategory || "";
-
-        if (!expStats[mainCat]) {
-            expStats[mainCat] = { total: 0, subs: {} };
-        }
+        if (!expStats[mainCat]) expStats[mainCat] = { total: 0, subs: {} };
         expStats[mainCat].total += t.amount;
-        
-        if (subCat) {
-            expStats[mainCat].subs[subCat] = (expStats[mainCat].subs[subCat] || 0) + t.amount;
-        }
+        if (subCat) expStats[mainCat].subs[subCat] = (expStats[mainCat].subs[subCat] || 0) + t.amount;
     });
 
-    document.getElementById("expenseDetails").innerHTML = Object.keys(expStats)
-        .sort((a,b) => expStats[b].total - expStats[a].total)
-        .map(cat => {
-            const data = expStats[cat];
-            const hasSubs = Object.keys(data.subs).length > 0;
-
-            if (hasSubs) {
-                // Если есть подкатегории, рисуем сворачиваемый список
-                const subRows = Object.entries(data.subs)
-                    .sort((a,b) => b[1] - a[1])
-                    .map(([name, sum]) => `
-                        <div class="stat-sub-row">
-                            <span>${name}</span>
-                            <span>${sum.toLocaleString()} ₸</span>
-                        </div>
-                    `).join("");
-
-                return `
-                <details class="exp-details">
-                    <summary class="stat-main">
-                        <span>${cat} <small>▼</small></span>
-                        <b class="neg">${data.total.toLocaleString()} ₸</b>
-                    </summary>
-                    <div class="exp-subs-content">
-                        ${subRows}
-                    </div>
-                </details>`;
-            } else {
-                // Если подкатегорий нет, просто строка
-                return `
-                <div class="stat-main" style="padding: 12px 0; border-bottom: 1px solid #222;">
-                    <span>${cat}</span>
-                    <b class="neg">${data.total.toLocaleString()} ₸</b>
-                </div>`;
-            }
-        }).join("");
+    document.getElementById("expenseDetails").innerHTML = Object.keys(expStats).sort((a,b) => expStats[b].total - expStats[a].total).map(cat => {
+        const data = expStats[cat];
+        const hasSubs = Object.keys(data.subs).length > 0;
+        if (hasSubs) {
+            const subRows = Object.entries(data.subs).sort((a,b) => b[1] - a[1]).map(([n, s]) => `
+                <div class="stat-sub-row"><span>${n}</span><span>${s.toLocaleString()} ₸</span></div>
+            `).join("");
+            return `<details class="exp-details">
+                <summary class="stat-main"><span>${cat} <small>▼</small></span><b class="neg">${data.total.toLocaleString()} ₸</b></summary>
+                <div class="exp-subs-content">${subRows}</div>
+            </details>`;
+        } else {
+            return `<div class="stat-main" style="padding: 12px 0; border-bottom: 1px solid #222;"><span>${cat}</span><b class="neg">${data.total.toLocaleString()} ₸</b></div>`;
+        }
+    }).join("");
 }
 
 window.setAmount = (v) => { document.getElementById("amount").value = v; };
 window.deleteTx = async (id) => { if(confirm("Удалить?")) await window.fbMethods.deleteDoc(window.fbMethods.doc(window.fbDB, "transactions", id)); };
 
+// КНОПКИ БЫСТРОГО ВЫБОРА ДАТЫ
 document.querySelector(".quick2").onclick = (e) => {
     const r = e.target.dataset.range; if (!r) return;
     const now = new Date().toISOString().split('T')[0];
@@ -192,8 +204,16 @@ document.querySelector(".quick2").onclick = (e) => {
     render();
 };
 
+// СВОРАЧИВАНИЕ ИСТОРИИ
 document.getElementById("toggleHistory").onclick = () => {
     const c = document.getElementById("histContent");
     c.classList.toggle("hidden");
     document.getElementById("histArrow").textContent = c.classList.contains("hidden") ? "▼" : "▲";
+};
+
+// СВОРАЧИВАНИЕ "ВОЗМОЖНОГО ЗАРАБОТКА" (НОВОЕ)
+document.getElementById("togglePotential").onclick = () => {
+    const c = document.getElementById("potentialContent");
+    c.classList.toggle("hidden");
+    document.getElementById("potArrow").textContent = c.classList.contains("hidden") ? "▼" : "▲";
 };
