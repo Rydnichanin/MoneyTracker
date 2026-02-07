@@ -40,7 +40,6 @@
     .exp-subs-content { background: #151517; border-radius: 8px; margin-bottom: 10px; padding: 5px 12px; }
     .stat-sub-row { display: flex; justify-content: space-between; font-size: 13px; padding: 6px 0; color: #bbb; border-bottom: 1px solid #222; }
     .stat-sub-row:last-child { border-bottom: none; }
-    .stat-main small { font-size: 10px; color: var(--accent); margin-left: 5px; }
   </style>
 
   <script type="module">
@@ -119,6 +118,16 @@
       <section class="card">
         <h3 class="stat-title">📉 Расходы по категориям</h3>
         <div id="expenseDetails"></div>
+      </section>
+
+      <section class="card">
+        <div id="togglePotential" class="history-header">
+          <h3 style="margin:0">🔮 Возможный заработок</h3>
+          <span id="potArrow">▼</span>
+        </div>
+        <div id="potentialContent" class="hidden mt-10">
+          <div id="potentialStats"></div>
+        </div>
       </section>
 
       <section class="card">
