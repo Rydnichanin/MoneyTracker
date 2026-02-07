@@ -97,20 +97,19 @@ function render() {
     document.getElementById("totalIncome").textContent = inc.toLocaleString() + " ₸";
     document.getElementById("totalExpense").textContent = exp.toLocaleString() + " ₸";
 
-    // --- ЛОГИКА ВОЗМОЖНОГО ЗАРАБОТКА (ОБНОВЛЕННАЯ) ---
+    // --- ЛОГИКА ВОЗМОЖНОГО ЗАРАБОТКА ---
     let potTotal = 0;
-    let realBaseForComp = 0; // Реальный доход без Карго и з/п
+    let realBaseForComp = 0; 
     const potBreakdown = {};
 
     filtered.filter(t => t.type === 'income').forEach(t => {
         const sub = t.subcategory || t.categoryName || "";
         
-        // 1. Убираем Карго и крупные суммы (зарплаты)
-        if (sub === "Карго" || [4000, 4500, 5000].includes(t.amount)) return;
+        // Фильтр: считаем только F1-F3 и Ночь. Карго и з/п игнорируем.
+        if (!["F1", "F2", "F3", "Ночь"].includes(sub) || [4000, 4500, 5000].includes(t.amount)) return;
 
         realBaseForComp += t.amount;
 
-        // 2. Считаем Возможную сумму
         let pAmount = t.amount;
         if (["F1", "F2", "F3"].includes(sub)) {
             if (t.amount === 150) pAmount = 600;
@@ -138,10 +137,10 @@ function render() {
 
     document.getElementById("potentialStats").innerHTML = `
         <div style="margin-bottom: 10px; border-bottom: 1px solid #333; padding-bottom: 8px;">
-            ${breakdownHTML || "<small class='muted'>Нет данных для расчета</small>"}
+            ${breakdownHTML || "<small class='muted'>Нет данных по точкам</small>"}
         </div>
         <div style="display: flex; justify-content: space-between;">
-            <span style="color: #ffd166;">Возможно:</span>
+            <span style="color: #ffd166;">Возможно за точки:</span>
             <b style="color: #ffd166;">${potTotal.toLocaleString()} ₸</b>
         </div>
         <div style="display: flex; justify-content: space-between; margin-top: 5px;">
@@ -150,7 +149,7 @@ function render() {
         </div>
     `;
 
-    // --- ИСТОРИЯ ---
+    // --- ИСТОРИЯ И ОСТАЛЬНАЯ СТАТИСТИКА ---
     document.getElementById("list").innerHTML = filtered.map(t => `
         <div class="item">
             <div><b class="${t.type==='income'?'pos':'neg'}">${t.amount.toLocaleString()} ₸</b><br>
@@ -158,7 +157,6 @@ function render() {
             <button class="del-btn" onclick="deleteTx('${t.id}')">✕</button>
         </div>`).join("");
 
-    // --- СТАТИСТИКА ДОХОДОВ ---
     const earns = {};
     filtered.filter(t => t.type === 'income').forEach(t => {
         const k = t.subcategory || t.categoryName || "Прочее";
@@ -176,7 +174,6 @@ function render() {
         </div>`;
     }).join("");
 
-    // --- СТАТИСТИКА РАСХОДОВ ---
     const expStats = {};
     filtered.filter(t => t.type === 'expense').forEach(t => {
         const mainCat = t.categoryName || "Прочее";
