@@ -1,4 +1,3 @@
-// 1. ОБНОВЛЕННЫЕ КАТЕГОРИИ
 const DEFAULTS = {
     income: [
         { id: "delivery", name: "Доставка", sub: ["F1", "F2", "F3", "Карго", "Ночь"] },
@@ -16,7 +15,6 @@ const DEFAULTS = {
 
 let allTransactions = [];
 
-// Проверка загрузки Firebase
 const checkFB = setInterval(() => {
     if (window.fbDB && window.fbMethods) { 
         clearInterval(checkFB); 
@@ -33,15 +31,20 @@ function initApp() {
           elS = document.getElementById("subcategory"), 
           sw = document.getElementById("subcatWrap");
 
-    // Функция обновления списков (Категории и Подкатегории)
-    const updateSelects = () => {
-        const type = elT.value; // income или expense
+    // 1. Функция только для обновления списка КАТЕГОРИЙ (Авто, Еда и т.д.)
+    // Вызывается только когда меняем ПРИХОД / РАСХОД
+    const fillCategories = () => {
+        const type = elT.value;
         const cats = DEFAULTS[type] || [];
-        
-        // Заполняем основные категории
         elC.innerHTML = cats.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
-        
-        // Проверяем наличие подкатегорий у выбранной категории
+        fillSubcategories(); // После смены списка категорий обновляем и подкатегории
+    };
+
+    // 2. Функция только для обновления ПОДКАТЕГОРИЙ (F1, Бензин и т.д.)
+    // Вызывается когда меняем категорию или тип
+    const fillSubcategories = () => {
+        const type = elT.value;
+        const cats = DEFAULTS[type] || [];
         const currentCat = cats.find(c => c.id === elC.value);
         
         if (currentCat && currentCat.sub && currentCat.sub.length > 0) { 
@@ -49,21 +52,19 @@ function initApp() {
             elS.innerHTML = currentCat.sub.map(s => `<option value="${s}">${s}</option>`).join(""); 
         } else {
             sw.classList.add("hidden");
-            elS.innerHTML = ""; // Очищаем, если подкатегорий нет
+            elS.innerHTML = ""; 
         }
     };
 
-    // Вешаем события на переключение
-    elT.onchange = updateSelects; 
-    elC.onchange = updateSelects;
-    
-    // Вызываем первый раз при загрузке
-    updateSelects();
+    // Вешаем события правильным образом
+    elT.onchange = fillCategories;     // Если сменили Приход/Расход -> перерисовать всё
+    elC.onchange = fillSubcategories;  // Если сменили Категорию -> перерисовать только подкатегории
 
-    // Устанавливаем текущую дату
+    // Инициализация при запуске
+    fillCategories();
+
     document.getElementById("date").value = new Date().toISOString().split('T')[0];
 
-    // Загрузка данных из Firebase
     const q = fbMethods.query(colRef, fbMethods.orderBy("date", "desc"));
     fbMethods.onSnapshot(q, (snapshot) => {
         allTransactions = [];
@@ -71,17 +72,14 @@ function initApp() {
         render();
     });
 
-    // Фильтры по датам
     document.getElementById("fromDate").onchange = render;
     document.getElementById("toDate").onchange = render;
 
-    // Сохранение записи
     document.getElementById("txForm").onsubmit = async (e) => {
         e.preventDefault();
         const amount = Number(document.getElementById("amount").value);
         if (!amount) return;
 
-        // Определяем понятное имя категории для истории
         const catObj = DEFAULTS[elT.value].find(c => c.id === elC.value);
         const catName = catObj ? catObj.name : elC.value;
 
@@ -90,18 +88,14 @@ function initApp() {
                 type: elT.value,
                 amount: amount,
                 categoryId: elC.value,
-                categoryName: catName, // Сохраняем имя для удобства
+                categoryName: catName,
                 subcategory: elS.value || "",
                 date: document.getElementById("date").value,
                 accountId: document.getElementById("account").value,
                 createdAt: Date.now()
             });
             document.getElementById("amount").value = "";
-            alert("Запись добавлена!");
-        } catch (e) { 
-            console.error(e);
-            alert("Ошибка сохранения. Проверьте Rules в консоли Firebase."); 
-        }
+        } catch (e) { alert("Ошибка сохранения."); }
     };
 }
 
@@ -117,7 +111,6 @@ function render() {
     document.getElementById("totalIncome").textContent = inc.toLocaleString() + " ₸";
     document.getElementById("totalExpense").textContent = exp.toLocaleString() + " ₸";
 
-    // Рендер списка истории
     document.getElementById("list").innerHTML = filtered.map(t => `
         <div class="item">
             <div>
@@ -127,7 +120,6 @@ function render() {
             <button class="del-btn" onclick="deleteTx('${t.id}')">✕</button>
         </div>`).join("");
 
-    // СТАТИСТИКА ПО ДОХОДАМ (ДОСТАВКА)
     const earns = {};
     filtered.filter(t => t.type === 'income').forEach(t => {
         const k = t.subcategory || "Прочий доход";
@@ -156,11 +148,8 @@ function render() {
 }
 
 window.setAmount = (val) => { document.getElementById("amount").value = val; };
-
 window.deleteTx = async (id) => {
-    if(confirm("Удалить эту запись?")) {
-        await window.fbMethods.deleteDoc(window.fbMethods.doc(window.fbDB, "transactions", id));
-    }
+    if(confirm("Удалить?")) await window.fbMethods.deleteDoc(window.fbMethods.doc(window.fbDB, "transactions", id));
 };
 
 document.querySelector(".quick2").onclick = (e) => {
