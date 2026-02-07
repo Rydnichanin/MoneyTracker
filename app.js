@@ -15,7 +15,6 @@ const DEFAULTS = {
 
 let allTransactions = [];
 
-// Проверка подключения
 const checkFB = setInterval(() => {
     if (window.fbDB && window.fbMethods) { 
         clearInterval(checkFB); 
@@ -94,46 +93,42 @@ function render() {
     const inc = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
     const exp = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
 
-    // 1. ОСНОВНОЙ БАЛАНС
     document.getElementById("balance").textContent = (inc - exp).toLocaleString() + " ₸";
     document.getElementById("totalIncome").textContent = inc.toLocaleString() + " ₸";
     document.getElementById("totalExpense").textContent = exp.toLocaleString() + " ₸";
 
-    // 2. ВОЗМОЖНЫЙ ЗАРАБОТОК (ДЕТАЛИЗАЦИЯ)
+    // --- ЛОГИКА ВОЗМОЖНОГО ЗАРАБОТКА (ОБНОВЛЕННАЯ) ---
     let potTotal = 0;
-    let realTotalForComp = 0; // Реальная сумма только по этим позициям (для сравнения)
+    let realBaseForComp = 0; // Реальный доход без Карго и з/п
     const potBreakdown = {};
 
     filtered.filter(t => t.type === 'income').forEach(t => {
-        // --- ИСКЛЮЧЕНИЯ ---
-        if ([4000, 4500, 5000].includes(t.amount)) return; // Эти суммы просто пропускаем
+        const sub = t.subcategory || t.categoryName || "";
+        
+        // 1. Убираем Карго и крупные суммы (зарплаты)
+        if (sub === "Карго" || [4000, 4500, 5000].includes(t.amount)) return;
 
-        let pAmount = t.amount; 
-        const sub = t.subcategory || t.categoryName || "Прочее";
+        realBaseForComp += t.amount;
 
-        // --- ЛОГИКА ПЕРЕСЧЕТА ---
+        // 2. Считаем Возможную сумму
+        let pAmount = t.amount;
         if (["F1", "F2", "F3"].includes(sub)) {
             if (t.amount === 150) pAmount = 600;
-            if (t.amount === 300) pAmount = 900;
-        } 
-        else if (sub === "Ночь") {
-            if (t.amount === 500) pAmount = 1000;
+            else if (t.amount === 300) pAmount = 900;
+        } else if (sub === "Ночь" && t.amount === 500) {
+            pAmount = 1000;
         }
 
-        // --- СБОР СТАТИСТИКИ ПО ТОЧКАМ ---
         if (!potBreakdown[sub]) potBreakdown[sub] = { count: 0, sum: 0 };
         potBreakdown[sub].count += 1;
         potBreakdown[sub].sum += pAmount;
-
         potTotal += pAmount;
-        realTotalForComp += t.amount;
     });
 
-    const diff = potTotal - realTotalForComp; // Разница между "Возможно" и "Факт" (без учета зарплат 4500)
+    const diff = potTotal - realBaseForComp;
 
-    // Генерируем список строк: "F1 ... 5 шт ... 3000"
     const breakdownHTML = Object.entries(potBreakdown)
-        .sort((a,b) => b[1].sum - a[1].sum) // Сортируем: где больше денег - сверху
+        .sort((a,b) => b[1].sum - a[1].sum)
         .map(([name, data]) => `
             <div style="display: flex; justify-content: space-between; font-size: 13px; color: #ccc; margin-top: 4px;">
                 <span>${name} <small style="color:#777">x${data.count}</small></span>
@@ -143,20 +138,19 @@ function render() {
 
     document.getElementById("potentialStats").innerHTML = `
         <div style="margin-bottom: 10px; border-bottom: 1px solid #333; padding-bottom: 8px;">
-            ${breakdownHTML || "<small class='muted'>Нет подходящих записей</small>"}
+            ${breakdownHTML || "<small class='muted'>Нет данных для расчета</small>"}
         </div>
-        
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <span style="color: #ffd166;">Всего возможно:</span>
-            <b style="color: #ffd166; font-size: 16px;">${potTotal.toLocaleString()} ₸</b>
+        <div style="display: flex; justify-content: space-between;">
+            <span style="color: #ffd166;">Возможно:</span>
+            <b style="color: #ffd166;">${potTotal.toLocaleString()} ₸</b>
         </div>
         <div style="display: flex; justify-content: space-between; margin-top: 5px;">
-            <span class="muted">Разница:</span>
+            <span class="muted">Чистая выгода:</span>
             <b class="pos">+${diff.toLocaleString()} ₸</b>
         </div>
     `;
 
-    // 3. ИСТОРИЯ
+    // --- ИСТОРИЯ ---
     document.getElementById("list").innerHTML = filtered.map(t => `
         <div class="item">
             <div><b class="${t.type==='income'?'pos':'neg'}">${t.amount.toLocaleString()} ₸</b><br>
@@ -164,7 +158,7 @@ function render() {
             <button class="del-btn" onclick="deleteTx('${t.id}')">✕</button>
         </div>`).join("");
 
-    // 4. СТАТИСТИКА ДОХОДОВ
+    // --- СТАТИСТИКА ДОХОДОВ ---
     const earns = {};
     filtered.filter(t => t.type === 'income').forEach(t => {
         const k = t.subcategory || t.categoryName || "Прочее";
@@ -182,7 +176,7 @@ function render() {
         </div>`;
     }).join("");
 
-    // 5. СТАТИСТИКА РАСХОДОВ
+    // --- СТАТИСТИКА РАСХОДОВ ---
     const expStats = {};
     filtered.filter(t => t.type === 'expense').forEach(t => {
         const mainCat = t.categoryName || "Прочее";
