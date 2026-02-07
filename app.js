@@ -33,17 +33,14 @@ function initApp() {
 
     elT.onchange = fillCats; elC.onchange = fillSubs;
     fillCats();
-
     document.getElementById("date").value = new Date().toISOString().split('T')[0];
 
-    // Слушаем базу
     fbMethods.onSnapshot(fbMethods.query(colRef, fbMethods.orderBy("date", "desc")), (snap) => {
         allTransactions = [];
         snap.forEach(d => allTransactions.push({ id: d.id, ...d.data() }));
         render();
     });
 
-    // Слушаем фильтры дат
     document.getElementById("fromDate").oninput = render;
     document.getElementById("toDate").oninput = render;
 
@@ -64,62 +61,59 @@ function render() {
     const from = document.getElementById("fromDate").value;
     const to = document.getElementById("toDate").value;
     
-    // ФИЛЬТРАЦИЯ
-    const filtered = allTransactions.filter(t => {
-        const d = t.date;
-        return (!from || d >= from) && (!to || d <= to);
-    });
+    const filtered = allTransactions.filter(t => (!from || t.date >= from) && (!to || t.date <= to));
 
-    const incRealTotal = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-    const expTotal = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+    const realTotalInc = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+    const realTotalExp = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
 
-    document.getElementById("balance").textContent = (incRealTotal - expTotal).toLocaleString() + " ₸";
-    document.getElementById("totalIncome").textContent = incRealTotal.toLocaleString() + " ₸";
-    document.getElementById("totalExpense").textContent = expTotal.toLocaleString() + " ₸";
+    document.getElementById("balance").textContent = (realTotalInc - realTotalExp).toLocaleString() + " ₸";
+    document.getElementById("totalIncome").textContent = realTotalInc.toLocaleString() + " ₸";
+    document.getElementById("totalExpense").textContent = realTotalExp.toLocaleString() + " ₸";
 
-    // --- ВЗ МАТЕМАТИКА ---
-    let possibleDotsSum = 0;   
-    let realIncomeNoCargo = 0; 
-    let realDotsValue = 0;
+    // --- МАТЕМАТИКА ВЗ ---
+    let potDotsSum = 0;       
+    let realBaseDotsValue = 0; 
+    let fixedIncomeSum = 0;    
     const potBreakdown = {};
 
     filtered.filter(t => t.type === 'income').forEach(t => {
         const sub = t.subcategory || "";
         const amt = t.amount;
 
-        if (sub !== "Карго") {
-            realIncomeNoCargo += amt;
-            
-            // Если это точки и НЕ зарплата
-            if (["F1", "F2", "F3", "Ночь"].includes(sub) && ![4000, 4500, 5000].includes(amt)) {
-                realDotsValue += amt;
-                let pAmt = amt;
-                if (amt === 150) pAmt = 600;
-                else if (amt === 300) pAmt = 900;
-                else if (sub === "Ночь" && amt === 500) pAmt = 1000;
+        if (sub === "Карго") return;
 
-                if (!potBreakdown[sub]) potBreakdown[sub] = { count: 0, sum: 0 };
-                potBreakdown[sub].count++;
-                potBreakdown[sub].sum += pAmt;
-                possibleDotsSum += pAmt;
-            }
+        if (["F1", "F2", "F3", "Ночь"].includes(sub) && ![4000, 4500, 5000].includes(amt)) {
+            let pAmt = amt;
+            if (amt === 150) pAmt = 600;
+            else if (amt === 300) pAmt = 900;
+            else if (sub === "Ночь" && amt === 500) pAmt = 1000;
+            
+            if (!potBreakdown[sub]) potBreakdown[sub] = { count: 0, sum: 0 };
+            potBreakdown[sub].count++;
+            potBreakdown[sub].sum += pAmt;
+            
+            potDotsSum += pAmt;
+            realBaseDotsValue += amt;
+        } else {
+            fixedIncomeSum += amt;
         }
     });
 
-    const pureGain = possibleDotsSum - realDotsValue;
+    const finalPotentialTotal = potDotsSum + fixedIncomeSum;
+    const pureGain = potDotsSum - realBaseDotsValue;
 
     document.getElementById("potentialStats").innerHTML = `
-        <div style="border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 10px;">
+        <div style="border-bottom: 1px solid #333; padding-bottom: 8px; margin-bottom: 10px;">
             ${Object.entries(potBreakdown).map(([n, d]) => `
-                <div style="display:flex; justify-content:space-between; font-size:13px; margin-top:5px;">
+                <div style="display:flex; justify-content:space-between; font-size:13px; margin-top:4px;">
                     <span>${n} <small class="muted">x${d.count}</small></span>
                     <b>${d.sum.toLocaleString()} ₸</b>
                 </div>
-            `).join("") || "<small class='muted'>Нет данных за период</small>"}
+            `).join("") || "<small class='muted'>Нет точек для пересчета</small>"}
         </div>
         <div style="display:flex; justify-content:space-between; font-size:14px;">
             <span>Всего (Возможно):</span>
-            <b style="color:var(--accent)">${(possibleDotsSum + (realIncomeNoCargo - realDotsValue)).toLocaleString()} ₸</b>
+            <b style="color:var(--accent)">${finalPotentialTotal.toLocaleString()} ₸</b>
         </div>
         <div class="gain-box">
             <div style="display:flex; justify-content:space-between;">
