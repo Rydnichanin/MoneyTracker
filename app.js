@@ -5,8 +5,7 @@ const DEFAULTS = {
     ],
     expense: [
         { id: "auto", name: "Авто", sub: ["Бензин", "Ремонт", "Мойка", "Запчасти"] },
-        { id: "food", name: "Еда", sub: [] },
-        { id: "other_exp", name: "Прочее", sub: [] }
+        { id: "food", name: "Еда", sub: [] }
     ]
 };
 
@@ -37,14 +36,16 @@ function initApp() {
 
     document.getElementById("date").value = new Date().toISOString().split('T')[0];
 
+    // Слушаем базу
     fbMethods.onSnapshot(fbMethods.query(colRef, fbMethods.orderBy("date", "desc")), (snap) => {
         allTransactions = [];
         snap.forEach(d => allTransactions.push({ id: d.id, ...d.data() }));
         render();
     });
 
-    document.getElementById("fromDate").onchange = render;
-    document.getElementById("toDate").onchange = render;
+    // Слушаем фильтры дат
+    document.getElementById("fromDate").oninput = render;
+    document.getElementById("toDate").oninput = render;
 
     document.getElementById("txForm").onsubmit = async (e) => {
         e.preventDefault();
@@ -62,7 +63,12 @@ function initApp() {
 function render() {
     const from = document.getElementById("fromDate").value;
     const to = document.getElementById("toDate").value;
-    const filtered = allTransactions.filter(t => (!from || t.date >= from) && (!to || t.date <= to));
+    
+    // ФИЛЬТРАЦИЯ
+    const filtered = allTransactions.filter(t => {
+        const d = t.date;
+        return (!from || d >= from) && (!to || d <= to);
+    });
 
     const incRealTotal = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
     const expTotal = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
@@ -71,36 +77,35 @@ function render() {
     document.getElementById("totalIncome").textContent = incRealTotal.toLocaleString() + " ₸";
     document.getElementById("totalExpense").textContent = expTotal.toLocaleString() + " ₸";
 
-    // --- МАТЕМАТИКА ВОЗМОЖНОГО ЗАРАБОТКА ---
+    // --- ВЗ МАТЕМАТИКА ---
     let possibleDotsSum = 0;   
     let realIncomeNoCargo = 0; 
+    let realDotsValue = 0;
     const potBreakdown = {};
 
     filtered.filter(t => t.type === 'income').forEach(t => {
         const sub = t.subcategory || "";
         const amt = t.amount;
 
-        // В Реальном: всё кроме Карго
-        if (sub !== "Карго") realIncomeNoCargo += amt;
+        if (sub !== "Карго") {
+            realIncomeNoCargo += amt;
+            
+            // Если это точки и НЕ зарплата
+            if (["F1", "F2", "F3", "Ночь"].includes(sub) && ![4000, 4500, 5000].includes(amt)) {
+                realDotsValue += amt;
+                let pAmt = amt;
+                if (amt === 150) pAmt = 600;
+                else if (amt === 300) pAmt = 900;
+                else if (sub === "Ночь" && amt === 500) pAmt = 1000;
 
-        // В Возможном: пересчет только точек
-        if (["F1", "F2", "F3", "Ночь"].includes(sub) && ![4000, 4500, 5000].includes(amt)) {
-            let pAmt = amt;
-            if (amt === 150) pAmt = 600;
-            else if (amt === 300) pAmt = 900;
-            else if (sub === "Ночь" && amt === 500) pAmt = 1000;
-            // 1000 и 2000 остаются как есть по умолчанию
-
-            if (!potBreakdown[sub]) potBreakdown[sub] = { count: 0, sum: 0 };
-            potBreakdown[sub].count++;
-            potBreakdown[sub].sum += pAmt;
-            possibleDotsSum += pAmt;
+                if (!potBreakdown[sub]) potBreakdown[sub] = { count: 0, sum: 0 };
+                potBreakdown[sub].count++;
+                potBreakdown[sub].sum += pAmt;
+                possibleDotsSum += pAmt;
+            }
         }
     });
 
-    // Считаем разницу: (ВЗ за точки + Зарплаты) - Реальный доход без Карго
-    // Для простоты: Разница = Пересчитанные точки - Их реальная стоимость
-    const realDotsValue = filtered.filter(t => ["F1", "F2", "F3", "Ночь"].includes(t.subcategory) && ![4000, 4500, 5000].includes(t.amount)).reduce((s,t)=>s+t.amount, 0);
     const pureGain = possibleDotsSum - realDotsValue;
 
     document.getElementById("potentialStats").innerHTML = `
@@ -124,14 +129,15 @@ function render() {
         </div>
     `;
 
-    // --- ИСТОРИЯ И ДЕТАЛИ ---
+    // ИСТОРИЯ
     document.getElementById("list").innerHTML = filtered.map(t => `
         <div class="item">
             <div><b class="${t.type==='income'?'pos':'neg'}">${t.amount.toLocaleString()} ₸</b><br>
             <small class="muted">${t.date} • ${t.subcategory || t.categoryName}</small></div>
-            <button class="del-btn" onclick="deleteTx('${t.id}')">✕</button>
+            <button onclick="deleteTx('${t.id}')" style="background:none; border:none; color:#555;">✕</button>
         </div>`).join("");
 
+    // СТАТИСТИКА ДОХОДОВ
     const earns = {};
     filtered.filter(t => t.type === 'income').forEach(t => {
         const k = t.subcategory || t.categoryName;
@@ -143,17 +149,6 @@ function render() {
         <div class="stat-row">
             <div class="stat-main"><span>${k} (${d.count})</span><b>${d.sum.toLocaleString()} ₸</b></div>
             <div class="stat-sub">${Object.entries(d.b).map(([p, c]) => `${p}×${c}`).join(" | ")}</div>
-        </div>`).join("");
-
-    const exps = {};
-    filtered.filter(t => t.type === 'expense').forEach(t => {
-        if (!exps[t.categoryName]) exps[t.categoryName] = { total: 0, subs: {} };
-        exps[t.categoryName].total += t.amount;
-        if (t.subcategory) exps[t.categoryName].subs[t.subcategory] = (exps[t.categoryName].subs[t.subcategory] || 0) + t.amount;
-    });
-    document.getElementById("expenseDetails").innerHTML = Object.entries(exps).map(([cat, d]) => `
-        <div class="stat-row">
-            <div class="stat-main"><span>${cat}</span><b class="neg">${d.total.toLocaleString()} ₸</b></div>
         </div>`).join("");
 }
 
