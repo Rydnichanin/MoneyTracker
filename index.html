@@ -4,8 +4,45 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <title>Учёт денег ONLINE</title>
-  <link rel="stylesheet" href="./style.css" />
   
+  <style>
+    :root { --bg: #000; --card: #1c1c1e; --text: #fff; --pos: #65d48b; --neg: #ff6b6b; --accent: #ffd166; }
+    * { box-sizing: border-box; font-family: -apple-system, sans-serif; }
+    body { background: var(--bg); color: var(--text); margin: 0; padding: 10px; }
+    .wrap { max-width: 500px; margin: 0 auto; }
+    .header { text-align: center; padding: 10px 0; border-bottom: 1px solid #222; margin-bottom: 15px; }
+    .status-dot { font-size: 11px; color: var(--pos); vertical-align: middle; }
+    .card { background: var(--card); border-radius: 16px; padding: 16px; margin-bottom: 15px; }
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+    input, select { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #333; background: #2c2c2e; color: #fff; font-size: 16px; outline: none; }
+    .btn-main { width: 100%; padding: 14px; border: none; border-radius: 10px; background: var(--pos); color: #000; font-weight: bold; cursor: pointer; }
+    .quick-amounts { display: flex; gap: 8px; margin: 10px 0; overflow-x: auto; padding-bottom: 5px; }
+    .chip-sum { flex: 1; min-width: 60px; background: #2c2c2e; border: 1px solid #444; color: var(--accent); padding: 8px 0; border-radius: 8px; font-weight: bold; border: none; }
+    .balance-line { display: flex; justify-content: space-between; text-align: center; }
+    .pos { color: var(--pos); } .neg { color: var(--neg); } .muted { color: #888; } .small { font-size: 11px; }
+    .mt-10 { margin-top: 10px; }
+    .date-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .quick2 { display: flex; gap: 8px; }
+    .chip { background: #333; color: #fff; border: none; padding: 8px 0; border-radius: 10px; flex: 1; font-size: 12px; }
+    .item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #333; }
+    .del-btn { background: none; border: none; color: #444; font-size: 18px; }
+    .stat-title { margin: 0 0 10px 0; font-size: 16px; color: #aaa; }
+    .stat-row-complex { border-bottom: 1px solid #222; padding: 10px 0; }
+    .stat-main { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+    .stat-sub { font-size: 11px; color: var(--accent); opacity: 0.8; margin-top: 4px; }
+    .history-header { cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+    .hidden { display: none; }
+
+    /* Стили для сворачиваемых расходов */
+    .exp-details { border-bottom: 1px solid #222; }
+    .exp-details summary { list-style: none; padding: 12px 0; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+    .exp-details summary::-webkit-details-marker { display: none; }
+    .exp-subs-content { background: #151517; border-radius: 8px; margin-bottom: 10px; padding: 5px 12px; }
+    .stat-sub-row { display: flex; justify-content: space-between; font-size: 13px; padding: 6px 0; color: #bbb; border-bottom: 1px solid #222; }
+    .stat-sub-row:last-child { border-bottom: none; }
+    .stat-main small { font-size: 10px; color: var(--accent); margin-left: 5px; }
+  </style>
+
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
