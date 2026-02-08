@@ -68,7 +68,10 @@ function render() {
     const to = document.getElementById("toDate").value;
     const filtered = allTransactions.filter(t => (!from || t.date >= from) && (!to || t.date <= to));
 
-    // --- 1. СНАЧАЛА СЧИТАЕМ ВЕСЬ РЕАЛ (ДЛЯ ВЫДЕЛЕННЫХ СУММ) ---
+    const realTotalInc = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+    const realTotalExp = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+
+    // --- 1. ДОХОД ПО ТОЧКАМ (РЕАЛ) ---
     const realBySub = {};
     filtered.filter(t => t.type === 'income').forEach(t => {
         const sub = t.subcategory || t.categoryName;
@@ -78,47 +81,40 @@ function render() {
         realBySub[sub].breakdown[t.amount] = (realBySub[sub].breakdown[t.amount] || 0) + 1;
     });
 
-    // Отрисовка блока "Доход по точкам (Реал)"
     document.getElementById("earningsDetails").innerHTML = Object.entries(realBySub).map(([k, d]) => `
         <div class="stat-row" style="margin-bottom:12px; border-bottom: 1px solid #222; padding-bottom: 4px;">
             <div style="display:flex; justify-content:space-between;">
-                <span style="color:#aaa;">${k} <small>(${d.count})</small></span>
+                <span style="color:#aaa; font-weight:bold;">${k} <small>(${d.count})</small></span>
                 <b style="color:#eee;">${d.sum.toLocaleString()} ₸</b>
             </div>
-            <div style="font-size:11px; color:#666;">
+            <div style="font-size:11px; color:#666; margin-top:2px;">
                 ${Object.entries(d.breakdown).map(([p, c]) => `${p}₸×${c}`).join(" | ")}
             </div>
         </div>`).join("");
 
-    // --- 2. СЧИТАЕМ ВД И ВЫЧИТАЕМ ВЫДЕЛЕННЫЕ СУММЫ ---
+    // --- 2. ВОЗМОЖНЫЙ ДОХОД (ВД) С РАЗНИЦЕЙ К РЕАЛУ ---
     let totalVd = 0;
     const vdDetails = {};
     const points = ["F1", "F2", "F3", "Ночь"];
 
     filtered.forEach(t => {
-        if (t.type === 'income' && points.includes(t.subcategory)) {
-            // Считаем ВД только для точек < 4000
-            if (t.amount < 4000) {
-                let pot = t.amount;
-                if (t.amount === 150) pot = 600;
-                else if (t.amount === 300) pot = 900;
-                else if (t.subcategory === "Ночь" && t.amount === 500) pot = 1000;
-                
-                totalVd += pot;
-                if (!vdDetails[t.subcategory]) vdDetails[t.subcategory] = 0;
-                vdDetails[t.subcategory] += pot;
-            }
+        if (t.type === 'income' && points.includes(t.subcategory) && t.amount < 4000) {
+            let pot = t.amount;
+            if (t.amount === 150) pot = 600;
+            else if (t.amount === 300) pot = 900;
+            else if (t.subcategory === "Ночь" && t.amount === 500) pot = 1000;
+            totalVd += pot;
+            vdDetails[t.subcategory] = (vdDetails[t.subcategory] || 0) + pot;
         }
     });
 
-    // Считаем разницу: (ВД каждой категории) - (Полная сумма Реало из выделенного)
     let totalGain = 0;
     const vdHtml = points.map(p => {
         const vdSum = vdDetails[p] || 0;
-        const rdSum = (realBySub[p] ? realBySub[p].sum : 0); // Та самая сумма со скрина
+        const rdSum = (realBySub[p] ? realBySub[p].sum : 0);
         const diff = vdSum - rdSum;
         totalGain += diff;
-        
+        if (vdSum === 0 && rdSum === 0) return "";
         return `
             <div style="margin-bottom:10px;">
                 <div style="display:flex; justify-content:space-between; font-size:14px; color:#eee;">
@@ -142,16 +138,34 @@ function render() {
             </div>
         </div>`;
 
-    // Расходы (с подкатегориями)
-    const exps = {};
+    // --- 3. РАСХОДЫ (ГРУППИРОВКА "КРАСИВО") ---
+    const expGroups = {};
     filtered.filter(t => t.type === 'expense').forEach(t => {
-        const n = t.subcategory || t.categoryName || "Прочее";
-        exps[n] = (exps[n] || 0) + t.amount;
+        const cat = t.categoryName || "Прочее";
+        if (!expGroups[cat]) expGroups[cat] = { total: 0, subs: {} };
+        expGroups[cat].total += t.amount;
+        if (t.subcategory) {
+            expGroups[cat].subs[t.subcategory] = (expGroups[cat].subs[t.subcategory] || 0) + t.amount;
+        }
     });
-    document.getElementById("expenseDetails").innerHTML = Object.entries(exps).map(([k, v]) => `
-        <div class="stat-row"><span>${k}</span><b class="neg">${v.toLocaleString()} ₸</b></div>`).join("");
 
-    // История и Баланс
+    document.getElementById("expenseDetails").innerHTML = Object.entries(expGroups).map(([name, data]) => {
+        let subHtml = Object.entries(data.subs).map(([sName, sVal]) => `
+            <div style="display:flex; justify-content:space-between; font-size:12px; color:#777; padding-left:10px; margin-top:2px;">
+                <span>• ${sName}</span><span>${sVal.toLocaleString()} ₸</span>
+            </div>`).join("");
+        
+        return `
+            <div style="margin-bottom:12px; background: rgba(255,255,255,0.02); padding: 8px; border-radius: 6px;">
+                <div style="display:flex; justify-content:space-between; font-weight:bold; border-bottom: 1px solid #222; padding-bottom:4px;">
+                    <span style="color:#ccc;">${name}</span>
+                    <b class="neg">${data.total.toLocaleString()} ₸</b>
+                </div>
+                ${subHtml}
+            </div>`;
+    }).join("") || "Расходов нет";
+
+    // ИТОГИ И ИСТОРИЯ
     document.getElementById("totalIncome").textContent = realTotalInc.toLocaleString() + " ₸";
     document.getElementById("totalExpense").textContent = realTotalExp.toLocaleString() + " ₸";
     document.getElementById("balance").textContent = (realTotalInc - realTotalExp).toLocaleString() + " ₸";
