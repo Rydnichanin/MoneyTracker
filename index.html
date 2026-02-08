@@ -141,22 +141,42 @@
 
   <script type="module" src="./app.js"></script>
   <script>
-    function toggleBlock(el) {
+    // Раскрытие блоков
+    window.toggleBlock = function(el) {
       const content = el.nextElementSibling;
       content.classList.toggle('hidden');
       el.querySelector('.arrow').textContent = content.classList.contains('hidden') ? '▼' : '▲';
-    }
-    function setAmount(v) { document.getElementById('amount').value = v; }
-    function setRange(mode) {
+    };
+
+    // Вставка суммы из быстрых кнопок
+    window.setAmount = function(v) { 
+      document.getElementById('amount').value = v; 
+    };
+
+    // Выбор периода (Сегодня, Неделя, Все)
+    window.setRange = function(mode) {
       const now = new Date().toISOString().split('T')[0];
-      const f = document.getElementById('fromDate'), t = document.getElementById('toDate');
-      if(mode === 'today') { f.value = now; t.value = now; }
-      else if(mode === 'week') {
-        let d = new Date(); d.setDate(d.getDate() - 7);
-        f.value = d.toISOString().split('T')[0]; t.value = now;
-      } else { f.value = ""; t.value = ""; }
-      f.dispatchEvent(new Event('input'));
-    }
+      const f = document.getElementById('fromDate');
+      const t = document.getElementById('toDate');
+
+      if(mode === 'today') {
+        f.value = now;
+        t.value = now;
+      } else if(mode === 'week') {
+        let d = new Date();
+        d.setDate(d.getDate() - 7);
+        f.value = d.toISOString().split('T')[0];
+        t.value = now;
+      } else {
+        f.value = "";
+        t.value = "";
+      }
+
+      // ГЛАВНОЕ: вызываем функцию перерисовки из app.js, если она уже загружена
+      if (typeof window.render === 'function') {
+        window.render();
+      }
+    };
   </script>
 </body>
 </html>
