@@ -65,50 +65,77 @@ function render() {
     const realExp = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
     const gasExp = filtered.filter(t => t.subcategory === 'Бензин').reduce((s, t) => s + t.amount, 0);
 
-    // Баланс и Бензин
     document.getElementById("balance").textContent = (realInc - realExp).toLocaleString() + " ₸";
     document.getElementById("totalIncome").textContent = realInc.toLocaleString() + " ₸";
     document.getElementById("totalExpense").textContent = realExp.toLocaleString() + " ₸";
     
     const gasPerc = realInc > 0 ? ((gasExp / realInc) * 100).toFixed(1) : 0;
-    document.getElementById("gasText").textContent = `Бензин: ${gasPerc}% (${gasExp.toLocaleString()} ₸)`;
-    document.getElementById("gasFill").style.width = Math.min(gasPerc * 2, 100) + "%";
+    document.getElementById("gasText").textContent = `Бензин к доходу: ${gasPerc}% (${gasExp.toLocaleString()} ₸)`;
+    document.getElementById("gasFill").style.width = Math.min(gasPerc * 3, 100) + "%";
 
-    // РЕАЛ
+    // --- РЕАЛ (Считает всё) ---
     const realBySub = {};
     filtered.filter(t => t.type === 'income').forEach(t => {
         const k = t.subcategory || t.categoryName;
         if (!realBySub[k]) realBySub[k] = { sum: 0, count: 0, breakdown: {} };
-        realBySub[k].sum += t.amount; realBySub[k].count++;
+        realBySub[k].sum += t.amount; 
+        realBySub[k].count++;
         realBySub[k].breakdown[t.amount] = (realBySub[k].breakdown[t.amount] || 0) + 1;
     });
-    document.getElementById("earningsDetails").innerHTML = Object.entries(realBySub).map(([k, d]) => `
-        <div class="stat-row"><div class="stat-main"><span>${k} (${d.count})</span><b>${d.sum.toLocaleString()} ₸</b></div>
-        <div class="stat-sub">${Object.entries(d.breakdown).map(([p, c]) => `${p}₸×${c}`).join(" | ")}</div></div>`).join("");
 
-    // ВД
-    let totalVd = 0; const vdStats = {}; const pts = ["F1", "F2", "F3", "Ночь"];
+    document.getElementById("earningsDetails").innerHTML = Object.entries(realBySub).map(([k, d]) => `
+        <div class="stat-row">
+            <div class="stat-main"><span>${k} (${d.count})</span><b>${d.sum.toLocaleString()} ₸</b></div>
+            <div class="stat-sub">${Object.entries(d.breakdown).map(([p, c]) => `${p}₸×${c}`).join(" | ")}</div>
+        </div>`).join("");
+
+    // --- ВД (СТРОГИЙ ФИЛЬТР: ИГНОРИРУЕТ >= 4000) ---
+    let totalGain = 0;
+    const vdStats = {};
+    const deliverySubs = ["F1", "F2", "F3", "Ночь", "Карго"];
+
     filtered.forEach(t => {
-        if (t.type === 'income' && pts.includes(t.subcategory)) {
-            let pot = (t.amount === 150 ? 600 : (t.amount === 300 ? 900 : (t.subcategory === "Ночь" && t.amount === 500 ? 1000 : t.amount)));
-            totalVd += pot; vdStats[t.subcategory] = (vdStats[t.subcategory] || 0) + pot;
+        // Проверка: доход, нужная категория и сумма СТРОГО меньше 4000
+        if (t.type === 'income' && deliverySubs.includes(t.subcategory) && t.amount < 4000) {
+            if(!vdStats[t.subcategory]) vdStats[t.subcategory] = { vdSum: 0, realSum: 0 };
+            
+            let pot = t.amount;
+            if (t.amount === 150) pot = 600;
+            else if (t.amount === 300) pot = 900;
+            else if (t.subcategory === "Ночь" && t.amount === 500) pot = 1000;
+            
+            vdStats[t.subcategory].vdSum += pot;
+            vdStats[t.subcategory].realSum += t.amount;
         }
     });
-    let gain = 0;
-    document.getElementById("potentialStats").innerHTML = pts.map(p => {
-        const v = vdStats[p] || 0, r = realBySub[p]?.sum || 0, d = v - r; gain += d;
-        return v>0 || r>0 ? `<div class="stat-main" style="margin-bottom:8px;"><span>${p} (ВД: ${v.toLocaleString()} ₸)</span><span class="pos">+${d.toLocaleString()} ₸</span></div>` : "";
-    }).join("") + `<div class="gain-box"><span>ВЫГОДА:</span><span class="pos">+${gain.toLocaleString()} ₸</span></div>`;
+
+    const vdHtml = Object.entries(vdStats).map(([p, data]) => {
+        const diff = data.vdSum - data.realSum;
+        totalGain += diff;
+        return `
+            <div class="stat-row">
+                <div class="stat-main"><span>${p}</span><b>${data.vdSum.toLocaleString()} ₸</b></div>
+                <div class="diff-label pos">Выгода: +${diff.toLocaleString()} ₸</div>
+            </div>`;
+    }).join("");
+
+    document.getElementById("potentialStats").innerHTML = vdHtml || '<div class="muted" style="text-align:center">Нет данных для расчёта ВД (крупные суммы не считаются)</div>';
+    if (totalGain > 0) {
+        document.getElementById("potentialStats").innerHTML += `<div class="gain-box"><span>ОБЩАЯ ВЫГОДА ВД:</span><span class="pos">+${totalGain.toLocaleString()} ₸</span></div>`;
+    }
 
     // РАСХОДЫ
     const exG = {};
-    filtered.filter(t => t.type === 'expense').forEach(t => {
-        exG[t.categoryName] = (exG[t.categoryName] || 0) + t.amount;
-    });
-    document.getElementById("expenseDetails").innerHTML = Object.entries(exG).map(([n, v]) => `<div class="stat-main"><span>${n}</span><b class="neg">${v.toLocaleString()} ₸</b></div>`).join("");
+    filtered.filter(t => t.type === 'expense').forEach(t => { exG[t.categoryName] = (exG[t.categoryName] || 0) + t.amount; });
+    document.getElementById("expenseDetails").innerHTML = Object.entries(exG).map(([n, v]) => `<div class="stat-main" style="padding: 5px 0;"><span>${n}</span><b class="neg">${v.toLocaleString()} ₸</b></div>`).join("");
 
     // ИСТОРИЯ
-    document.getElementById("list").innerHTML = filtered.map(t => `<div class="item"><div><b class="${t.type==='income'?'pos':'neg'}">${t.amount.toLocaleString()} ₸</b><br><small class="muted">${t.date} | ${t.subcategory || t.categoryName}</small></div><button onclick="deleteTx('${t.id}')" style="background:none;border:none;color:#444;">✕</button></div>`).join("");
+    document.getElementById("list").innerHTML = filtered.map(t => `
+        <div class="item">
+            <div><b class="${t.type==='income'?'pos':'neg'}">${t.amount.toLocaleString()} ₸</b><br>
+            <small class="muted">${t.date} | ${t.subcategory || t.categoryName}</small></div>
+            <button onclick="deleteTx('${t.id}')" style="background:none;border:none;color:#444;padding:10px;">✕</button>
+        </div>`).join("");
 }
 
 window.render = render;
