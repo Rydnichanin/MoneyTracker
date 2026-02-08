@@ -4,7 +4,6 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <title>Учёт Курьера Pro</title>
-  
   <style>
     :root { --bg: #000; --card: #1c1c1e; --text: #fff; --pos: #65d48b; --neg: #ff6b6b; --accent: #ffd166; }
     * { box-sizing: border-box; font-family: -apple-system, sans-serif; }
@@ -14,22 +13,27 @@
     .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
     input, select { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #333; background: #2c2c2e; color: #fff; font-size: 16px; outline: none; }
     .btn-main { width: 100%; padding: 14px; border: none; border-radius: 10px; background: var(--pos); color: #000; font-weight: bold; font-size: 16px; }
-    .chip-sum { flex: 1; min-width: 65px; background: #333; color: var(--accent); padding: 10px 0; border-radius: 8px; font-weight: bold; border: none; cursor: pointer; }
     
-    .collapsible-header { cursor: pointer; display: flex; justify-content: space-between; align-items: center; padding: 5px 0; }
-    .collapsible-header h3 { margin: 0; font-size: 16px; }
-    .content { margin-top: 15px; }
-    .hidden { display: none; }
-    .arrow { font-size: 12px; color: #666; transition: 0.3s; }
+    /* Быстрые кнопки и периоды со скроллом */
+    .scroll-container { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 5px; margin-bottom: 10px; scrollbar-width: none; }
+    .scroll-container::-webkit-scrollbar { display: none; }
+    .chip { flex: 0 0 auto; background: #333; color: var(--accent); padding: 10px 16px; border-radius: 8px; font-weight: bold; border: none; }
+    .chip-period { color: #fff; background: #2c2c2e; border: 1px solid #444; font-size: 13px; }
 
-    .balance-line { display: flex; justify-content: space-between; text-align: center; margin-bottom: 15px; }
+    /* Индикатор бензина */
+    .gas-box { margin-top: 10px; font-size: 11px; }
+    .gas-bar { height: 4px; background: #333; border-radius: 2px; margin: 4px 0; overflow: hidden; }
+    .gas-fill { height: 100%; background: var(--accent); width: 0%; transition: 0.3s; }
+
+    .collapsible-header { cursor: pointer; display: flex; justify-content: space-between; align-items: center; padding: 5px 0; }
+    .arrow { font-size: 12px; color: #666; }
+    .hidden { display: none; }
+    .balance-line { display: flex; justify-content: space-between; text-align: center; margin-bottom: 10px; }
     .pos { color: var(--pos); } .neg { color: var(--neg); } .muted { color: #888; }
-    .item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #333; align-items: center; }
     .stat-row { border-bottom: 1px solid #222; padding: 10px 0; }
     .stat-main { display: flex; justify-content: space-between; width: 100%; }
-    .stat-sub { font-size: 11px; color: var(--accent); margin-top: 4px; }
-    .gain-box { background: #1a2e21; padding: 10px; border-radius: 10px; border: 1px solid var(--pos); margin-top: 10px; }
-    .quick-amounts { display: flex; gap: 8px; margin-bottom: 10px; overflow-x: auto; }
+    .stat-sub { font-size: 10px; color: #555; margin-top: 4px; }
+    .gain-box { background: #1a2e21; padding: 12px; border-radius: 10px; border: 1px solid var(--pos); margin-top: 10px; display: flex; justify-content: space-between; font-weight: bold; }
   </style>
 
   <script type="module">
@@ -63,13 +67,13 @@
           <input id="amount" type="number" inputmode="decimal" placeholder="Сумма" required />
           <input id="date" type="date" required />
         </div>
-        <div class="quick-amounts">
-          <button type="button" class="chip-sum" onclick="setAmount(150)">150</button>
-          <button type="button" class="chip-sum" onclick="setAmount(300)">300</button>
-          <button type="button" class="chip-sum" onclick="setAmount(500)">500</button>
-          <button type="button" class="chip-sum" onclick="setAmount(600)">600</button>
-          <button type="button" class="chip-sum" onclick="setAmount(4500)">4500</button>
-          <button type="button" class="chip-sum" onclick="setAmount(5000)">5000</button>
+        <div class="scroll-container">
+          <button type="button" class="chip" onclick="setAmount(150)">150</button>
+          <button type="button" class="chip" onclick="setAmount(300)">300</button>
+          <button type="button" class="chip" onclick="setAmount(500)">500</button>
+          <button type="button" class="chip" onclick="setAmount(600)">600</button>
+          <button type="button" class="chip" onclick="setAmount(4500)">4500</button>
+          <button type="button" class="chip" onclick="setAmount(5000)">5000</button>
         </div>
         <button class="btn-main" type="submit">Записать</button>
       </form>
@@ -78,104 +82,65 @@
     <section class="card">
       <div class="collapsible-header" onclick="toggleBlock(this)">
         <h3>💰 Баланс и Фильтры</h3>
-        <span class="arrow">▼</span>
+        <span class="arrow">▲</span>
       </div>
-      <div class="content hidden">
+      <div class="content">
         <div class="balance-line">
-          <div><small class="muted">Итог</small><br><b id="balance">0 ₸</b></div>
+          <div><small class="muted">Итог</small><br><b id="balance" style="font-size: 20px;">0 ₸</b></div>
           <div><small class="muted">Приход</small><br><b id="totalIncome" class="pos">0 ₸</b></div>
           <div><small class="muted">Расход</small><br><b id="totalExpense" class="neg">0 ₸</b></div>
         </div>
-        <div class="row2">
+        
+        <div class="gas-box">
+          <div style="display:flex; justify-content:space-between; color:#888;">
+            <span>Чистая прибыль</span>
+            <span id="gasText">Бензин: 0%</span>
+          </div>
+          <div class="gas-bar"><div id="gasFill" class="gas-fill"></div></div>
+        </div>
+
+        <div class="row2" style="margin-top:15px;">
           <input type="date" id="fromDate">
           <input type="date" id="toDate">
         </div>
-        <div style="display:flex; gap:5px;">
-          <button type="button" class="chip-sum" style="font-size:12px; flex:1;" onclick="setRange('today')">Сегодня</button>
-          <button type="button" class="chip-sum" style="font-size:12px; flex:1;" onclick="setRange('week')">Неделя</button>
-          <button type="button" class="chip-sum" style="font-size:12px; flex:1;" onclick="setRange('all')">Все</button>
+        <div class="scroll-container">
+          <button type="button" class="chip chip-period" onclick="setRange('today')">Сегодня</button>
+          <button type="button" class="chip chip-period" onclick="setRange('yesterday')">Вчера</button>
+          <button type="button" class="chip chip-period" onclick="setRange('week')">Неделя</button>
+          <button type="button" class="chip chip-period" onclick="setRange('month')">Месяц</button>
+          <button type="button" class="chip chip-period" onclick="setRange('all')">Всё время</button>
         </div>
       </div>
     </section>
 
-    <section class="card">
-      <div class="collapsible-header" onclick="toggleBlock(this)">
-        <h3>📈 Доход по точкам (Реал)</h3>
-        <span class="arrow">▼</span>
-      </div>
-      <div class="content hidden">
-        <div id="earningsDetails"></div>
-      </div>
-    </section>
-
-    <section class="card" style="border: 1px solid #444;">
-      <div class="collapsible-header" onclick="toggleBlock(this)">
-        <h3 style="color:var(--accent)">🔮 Возможный доход (ВД)</h3>
-        <span class="arrow">▼</span>
-      </div>
-      <div class="content hidden">
-        <div id="potentialStats"></div>
-      </div>
-    </section>
-
-    <section class="card">
-      <div class="collapsible-header" onclick="toggleBlock(this)">
-        <h3>📉 Расходы</h3>
-        <span class="arrow">▼</span>
-      </div>
-      <div class="content hidden">
-        <div id="expenseDetails"></div>
-      </div>
-    </section>
-
-    <section class="card">
-      <div class="collapsible-header" onclick="toggleBlock(this)">
-        <h3>📝 История</h3>
-        <span class="arrow">▼</span>
-      </div>
-      <div class="content hidden">
-        <div id="list"></div>
-      </div>
-    </section>
+    <section class="card"><div class="collapsible-header" onclick="toggleBlock(this)"><h3>📈 Доход по точкам (Реал)</h3><span class="arrow">▼</span></div><div id="earningsDetails" class="content hidden"></div></section>
+    <section class="card" style="border: 1px solid #444;"><div class="collapsible-header" onclick="toggleBlock(this)"><h3>🔮 Возможный доход (ВД)</h3><span class="arrow">▼</span></div><div id="potentialStats" class="content hidden"></div></section>
+    <section class="card"><div class="collapsible-header" onclick="toggleBlock(this)"><h3>📉 Расходы</h3><span class="arrow">▼</span></div><div id="expenseDetails" class="content hidden"></div></section>
+    <section class="card"><div class="collapsible-header" onclick="toggleBlock(this)"><h3>📝 История</h3><span class="arrow">▼</span></div><div id="list" class="content hidden"></div></section>
   </div>
 
   <script type="module" src="./app.js"></script>
   <script>
-    // Раскрытие блоков
     window.toggleBlock = function(el) {
       const content = el.nextElementSibling;
       content.classList.toggle('hidden');
       el.querySelector('.arrow').textContent = content.classList.contains('hidden') ? '▼' : '▲';
     };
-
-    // Вставка суммы из быстрых кнопок
-    window.setAmount = function(v) { 
-      document.getElementById('amount').value = v; 
-    };
-
-    // Выбор периода (Сегодня, Неделя, Все)
+    window.setAmount = function(v) { document.getElementById('amount').value = v; };
     window.setRange = function(mode) {
       const now = new Date().toISOString().split('T')[0];
-      const f = document.getElementById('fromDate');
-      const t = document.getElementById('toDate');
-
-      if(mode === 'today') {
-        f.value = now;
-        t.value = now;
+      const f = document.getElementById('fromDate'), t = document.getElementById('toDate');
+      if(mode === 'today') { f.value = now; t.value = now; }
+      else if(mode === 'yesterday') { 
+        let d = new Date(); d.setDate(d.getDate() - 1);
+        const y = d.toISOString().split('T')[0]; f.value = y; t.value = y;
       } else if(mode === 'week') {
-        let d = new Date();
-        d.setDate(d.getDate() - 7);
-        f.value = d.toISOString().split('T')[0];
-        t.value = now;
-      } else {
-        f.value = "";
-        t.value = "";
-      }
-
-      // ГЛАВНОЕ: вызываем функцию перерисовки из app.js, если она уже загружена
-      if (typeof window.render === 'function') {
-        window.render();
-      }
+        let d = new Date(); d.setDate(d.getDate() - 7);
+        f.value = d.toISOString().split('T')[0]; t.value = now;
+      } else if(mode === 'month') {
+        f.value = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]; t.value = now;
+      } else { f.value = ""; t.value = ""; }
+      if(window.render) window.render();
     };
   </script>
 </body>
