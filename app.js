@@ -42,7 +42,6 @@ function initApp() {
     elT.onchange = fillCats; elC.onchange = fillSubs;
     fillCats();
 
-    // Слушатели для фильтров дат
     document.getElementById("fromDate").onchange = render;
     document.getElementById("toDate").onchange = render;
 
@@ -70,17 +69,36 @@ function initApp() {
 function render() {
     const from = document.getElementById("fromDate").value;
     const to = document.getElementById("toDate").value;
-    
-    // Фильтрация данных по выбранным датам
-    const filtered = allTransactions.filter(t => {
-        const d = t.date;
-        return (!from || d >= from) && (!to || d <= to);
-    });
+    const filtered = allTransactions.filter(t => (!from || t.date >= from) && (!to || t.date <= to));
 
     const realTotalInc = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
     const realTotalExp = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+    
+    // --- АНАЛИЗ БЕНЗИНА ---
+    const gasExp = filtered.filter(t => t.subcategory === 'Бензин').reduce((s, t) => s + t.amount, 0);
+    const gasPercent = realTotalInc > 0 ? ((gasExp / realTotalInc) * 100).toFixed(1) : 0;
+    
+    // Цвет для процента (зеленый до 15%, желтый до 20%, дальше красный)
+    let gasColor = "#00ff7f";
+    if (gasPercent > 15) gasColor = "#ffeb3b";
+    if (gasPercent > 20) gasColor = "#ff4444";
 
-    // --- 1. ДОХОД ПО ТОЧКАМ (РЕАЛ) ---
+    // Обновляем баланс и добавляем "Чистую прибыль"
+    document.getElementById("totalIncome").textContent = realTotalInc.toLocaleString() + " ₸";
+    document.getElementById("totalExpense").textContent = realTotalExp.toLocaleString() + " ₸";
+    document.getElementById("balance").innerHTML = `
+        <div style="font-size: 24px;">${(realTotalInc - realTotalExp).toLocaleString()} ₸</div>
+        <div style="font-size: 12px; color: #888; margin-top: 4px;">Чистая прибыль</div>
+        <div style="margin-top: 10px; background: #222; border-radius: 10px; height: 6px; overflow: hidden;">
+            <div style="width: ${Math.min(gasPercent * 2, 100)}%; background: ${gasColor}; height: 100%;"></div>
+        </div>
+        <div style="display:flex; justify-content:space-between; font-size:10px; margin-top:4px;">
+            <span style="color:#666;">Бензин к доходу:</span>
+            <span style="color:${gasColor}">${gasPercent}% (${gasExp.toLocaleString()} ₸)</span>
+        </div>
+    `;
+
+    // --- ДОХОД ПО ТОЧКАМ (РЕАЛ) ---
     const realBySub = {};
     filtered.filter(t => t.type === 'income').forEach(t => {
         const sub = t.subcategory || t.categoryName;
@@ -99,25 +117,23 @@ function render() {
             <div style="font-size:11px; color:#666; margin-top:2px;">
                 ${Object.entries(d.breakdown).map(([p, c]) => `${p}₸×${c}`).join(" | ")}
             </div>
-        </div>`).join("") || "<small class='muted'>Нет данных за этот период</small>";
+        </div>`).join("");
 
-    // --- 2. ВОЗМОЖНЫЙ ДОХОД (ВД) С ДЕТАЛИЗАЦИЕЙ ---
+    // --- ВОЗМОЖНЫЙ ДОХОД (ВД) ---
     let totalVd = 0;
     const vdStats = {};
     const points = ["F1", "F2", "F3", "Ночь"];
 
     filtered.forEach(t => {
-        if (t.type === 'income' && points.includes(t.subcategory)) {
+        if (t.type === 'income' && points.includes(t.subcategory) && t.amount < 4000) {
             if (!vdStats[t.subcategory]) vdStats[t.subcategory] = { sum: 0, breakdown: {} };
             let pot = t.amount;
-            if (t.amount < 4000) {
-                if (t.amount === 150) pot = 600;
-                else if (t.amount === 300) pot = 900;
-                else if (t.subcategory === "Ночь" && t.amount === 500) pot = 1000;
-                totalVd += pot;
-                vdStats[t.subcategory].sum += pot;
-                vdStats[t.subcategory].breakdown[pot] = (vdStats[t.subcategory].breakdown[pot] || 0) + 1;
-            }
+            if (t.amount === 150) pot = 600;
+            else if (t.amount === 300) pot = 900;
+            else if (t.subcategory === "Ночь" && t.amount === 500) pot = 1000;
+            totalVd += pot;
+            vdStats[t.subcategory].sum += pot;
+            vdStats[t.subcategory].breakdown[pot] = (vdStats[t.subcategory].breakdown[pot] || 0) + 1;
         }
     });
 
@@ -134,7 +150,7 @@ function render() {
                 <div style="display:flex; justify-content:space-between; font-size:14px; color:#eee; font-weight:bold;">
                     <span>${p}</span><b>${vdData.sum.toLocaleString()} ₸</b>
                 </div>
-                <div style="font-size:10px; color:#555; margin-bottom:2px;">${detailStr || 'Точки не пересчитаны'}</div>
+                <div style="font-size:10px; color:#555; margin-bottom:2px;">${detailStr}</div>
                 <div style="display:flex; justify-content:space-between; font-size:11px; color:${diff >= 0 ? '#00ff7f' : '#ff4444'};">
                     <span>Разница к реалу:</span><b>${diff >= 0 ? '+' : ''}${diff.toLocaleString()} ₸</b>
                 </div>
@@ -149,11 +165,11 @@ function render() {
         <div style="margin-top:12px; background: rgba(0,255,127,0.08); border-left: 4px solid #00ff7f; padding:10px; border-radius:4px;">
             <div style="display:flex; justify-content:space-between; align-items:center;">
                 <span style="font-size:12px;">Общая разница:</span>
-                <b style="color:#00ff7f; font-size:20px;">${totalGain >= 0 ? '+' : ''}${totalGain.toLocaleString()} ₸</b>
+                <b style="color:#00ff7f; font-size:20px;">+${totalGain.toLocaleString()} ₸</b>
             </div>
         </div>`;
 
-    // --- 3. РАСХОДЫ (ГРУППИРОВКА) ---
+    // --- РАСХОДЫ ---
     const expGroups = {};
     filtered.filter(t => t.type === 'expense').forEach(t => {
         const cat = t.categoryName || "Прочее";
@@ -177,10 +193,7 @@ function render() {
             </div>`;
     }).join("") || "Расходов нет";
 
-    // ИТОГИ И ИСТОРИЯ
-    document.getElementById("totalIncome").textContent = realTotalInc.toLocaleString() + " ₸";
-    document.getElementById("totalExpense").textContent = realTotalExp.toLocaleString() + " ₸";
-    document.getElementById("balance").textContent = (realTotalInc - realTotalExp).toLocaleString() + " ₸";
+    // ИСТОРИЯ
     document.getElementById("list").innerHTML = filtered.map(t => `
         <div class="item" style="background:#161616; border-radius:8px; margin-bottom:5px; padding:12px; border:1px solid #222;">
             <div style="display:flex; justify-content:space-between; align-items:center;">
