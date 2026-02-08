@@ -5,8 +5,9 @@ const DEFAULTS = {
     ],
     expense: [
         { id: "auto", name: "Авто", sub: ["Бензин", "Ремонт", "Мойка", "Запчасти"] },
+        { id: "house", name: "Быт", sub: [] }, // Вернул Быт
         { id: "food", name: "Еда", sub: [] },
-        { id: "other_exp", name: "Прочее", sub: [] }
+        { id: "other_exp", name: "Прочее", sub: [] } // Вернул Прочее
     ]
 };
 
@@ -48,10 +49,13 @@ function initApp() {
     document.getElementById("txForm").onsubmit = async (e) => {
         e.preventDefault();
         const amt = Number(document.getElementById("amount").value);
-        const cat = DEFAULTS[elT.value].find(i => i.id === elC.value);
+        const catObj = DEFAULTS[elT.value].find(i => i.id === elC.value);
         await fbMethods.addDoc(colRef, {
-            type: elT.value, amount: amt, categoryName: cat.name,
-            subcategory: elS.value || "", date: document.getElementById("date").value,
+            type: elT.value, 
+            amount: amt, 
+            categoryName: catObj ? catObj.name : "Прочее", // Защита от пустых имен
+            subcategory: elS.value || "", 
+            date: document.getElementById("date").value,
             createdAt: Date.now()
         });
         document.getElementById("amount").value = "";
@@ -70,7 +74,7 @@ function render() {
     document.getElementById("totalIncome").textContent = realTotalInc.toLocaleString() + " ₸";
     document.getElementById("totalExpense").textContent = realTotalExp.toLocaleString() + " ₸";
 
-    // --- ЛОГИКА ВЗ (ТОЛЬКО ТОЧКИ) ---
+    // --- ЛОГИКА ВЗ (ТОЛЬКО ТОЧКИ, БЕЗ 4000/4500/5000) ---
     let potDotsSum = 0;       
     let realBaseDotsValue = 0; 
     const potBreakdown = {};
@@ -79,16 +83,14 @@ function render() {
         const sub = t.subcategory || "";
         const amt = t.amount;
 
-        // Исключаем Карго и Зарплаты (4000, 4500, 5000)
-        if (sub === "Карго" || [4000, 4500, 5000].includes(amt)) return;
+        // Полностью игнорируем Карго и фиксированные зарплаты
+        if (sub === "Карго" || amt >= 4000) return;
 
-        // Считаем только точки F1, F2, F3, Ночь
         if (["F1", "F2", "F3", "Ночь"].includes(sub)) {
             let pAmt = amt;
             if (amt === 150) pAmt = 600;
             else if (amt === 300) pAmt = 900;
             else if (sub === "Ночь" && amt === 500) pAmt = 1000;
-            // 1000 и 2000 остаются как есть автоматически
             
             if (!potBreakdown[sub]) potBreakdown[sub] = { count: 0, sum: 0 };
             potBreakdown[sub].count++;
@@ -108,7 +110,7 @@ function render() {
                     <span>${n} <small class="muted">x${d.count}</small></span>
                     <b>${d.sum.toLocaleString()} ₸</b>
                 </div>
-            `).join("") || "<small class='muted'>Нет точек для пересчета</small>"}
+            `).join("") || "<small class='muted'>Точек не найдено</small>"}
         </div>
         <div style="display:flex; justify-content:space-between; font-size:14px;">
             <span>Итого за точки (ВД):</span>
@@ -116,11 +118,8 @@ function render() {
         </div>
         <div class="gain-box">
             <div style="display:flex; justify-content:space-between;">
-                <span style="font-size: 13px;">Чистая выгода:</span>
+                <span>Выгода (разница):</span>
                 <b class="pos">+${pureGain.toLocaleString()} ₸</b>
-            </div>
-            <div style="font-size: 10px; color: #888; margin-top: 5px; text-align: center;">
-                (Разница между новыми тарифами и реалом)
             </div>
         </div>
     `;
@@ -130,7 +129,7 @@ function render() {
         <div class="item">
             <div><b class="${t.type==='income'?'pos':'neg'}">${t.amount.toLocaleString()} ₸</b><br>
             <small class="muted">${t.date} • ${t.subcategory || t.categoryName}</small></div>
-            <button onclick="deleteTx('${t.id}')" style="background:none; border:none; color:#555; padding:10px;">✕</button>
+            <button onclick="deleteTx('${t.id}')" style="background:none; border:none; color:#444;">✕</button>
         </div>`).join("");
 
     // СТАТИСТИКА ДОХОДОВ
@@ -147,17 +146,18 @@ function render() {
             <div class="stat-sub">${Object.entries(d.b).map(([p, c]) => `${p}×${c}`).join(" | ")}</div>
         </div>`).join("");
 
-    // СТАТИСТИКА РАСХОДОВ
+    // СТАТИСТИКА РАСХОДОВ (ГРУППИРОВКА)
     const exps = {};
     filtered.filter(t => t.type === 'expense').forEach(t => {
-        const k = t.categoryName;
+        const k = t.categoryName || "Прочее";
         if (!exps[k]) exps[k] = 0;
         exps[k] += t.amount;
     });
+    
     document.getElementById("expenseDetails").innerHTML = Object.entries(exps).map(([k, v]) => `
         <div class="stat-row">
             <div class="stat-main"><span>${k}</span><b class="neg">${v.toLocaleString()} ₸</b></div>
-        </div>`).join("") || "<small class='muted'>Нет расходов</small>";
+        </div>`).join("") || "<small class='muted'>Расходов нет</small>";
 }
 
 window.deleteTx = async (id) => { if(confirm("Удалить запись?")) await window.fbMethods.deleteDoc(window.fbMethods.doc(window.fbDB, "transactions", id)); };
