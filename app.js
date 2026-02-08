@@ -67,7 +67,7 @@ function render() {
     const to = document.getElementById("toDate").value;
     const filtered = allTransactions.filter(t => (!from || t.date >= from) && (!to || t.date <= to));
 
-    // Реальные показатели
+    // 1. РЕАЛЬНЫЕ ДЕНЬГИ
     const realTotalInc = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
     const realTotalExp = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
 
@@ -75,61 +75,56 @@ function render() {
     document.getElementById("totalIncome").textContent = realTotalInc.toLocaleString() + " ₸";
     document.getElementById("totalExpense").textContent = realTotalExp.toLocaleString() + " ₸";
 
-    // --- ЛОГИКА ВЗ (СТРОГИЙ РАСЧЕТ) ---
-    let potDotsSum = 0;       
-    let realBaseDotsValue = 0; 
+    // 2. РАСЧЕТ ВЫГОДЫ (ВД)
+    let pureGain = 0;
     const potBreakdown = {};
 
     filtered.forEach(t => {
         if (t.type !== 'income') return;
-        
         const sub = t.subcategory || "";
         const amt = t.amount;
 
-        // Условие: только точки, исключая зарплаты (4000+) и Карго
-        const isPoint = ["F1", "F2", "F3", "Ночь"].includes(sub);
-        const isSalary = amt >= 4000;
-
-        if (isPoint && !isSalary && sub !== "Карго") {
-            let pAmt = amt; // Значение по умолчанию (для 1000, 2000)
-            
+        // Считаем ТОЛЬКО точки и ТОЛЬКО если это не зарплата (меньше 4000)
+        if (["F1", "F2", "F3", "Ночь"].includes(sub) && amt < 4000) {
+            let pAmt = amt;
             if (amt === 150) pAmt = 600;
             else if (amt === 300) pAmt = 900;
             else if (sub === "Ночь" && amt === 500) pAmt = 1000;
             
-            if (!potBreakdown[sub]) potBreakdown[sub] = { count: 0, sum: 0 };
+            let gainForThisTask = pAmt - amt;
+            pureGain += gainForThisTask;
+
+            if (!potBreakdown[sub]) potBreakdown[sub] = { count: 0, totalPot: 0 };
             potBreakdown[sub].count++;
-            potBreakdown[sub].sum += pAmt;
-            
-            potDotsSum += pAmt;
-            realBaseDotsValue += amt;
+            potBreakdown[sub].totalPot += pAmt;
         }
     });
 
-    const pureGain = potDotsSum - realBaseDotsValue;
+    // Итоговая сумма ВД = Реальный приход + Чистая выгода
+    const finalVdSum = realTotalInc + pureGain;
 
     document.getElementById("potentialStats").innerHTML = `
         <div style="border-bottom: 1px solid #333; padding-bottom: 8px; margin-bottom: 10px;">
             ${Object.entries(potBreakdown).map(([n, d]) => `
                 <div style="display:flex; justify-content:space-between; font-size:13px; margin-top:4px;">
                     <span>${n} <small class="muted">x${d.count}</small></span>
-                    <b>${d.sum.toLocaleString()} ₸</b>
+                    <b>${d.totalPot.toLocaleString()} ₸</b>
                 </div>
             `).join("") || "<small class='muted'>Точек для пересчета нет</small>"}
         </div>
-        <div style="display:flex; justify-content:space-between; font-size:14px; color: var(--accent);">
-            <span>Итого (ВД за точки):</span>
-            <b>${potDotsSum.toLocaleString()} ₸</b>
+        <div style="display:flex; justify-content:space-between; font-size:15px; color: var(--accent); font-weight: bold;">
+            <span>Всего (ВД + Зарплаты):</span>
+            <b>${finalVdSum.toLocaleString()} ₸</b>
         </div>
         <div class="gain-box">
             <div style="display:flex; justify-content:space-between; align-items:center;">
-                <span style="font-size:12px;">Выгода к реалу:</span>
+                <span style="font-size:12px;">Чистая выгода:</span>
                 <b class="pos" style="font-size:18px;">+${pureGain.toLocaleString()} ₸</b>
             </div>
         </div>
     `;
 
-    // --- ОСТАЛЬНЫЕ БЛОКИ ---
+    // 3. ИСТОРИЯ И СТАТИСТИКА
     document.getElementById("list").innerHTML = filtered.map(t => `
         <div class="item">
             <div><b class="${t.type==='income'?'pos':'neg'}">${t.amount.toLocaleString()} ₸</b><br>
