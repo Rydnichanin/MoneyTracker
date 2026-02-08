@@ -91,10 +91,14 @@
           <input type="date" id="toDate">
         </div>
         <div style="display:flex; gap:5px;">
-          <button type="button" class="chip-sum" style="font-size:12px; flex:1;" onclick="setRange('today')">Сегодня</button>
-          <button type="button" class="chip-sum" style="font-size:12px; flex:1;" onclick="setRange('week')">Неделя</button>
-          <button type="button" class="chip-sum" style="font-size:12px; flex:1;" onclick="setRange('all')">Все</button>
-        </div>
+          <button type="button" class="chip-sum" style="font-size:12px; flex:1;" <div class="filter-buttons">
+    <button onclick="setPeriod('today')">Сегодня</button>
+    <button onclick="setPeriod('yesterday')">Вчера</button>
+    <button onclick="setPeriod('week')">Неделя</button>
+    <button onclick="setPeriod('month')">Месяц</button>
+    <button onclick="setPeriod('all')">Всё время</button>
+</div>
+
       </div>
     </section>
 
