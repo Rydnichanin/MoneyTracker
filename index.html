@@ -3,59 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Courier Finance Pro</title>
+    <title>Courier Finance</title>
     <style>
         :root {
-            --bg: #0a0a0a;
+            --bg: #0d0d0d;
             --card: #161616;
             --accent: #e2b05f;
+            --text: #eee;
             --pos: #00ff7f;
             --neg: #ff4444;
-            --text: #ffffff;
-            --muted: #666;
         }
-
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        * { box-sizing: border-box; }
         body { 
-            font-family: -apple-system, system-ui, sans-serif; 
-            background: var(--bg); color: var(--text); 
-            margin: 0; padding: 15px; line-height: 1.4;
+            font-family: sans-serif; background: var(--bg); color: var(--text); 
+            margin: 0; padding: 15px; padding-bottom: 50px;
         }
-
-        h2, h3 { color: var(--accent); margin-bottom: 15px; text-transform: uppercase; font-size: 14px; letter-spacing: 1px; }
-
-        /* Поля ввода */
-        .card { background: var(--card); border-radius: 16px; padding: 15px; margin-bottom: 20px; border: 1px solid #222; }
-        input, select, button { width: 100%; padding: 12px; margin-bottom: 10px; border-radius: 8px; border: 1px solid #333; background: #222; color: #fff; font-size: 16px; }
+        .card { 
+            background: var(--card); border-radius: 12px; padding: 15px; 
+            margin-bottom: 15px; border: 1px solid #222; 
+        }
+        h3 { margin: 0 0 15px 0; font-size: 14px; color: var(--accent); text-transform: uppercase; }
         
+        input, select, button { 
+            width: 100%; padding: 12px; margin-bottom: 10px; border-radius: 8px; 
+            border: 1px solid #333; background: #222; color: #fff; font-size: 16px; 
+        }
         .hidden { display: none; }
 
-        /* Кнопки сумм (твои 500 и 5000) */
-        .quick-amounts { display: flex; gap: 8px; margin-bottom: 10px; }
-        .quick-amounts button { 
-            flex: 1; background: #e2b05f22; color: var(--accent); border-color: var(--accent); margin: 0; padding: 8px;
-        }
+        /* Твои кнопки сумм */
+        .quick-amounts { display: flex; gap: 10px; margin-bottom: 10px; }
+        .quick-amounts button { background: #e2b05f22; color: var(--accent); border: 1px solid var(--accent); padding: 8px; margin: 0; }
 
         /* Кнопки периодов */
-        .filter-buttons { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
-        .filter-buttons button {
-            background: #1a1a1a; color: var(--accent); border: 1px solid #333;
-            padding: 10px 5px; border-radius: 8px; font-size: 11px; font-weight: bold;
-            text-transform: uppercase; transition: 0.2s; margin: 0;
+        .filter-buttons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+        .filter-buttons button { 
+            flex: 1 1 30%; padding: 10px 5px; font-size: 11px; background: #1a1a1a; 
+            color: var(--accent); border: 1px solid #333; margin: 0;
         }
-        .filter-buttons button:active { background: var(--accent); color: #000; }
-        .filter-buttons button.wide { grid-column: span 3; background: rgba(226, 176, 95, 0.05); }
 
-        /* Статистика */
-        .stat-row { display: flex; justify-content: space-between; margin-bottom: 8px; align-items: center; }
-        .pos { color: var(--pos); }
-        .neg { color: var(--neg); }
-        .muted { color: var(--muted); font-size: 12px; }
-
-        .balance-card { text-align: center; padding: 25px 15px; }
-        
-        #list { margin-top: 20px; }
-        .item { border-left: 4px solid var(--accent); }
+        .stat-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px; }
+        .pos { color: var(--pos); font-weight: bold; }
+        .neg { color: var(--neg); font-weight: bold; }
+        #balance { font-size: 24px; font-weight: bold; text-align: center; color: #fff; }
     </style>
 </head>
 <body>
@@ -64,69 +53,61 @@
         <h3>Добавить запись</h3>
         <form id="txForm">
             <div class="quick-amounts">
-                <button type="button" onclick="setAmount(500)">+ 500</button>
-                <button type="button" onclick="setAmount(5000)">+ 5000</button>
+                <button type="button" onclick="setAmount(500)">500</button>
+                <button type="button" onclick="setAmount(5000)">5000</button>
             </div>
-            
-            <input type="number" id="amount" placeholder="Сумма (₸)" inputmode="numeric" required>
-            
+            <input type="number" id="amount" placeholder="Сумма ₸" inputmode="numeric" required>
             <select id="type">
-                <option value="income">Доход (+)</option>
-                <option value="expense">Расход (-)</option>
+                <option value="income">Доход</option>
+                <option value="expense">Расход</option>
             </select>
-            
             <select id="category"></select>
-            
-            <div id="subcatWrap" class="hidden">
-                <select id="subcategory"></select>
-            </div>
-            
+            <div id="subcatWrap" class="hidden"><select id="subcategory"></select></div>
             <input type="date" id="date">
-            
-            <button type="submit" style="background: var(--accent); color: #000; font-weight: bold; margin-top: 5px;">СОХРАНИТЬ</button>
+            <button type="submit" style="background: var(--accent); color: #000; font-weight: bold; border: none;">СОХРАНИТЬ</button>
         </form>
     </div>
 
-    <div class="card balance-card">
+    <div class="card">
         <div id="balance">0 ₸</div>
     </div>
 
     <div class="card">
-        <h3>Период статистики</h3>
-        <div style="display: flex; gap: 8px; margin-bottom: 10px;">
-            <input type="date" id="fromDate" style="margin:0;">
-            <input type="date" id="toDate" style="margin:0;">
+        <h3>Период</h3>
+        <div style="display: flex; gap: 10px;">
+            <input type="date" id="fromDate" style="margin-bottom: 0;">
+            <input type="date" id="toDate" style="margin-bottom: 0;">
         </div>
         <div class="filter-buttons">
             <button onclick="setPeriod('today')">Сегодня</button>
             <button onclick="setPeriod('yesterday')">Вчера</button>
             <button onclick="setPeriod('week')">Неделя</button>
             <button onclick="setPeriod('month')">Месяц</button>
-            <button onclick="setPeriod('all')" class="wide">Всё время</button>
+            <button onclick="setPeriod('all')" style="flex: 1 1 100%;">Всё время</button>
         </div>
     </div>
 
     <div class="card">
-        <div class="stat-row"><span>Общий доход:</span> <b id="totalIncome" class="pos">0 ₸</b></div>
-        <div class="stat-row"><span>Общий расход:</span> <b id="totalExpense" class="neg">0 ₸</b></div>
+        <div class="stat-row"><span>Доход:</span> <span id="totalIncome" class="pos">0 ₸</span></div>
+        <div class="stat-row"><span>Расход:</span> <span id="totalExpense" class="neg">0 ₸</span></div>
     </div>
 
     <div class="card">
-        <h3>Реальный доход (детально)</h3>
+        <h3>Реальный доход</h3>
         <div id="earningsDetails"></div>
     </div>
 
-    <div class="card" style="border: 1px solid #e2b05f44;">
+    <div class="card" style="border-color: #e2b05f66;">
         <h3>Возможный доход (ВД)</h3>
         <div id="potentialStats"></div>
     </div>
 
     <div class="card">
-        <h3>Расходы по категориям</h3>
+        <h3>Расходы</h3>
         <div id="expenseDetails"></div>
     </div>
 
-    <h3>История операций</h3>
+    <h3 style="margin-left: 10px;">История</h3>
     <div id="list"></div>
 
     <script src="app.js"></script>
