@@ -92,34 +92,47 @@ function render() {
             </div>
         </div>`).join("");
 
-    // --- 2. ВОЗМОЖНЫЙ ДОХОД (ВД) С РАЗНИЦЕЙ К РЕАЛУ ---
+    // --- 2. ВОЗМОЖНЫЙ ДОХОД (ВД) С ДЕТАЛИЗАЦИЕЙ ---
     let totalVd = 0;
-    const vdDetails = {};
+    const vdStats = {};
     const points = ["F1", "F2", "F3", "Ночь"];
 
     filtered.forEach(t => {
-        if (t.type === 'income' && points.includes(t.subcategory) && t.amount < 4000) {
+        if (t.type === 'income' && points.includes(t.subcategory)) {
+            if (!vdStats[t.subcategory]) vdStats[t.subcategory] = { sum: 0, breakdown: {} };
+            
             let pot = t.amount;
-            if (t.amount === 150) pot = 600;
-            else if (t.amount === 300) pot = 900;
-            else if (t.subcategory === "Ночь" && t.amount === 500) pot = 1000;
-            totalVd += pot;
-            vdDetails[t.subcategory] = (vdDetails[t.subcategory] || 0) + pot;
+            if (t.amount < 4000) {
+                if (t.amount === 150) pot = 600;
+                else if (t.amount === 300) pot = 900;
+                else if (t.subcategory === "Ночь" && t.amount === 500) pot = 1000;
+                
+                totalVd += pot;
+                vdStats[t.subcategory].sum += pot;
+                vdStats[t.subcategory].breakdown[pot] = (vdStats[t.subcategory].breakdown[pot] || 0) + 1;
+            }
         }
     });
 
     let totalGain = 0;
     const vdHtml = points.map(p => {
-        const vdSum = vdDetails[p] || 0;
+        const vdData = vdStats[p] || { sum: 0, breakdown: {} };
         const rdSum = (realBySub[p] ? realBySub[p].sum : 0);
-        const diff = vdSum - rdSum;
+        const diff = vdData.sum - rdSum;
         totalGain += diff;
-        if (vdSum === 0 && rdSum === 0) return "";
+        
+        if (vdData.sum === 0 && rdSum === 0) return "";
+        
+        const detailStr = Object.entries(vdData.breakdown)
+            .map(([price, count]) => `${price}₸×${count}`)
+            .join(" | ");
+
         return `
-            <div style="margin-bottom:10px;">
-                <div style="display:flex; justify-content:space-between; font-size:14px; color:#eee;">
-                    <span>${p}</span><b>${vdSum.toLocaleString()} ₸</b>
+            <div style="margin-bottom:12px;">
+                <div style="display:flex; justify-content:space-between; font-size:14px; color:#eee; font-weight:bold;">
+                    <span>${p}</span><b>${vdData.sum.toLocaleString()} ₸</b>
                 </div>
+                <div style="font-size:10px; color:#555; margin-bottom:2px;">${detailStr || 'Точки не пересчитаны'}</div>
                 <div style="display:flex; justify-content:space-between; font-size:11px; color:${diff >= 0 ? '#00ff7f' : '#ff4444'};">
                     <span>Разница к реалу:</span><b>${diff >= 0 ? '+' : ''}${diff.toLocaleString()} ₸</b>
                 </div>
@@ -138,7 +151,7 @@ function render() {
             </div>
         </div>`;
 
-    // --- 3. РАСХОДЫ (ГРУППИРОВКА "КРАСИВО") ---
+    // --- 3. РАСХОДЫ (ГРУППИРОВКА) ---
     const expGroups = {};
     filtered.filter(t => t.type === 'expense').forEach(t => {
         const cat = t.categoryName || "Прочее";
@@ -154,7 +167,6 @@ function render() {
             <div style="display:flex; justify-content:space-between; font-size:12px; color:#777; padding-left:10px; margin-top:2px;">
                 <span>• ${sName}</span><span>${sVal.toLocaleString()} ₸</span>
             </div>`).join("");
-        
         return `
             <div style="margin-bottom:12px; background: rgba(255,255,255,0.02); padding: 8px; border-radius: 6px;">
                 <div style="display:flex; justify-content:space-between; font-weight:bold; border-bottom: 1px solid #222; padding-bottom:4px;">
