@@ -191,3 +191,4 @@ window.deleteTx = async (id) => {
         await window.fbMethods.deleteDoc(window.fbMethods.doc(window.fbDB, "transactions", id));
     }
 };
+window.render = render;
