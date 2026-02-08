@@ -72,7 +72,7 @@ function render() {
     document.getElementById("gasText").textContent = `Бензин к доходу: ${gasPerc}% (${gasExp.toLocaleString()} ₸)`;
     document.getElementById("gasFill").style.width = Math.min(gasPerc * 3, 100) + "%";
 
-    // --- РЕАЛЬНЫЙ ДОХОД (Считает всё) ---
+    // --- ДОХОД ПО ТОЧКАМ (РЕАЛЬНЫЙ) ---
     const realBySub = {};
     filtered.filter(t => t.type === 'income').forEach(t => {
         const k = t.subcategory || t.categoryName;
@@ -87,42 +87,44 @@ function render() {
             <div class="stat-sub">${Object.entries(d.breakdown).map(([p, c]) => `${p}₸×${c}`).join(" | ")}</div>
         </div>`).join("");
 
-    // --- ВОЗМОЖНЫЙ ДОХОД (Только F1, F2, F3, Ночь + Детализация) ---
+    // --- ВОЗМОЖНЫЙ ДОХОД (Исправленная математика выгоды) ---
     let totalGain = 0;
     const vdStats = {};
-    const pts = ["F1", "F2", "F3", "Ночь"]; // КАРГО УБРАНО ОТСЮДА
+    const pts = ["F1", "F2", "F3", "Ночь"];
 
     filtered.forEach(t => {
-        // Условие: доход, нужная точка и сумма меньше 4000
-        if (t.type === 'income' && pts.includes(t.subcategory) && t.amount < 4000) {
-            if(!vdStats[t.subcategory]) vdStats[t.subcategory] = { vdSum: 0, realSum: 0, breakdown: {} };
+        if (t.type === 'income' && pts.includes(t.subcategory)) {
+            if(!vdStats[t.subcategory]) vdStats[t.subcategory] = { vdSum: 0, breakdown: {} };
             
-            let pot = t.amount;
-            if (t.amount === 150) pot = 600;
-            else if (t.amount === 300) pot = 900;
-            else if (t.subcategory === "Ночь" && t.amount === 500) pot = 1000;
-            // 2000 и 1000 остаются как есть в ВД
-            
-            vdStats[t.subcategory].vdSum += pot;
-            vdStats[t.subcategory].realSum += t.amount;
-            // Записываем именно ПОТЕНЦИАЛЬНУЮ сумму в расшифровку ВД
-            vdStats[t.subcategory].breakdown[pot] = (vdStats[t.subcategory].breakdown[pot] || 0) + 1;
+            // Считаем ВД только для сумм меньше 4000
+            if (t.amount < 4000) {
+                let pot = t.amount;
+                if (t.amount === 150) pot = 600;
+                else if (t.amount === 300) pot = 900;
+                else if (t.subcategory === "Ночь" && t.amount === 500) pot = 1000;
+                
+                vdStats[t.subcategory].vdSum += pot;
+                vdStats[t.subcategory].breakdown[pot] = (vdStats[t.subcategory].breakdown[pot] || 0) + 1;
+            }
         }
     });
 
     const vdHtml = Object.entries(vdStats).map(([p, data]) => {
-        const diff = data.vdSum - data.realSum;
+        // Выгода = (ВД) - (Весь Реал этой категории)
+        const currentRealSum = realBySub[p] ? realBySub[p].sum : 0;
+        const diff = data.vdSum - currentRealSum;
         totalGain += diff;
-        const breakdownStr = Object.entries(data.breakdown).map(([p, c]) => `${p}₸×${c}`).join(" | ");
+        
+        const breakdownStr = Object.entries(data.breakdown).map(([price, count]) => `${price}₸×${count}`).join(" | ");
         return `
             <div class="stat-row">
                 <div class="stat-main"><span>${p}</span><b>${data.vdSum.toLocaleString()} ₸</b></div>
-                <div class="stat-sub" style="color:#555">Тарифы: ${breakdownStr}</div>
+                <div class="stat-sub" style="color:#555">ВД Тарифы: ${breakdownStr || 'Только крупные суммы'}</div>
                 <div class="stat-vd-info">Выгода к реалу: +${diff.toLocaleString()} ₸</div>
             </div>`;
     }).join("");
 
-    document.getElementById("potentialStats").innerHTML = vdHtml || '<div class="muted" style="text-align:center; padding:10px;">Нет данных для Возможного дохода</div>';
+    document.getElementById("potentialStats").innerHTML = vdHtml || '<div class="muted" style="text-align:center; padding:10px;">Нет данных для расчёта</div>';
     if (totalGain > 0) {
         document.getElementById("potentialStats").innerHTML += `<div class="gain-box"><span>ОБЩАЯ ВЫГОДА ВД:</span><span class="pos">+${totalGain.toLocaleString()} ₸</span></div>`;
     }
