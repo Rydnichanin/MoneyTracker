@@ -71,14 +71,13 @@ function render() {
     document.getElementById("totalIncome").textContent = realTotalInc.toLocaleString() + " ₸";
     document.getElementById("totalExpense").textContent = realTotalExp.toLocaleString() + " ₸";
 
-    // --- БЛОК 1: ДОХОД (РЕАЛ) С ДЕТАЛИЗАЦИЕЙ ШТУК ---
+    // --- БЛОК 1: РЕАЛЬНЫЙ ДОХОД (ВСЁ КАК ЕСТЬ) ---
     const realStats = {};
     filtered.filter(t => t.type === 'income').forEach(t => {
         const sub = t.subcategory || t.categoryName;
         if (!realStats[sub]) realStats[sub] = { sum: 0, count: 0, breakdown: {} };
         realStats[sub].sum += t.amount;
         realStats[sub].count++;
-        // Считаем сколько раз встретилась конкретная сумма (например 150₸)
         realStats[sub].breakdown[t.amount] = (realStats[sub].breakdown[t.amount] || 0) + 1;
     });
 
@@ -93,9 +92,9 @@ function render() {
             </div>
         </div>`).join("");
 
-    // --- БЛОК 2: ВОЗМОЖНЫЙ ДОХОД (ВД) ---
+    // --- БЛОК 2: ВОЗМОЖНЫЙ ДОХОД (ИСКЛЮЧАЕМ ЗП 4000+) ---
     let totalVdSum = 0;
-    let totalRdOfPoints = 0;
+    let totalRdOfPointsOnly = 0; // Сумма только тех точек, что мы пересчитали
     const vdDetails = {};
 
     filtered.forEach(t => {
@@ -103,6 +102,7 @@ function render() {
         const sub = t.subcategory || "";
         const amt = t.amount;
 
+        // В блок ВД попадают ТОЛЬКО точки дешевле 4000
         if (["F1", "F2", "F3", "Ночь"].includes(sub) && amt < 4000) {
             let potAmt = amt;
             if (amt === 150) potAmt = 600;
@@ -110,7 +110,7 @@ function render() {
             else if (sub === "Ночь" && amt === 500) potAmt = 1000;
             
             totalVdSum += potAmt;
-            totalRdOfPoints += amt;
+            totalRdOfPointsOnly += amt;
 
             if (!vdDetails[sub]) vdDetails[sub] = { vdSum: 0, rdSum: 0, count: 0 };
             vdDetails[sub].vdSum += potAmt;
@@ -119,7 +119,7 @@ function render() {
         }
     });
 
-    const totalGain = totalVdSum - totalRdOfPoints;
+    const totalGain = totalVdSum - totalRdOfPointsOnly;
 
     document.getElementById("potentialStats").innerHTML = `
         <div style="border-bottom: 1px solid #222; padding-bottom: 8px; margin-bottom: 10px;">
@@ -138,19 +138,19 @@ function render() {
         </div>
         
         <div style="display:flex; justify-content:space-between; font-size:16px; color:var(--accent); font-weight:bold;">
-            <span>Всего за точки:</span>
+            <span>Всего за доставки:</span>
             <b>${totalVdSum.toLocaleString()} ₸</b>
         </div>
 
         <div style="margin-top:12px; background: rgba(0,255,127,0.08); border-left: 4px solid #00ff7f; padding:10px; border-radius:4px;">
             <div style="display:flex; justify-content:space-between; align-items:center;">
-                <span style="font-size:12px; color:#eee;">Общая выгода:</span>
+                <span style="font-size:12px; color:#eee;">Выгода (без ЗП):</span>
                 <b style="color:#00ff7f; font-size:20px;">+${totalGain.toLocaleString()} ₸</b>
             </div>
         </div>
     `;
 
-    // Расходы и История
+    // Расходы и История (без изменений)
     const exps = {};
     filtered.filter(t => t.type === 'expense').forEach(t => {
         const k = t.categoryName || "Прочее";
