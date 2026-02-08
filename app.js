@@ -5,7 +5,8 @@ const DEFAULTS = {
     ],
     expense: [
         { id: "auto", name: "Авто", sub: ["Бензин", "Ремонт", "Мойка", "Запчасти"] },
-        { id: "food", name: "Еда", sub: [] }
+        { id: "food", name: "Еда", sub: [] },
+        { id: "other_exp", name: "Прочее", sub: [] }
     ]
 };
 
@@ -60,7 +61,6 @@ function initApp() {
 function render() {
     const from = document.getElementById("fromDate").value;
     const to = document.getElementById("toDate").value;
-    
     const filtered = allTransactions.filter(t => (!from || t.date >= from) && (!to || t.date <= to));
 
     const realTotalInc = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
@@ -70,10 +70,10 @@ function render() {
     document.getElementById("totalIncome").textContent = realTotalInc.toLocaleString() + " ₸";
     document.getElementById("totalExpense").textContent = realTotalExp.toLocaleString() + " ₸";
 
-    // --- МАТЕМАТИКА ВЗ ---
+    // --- ЛОГИКА ВЗ ---
     let potDotsSum = 0;       
     let realBaseDotsValue = 0; 
-    let fixedIncomeSum = 0;    
+    let otherIncomeNoCargo = 0;    
     const potBreakdown = {};
 
     filtered.filter(t => t.type === 'income').forEach(t => {
@@ -82,6 +82,7 @@ function render() {
 
         if (sub === "Карго") return;
 
+        // Если это точка для пересчета
         if (["F1", "F2", "F3", "Ночь"].includes(sub) && ![4000, 4500, 5000].includes(amt)) {
             let pAmt = amt;
             if (amt === 150) pAmt = 600;
@@ -95,11 +96,12 @@ function render() {
             potDotsSum += pAmt;
             realBaseDotsValue += amt;
         } else {
-            fixedIncomeSum += amt;
+            // Зарплаты и всё остальное (кроме карго)
+            otherIncomeNoCargo += amt;
         }
     });
 
-    const finalPotentialTotal = potDotsSum + fixedIncomeSum;
+    const finalPotentialTotal = potDotsSum + otherIncomeNoCargo;
     const pureGain = potDotsSum - realBaseDotsValue;
 
     document.getElementById("potentialStats").innerHTML = `
@@ -112,7 +114,7 @@ function render() {
             `).join("") || "<small class='muted'>Нет точек для пересчета</small>"}
         </div>
         <div style="display:flex; justify-content:space-between; font-size:14px;">
-            <span>Всего (Возможно):</span>
+            <span>Всего (ВД + Зарплаты):</span>
             <b style="color:var(--accent)">${finalPotentialTotal.toLocaleString()} ₸</b>
         </div>
         <div class="gain-box">
@@ -144,6 +146,18 @@ function render() {
             <div class="stat-main"><span>${k} (${d.count})</span><b>${d.sum.toLocaleString()} ₸</b></div>
             <div class="stat-sub">${Object.entries(d.b).map(([p, c]) => `${p}×${c}`).join(" | ")}</div>
         </div>`).join("");
+
+    // СТАТИСТИКА РАСХОДОВ
+    const exps = {};
+    filtered.filter(t => t.type === 'expense').forEach(t => {
+        const k = t.categoryName;
+        if (!exps[k]) exps[k] = 0;
+        exps[k] += t.amount;
+    });
+    document.getElementById("expenseDetails").innerHTML = Object.entries(exps).map(([k, v]) => `
+        <div class="stat-row">
+            <div class="stat-main"><span>${k}</span><b class="neg">${v.toLocaleString()} ₸</b></div>
+        </div>`).join("") || "<small class='muted'>Нет расходов</small>";
 }
 
 window.deleteTx = async (id) => { if(confirm("Удалить?")) await window.fbMethods.deleteDoc(window.fbMethods.doc(window.fbDB, "transactions", id)); };
