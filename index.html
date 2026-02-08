@@ -16,7 +16,6 @@
     .btn-main { width: 100%; padding: 14px; border: none; border-radius: 10px; background: var(--pos); color: #000; font-weight: bold; font-size: 16px; }
     .chip-sum { flex: 1; min-width: 65px; background: #333; color: var(--accent); padding: 10px 0; border-radius: 8px; font-weight: bold; border: none; cursor: pointer; }
     
-    /* Сворачивание */
     .collapsible-header { cursor: pointer; display: flex; justify-content: space-between; align-items: center; padding: 5px 0; }
     .collapsible-header h3 { margin: 0; font-size: 16px; }
     .content { margin-top: 15px; }
@@ -52,7 +51,6 @@
   </script>
 </head>
 <body>
-
   <div class="wrap">
     <section class="card">
       <form id="txForm">
@@ -83,7 +81,7 @@
       <div class="content hidden">
         <div class="balance-line">
           <div><small class="muted">Итог</small><br><b id="balance">0 ₸</b></div>
-          <div><small class="muted">Доход</small><br><b id="totalIncome" class="pos">0 ₸</b></div>
+          <div><small class="muted">Приход</small><br><b id="totalIncome" class="pos">0 ₸</b></div>
           <div><small class="muted">Расход</small><br><b id="totalExpense" class="neg">0 ₸</b></div>
         </div>
         <div class="row2">
@@ -149,15 +147,13 @@
     function setAmount(v) { document.getElementById('amount').value = v; }
     function setRange(mode) {
       const now = new Date().toISOString().split('T')[0];
-      const fromEl = document.getElementById('fromDate');
-      const toEl = document.getElementById('toDate');
-      if(mode === 'today') { fromEl.value = now; toEl.value = now; }
+      const f = document.getElementById('fromDate'), t = document.getElementById('toDate');
+      if(mode === 'today') { f.value = now; t.value = now; }
       else if(mode === 'week') {
         let d = new Date(); d.setDate(d.getDate() - 7);
-        fromEl.value = d.toISOString().split('T')[0];
-        toEl.value = now;
-      } else { fromEl.value = ""; toEl.value = ""; }
-      fromEl.dispatchEvent(new Event('input'));
+        f.value = d.toISOString().split('T')[0]; t.value = now;
+      } else { f.value = ""; t.value = ""; }
+      f.dispatchEvent(new Event('input'));
     }
   </script>
 </body>
