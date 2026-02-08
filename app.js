@@ -19,6 +19,48 @@ const checkFB = setInterval(() => {
     if (window.fbDB && window.fbMethods) { clearInterval(checkFB); initApp(); }
 }, 100);
 
+// Функция для установки суммы (для твоих кнопок 500 и 5000)
+window.setAmount = (val) => {
+    const el = document.getElementById("amount");
+    if (el) el.value = val;
+};
+
+// --- НОВАЯ ФУНКЦИЯ ДЛЯ КНОПОК ПЕРИОДА ---
+window.setPeriod = (type) => {
+    const fromEl = document.getElementById("fromDate");
+    const toEl = document.getElementById("toDate");
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+
+    let from = "";
+    let to = today;
+
+    if (type === 'today') {
+        from = today;
+    } else if (type === 'yesterday') {
+        const yesterday = new Date();
+        yesterday.setDate(now.getDate() - 1);
+        from = yesterday.toISOString().split('T')[0];
+        to = from;
+    } else if (type === 'week') {
+        const week = new Date();
+        week.setDate(now.getDate() - 7);
+        from = week.toISOString().split('T')[0];
+    } else if (type === 'month') {
+        // Начало текущего месяца
+        from = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+    } else if (type === 'all') {
+        from = "";
+        to = "";
+    }
+
+    fromEl.value = from;
+    toEl.value = to;
+    
+    // Принудительно запускаем рендер
+    render();
+};
+
 function initApp() {
     const { fbDB, fbMethods } = window;
     const colRef = fbMethods.collection(fbDB, "transactions");
@@ -42,6 +84,7 @@ function initApp() {
     elT.onchange = fillCats; elC.onchange = fillSubs;
     fillCats();
 
+    // Слушатели ручного изменения дат
     document.getElementById("fromDate").onchange = render;
     document.getElementById("toDate").onchange = render;
 
@@ -78,12 +121,10 @@ function render() {
     const gasExp = filtered.filter(t => t.subcategory === 'Бензин').reduce((s, t) => s + t.amount, 0);
     const gasPercent = realTotalInc > 0 ? ((gasExp / realTotalInc) * 100).toFixed(1) : 0;
     
-    // Цвет для процента (зеленый до 15%, желтый до 20%, дальше красный)
     let gasColor = "#00ff7f";
     if (gasPercent > 15) gasColor = "#ffeb3b";
     if (gasPercent > 20) gasColor = "#ff4444";
 
-    // Обновляем баланс и добавляем "Чистую прибыль"
     document.getElementById("totalIncome").textContent = realTotalInc.toLocaleString() + " ₸";
     document.getElementById("totalExpense").textContent = realTotalExp.toLocaleString() + " ₸";
     document.getElementById("balance").innerHTML = `
@@ -98,7 +139,7 @@ function render() {
         </div>
     `;
 
-    // --- ДОХОД ПО ТОЧКАМ (РЕАЛ) ---
+    // --- 1. ДОХОД ПО ТОЧКАМ (РЕАЛ) ---
     const realBySub = {};
     filtered.filter(t => t.type === 'income').forEach(t => {
         const sub = t.subcategory || t.categoryName;
@@ -117,9 +158,9 @@ function render() {
             <div style="font-size:11px; color:#666; margin-top:2px;">
                 ${Object.entries(d.breakdown).map(([p, c]) => `${p}₸×${c}`).join(" | ")}
             </div>
-        </div>`).join("");
+        </div>`).join("") || "<small class='muted'>Нет данных</small>";
 
-    // --- ВОЗМОЖНЫЙ ДОХОД (ВД) ---
+    // --- 2. ВОЗМОЖНЫЙ ДОХОД (ВД) ---
     let totalVd = 0;
     const vdStats = {};
     const points = ["F1", "F2", "F3", "Ночь"];
@@ -169,7 +210,7 @@ function render() {
             </div>
         </div>`;
 
-    // --- РАСХОДЫ ---
+    // --- 3. РАСХОДЫ ---
     const expGroups = {};
     filtered.filter(t => t.type === 'expense').forEach(t => {
         const cat = t.categoryName || "Прочее";
