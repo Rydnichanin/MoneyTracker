@@ -42,6 +42,10 @@ function initApp() {
     elT.onchange = fillCats; elC.onchange = fillSubs;
     fillCats();
 
+    // Слушатели для фильтров дат
+    document.getElementById("fromDate").onchange = render;
+    document.getElementById("toDate").onchange = render;
+
     fbMethods.onSnapshot(fbMethods.query(colRef, fbMethods.orderBy("date", "desc")), (snap) => {
         allTransactions = [];
         snap.forEach(d => allTransactions.push({ id: d.id, ...d.data() }));
@@ -66,7 +70,12 @@ function initApp() {
 function render() {
     const from = document.getElementById("fromDate").value;
     const to = document.getElementById("toDate").value;
-    const filtered = allTransactions.filter(t => (!from || t.date >= from) && (!to || t.date <= to));
+    
+    // Фильтрация данных по выбранным датам
+    const filtered = allTransactions.filter(t => {
+        const d = t.date;
+        return (!from || d >= from) && (!to || d <= to);
+    });
 
     const realTotalInc = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
     const realTotalExp = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
@@ -90,7 +99,7 @@ function render() {
             <div style="font-size:11px; color:#666; margin-top:2px;">
                 ${Object.entries(d.breakdown).map(([p, c]) => `${p}₸×${c}`).join(" | ")}
             </div>
-        </div>`).join("");
+        </div>`).join("") || "<small class='muted'>Нет данных за этот период</small>";
 
     // --- 2. ВОЗМОЖНЫЙ ДОХОД (ВД) С ДЕТАЛИЗАЦИЕЙ ---
     let totalVd = 0;
@@ -100,13 +109,11 @@ function render() {
     filtered.forEach(t => {
         if (t.type === 'income' && points.includes(t.subcategory)) {
             if (!vdStats[t.subcategory]) vdStats[t.subcategory] = { sum: 0, breakdown: {} };
-            
             let pot = t.amount;
             if (t.amount < 4000) {
                 if (t.amount === 150) pot = 600;
                 else if (t.amount === 300) pot = 900;
                 else if (t.subcategory === "Ночь" && t.amount === 500) pot = 1000;
-                
                 totalVd += pot;
                 vdStats[t.subcategory].sum += pot;
                 vdStats[t.subcategory].breakdown[pot] = (vdStats[t.subcategory].breakdown[pot] || 0) + 1;
@@ -120,13 +127,8 @@ function render() {
         const rdSum = (realBySub[p] ? realBySub[p].sum : 0);
         const diff = vdData.sum - rdSum;
         totalGain += diff;
-        
         if (vdData.sum === 0 && rdSum === 0) return "";
-        
-        const detailStr = Object.entries(vdData.breakdown)
-            .map(([price, count]) => `${price}₸×${count}`)
-            .join(" | ");
-
+        const detailStr = Object.entries(vdData.breakdown).map(([price, count]) => `${price}₸×${count}`).join(" | ");
         return `
             <div style="margin-bottom:12px;">
                 <div style="display:flex; justify-content:space-between; font-size:14px; color:#eee; font-weight:bold;">
@@ -140,7 +142,7 @@ function render() {
     }).join("");
 
     document.getElementById("potentialStats").innerHTML = `
-        <div style="border-bottom: 1px solid #222; padding-bottom: 8px;">${vdHtml}</div>
+        <div style="border-bottom: 1px solid #222; padding-bottom: 8px;">${vdHtml || "<small class='muted'>Точек нет</small>"}</div>
         <div style="display:flex; justify-content:space-between; margin-top:10px; font-weight:bold; color:var(--accent);">
             <span>Итого (ВД):</span><b>${totalVd.toLocaleString()} ₸</b>
         </div>
@@ -157,9 +159,7 @@ function render() {
         const cat = t.categoryName || "Прочее";
         if (!expGroups[cat]) expGroups[cat] = { total: 0, subs: {} };
         expGroups[cat].total += t.amount;
-        if (t.subcategory) {
-            expGroups[cat].subs[t.subcategory] = (expGroups[cat].subs[t.subcategory] || 0) + t.amount;
-        }
+        if (t.subcategory) expGroups[cat].subs[t.subcategory] = (expGroups[cat].subs[t.subcategory] || 0) + t.amount;
     });
 
     document.getElementById("expenseDetails").innerHTML = Object.entries(expGroups).map(([name, data]) => {
