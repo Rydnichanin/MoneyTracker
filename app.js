@@ -86,7 +86,7 @@ function render() {
         const amt = t.amount;
 
         // Исключаем Карго и ЗП (4000+)
-        if (sub === "Карго" || amt = 4000) return;
+        if (sub === "Карго" || amt >= 4000) return;
 
         // Только точки
         if (["F1", "F2", "F3", "Ночь"].includes(sub)) {
