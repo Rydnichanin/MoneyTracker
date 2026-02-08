@@ -5,9 +5,9 @@ const DEFAULTS = {
     ],
     expense: [
         { id: "auto", name: "Авто", sub: ["Бензин", "Ремонт", "Мойка", "Запчасти"] },
-        { id: "house", name: "Быт", sub: [] }, // Вернул Быт
+        { id: "house", name: "Быт", sub: [] },
         { id: "food", name: "Еда", sub: [] },
-        { id: "other_exp", name: "Прочее", sub: [] } // Вернул Прочее
+        { id: "other_exp", name: "Прочее", sub: [] }
     ]
 };
 
@@ -53,7 +53,7 @@ function initApp() {
         await fbMethods.addDoc(colRef, {
             type: elT.value, 
             amount: amt, 
-            categoryName: catObj ? catObj.name : "Прочее", // Защита от пустых имен
+            categoryName: catObj ? catObj.name : "Прочее",
             subcategory: elS.value || "", 
             date: document.getElementById("date").value,
             createdAt: Date.now()
@@ -67,6 +67,7 @@ function render() {
     const to = document.getElementById("toDate").value;
     const filtered = allTransactions.filter(t => (!from || t.date >= from) && (!to || t.date <= to));
 
+    // Реальные показатели
     const realTotalInc = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
     const realTotalExp = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
 
@@ -74,20 +75,24 @@ function render() {
     document.getElementById("totalIncome").textContent = realTotalInc.toLocaleString() + " ₸";
     document.getElementById("totalExpense").textContent = realTotalExp.toLocaleString() + " ₸";
 
-    // --- ЛОГИКА ВЗ (ТОЛЬКО ТОЧКИ, БЕЗ 4000/4500/5000) ---
+    // --- ЛОГИКА ВЗ (СТРОГИЙ РАСЧЕТ) ---
     let potDotsSum = 0;       
     let realBaseDotsValue = 0; 
     const potBreakdown = {};
 
-    filtered.filter(t => t.type === 'income').forEach(t => {
+    filtered.forEach(t => {
+        if (t.type !== 'income') return;
+        
         const sub = t.subcategory || "";
         const amt = t.amount;
 
-        // Полностью игнорируем Карго и фиксированные зарплаты
-        if (sub === "Карго" || amt >= 4000) return;
+        // Условие: только точки, исключая зарплаты (4000+) и Карго
+        const isPoint = ["F1", "F2", "F3", "Ночь"].includes(sub);
+        const isSalary = amt >= 4000;
 
-        if (["F1", "F2", "F3", "Ночь"].includes(sub)) {
-            let pAmt = amt;
+        if (isPoint && !isSalary && sub !== "Карго") {
+            let pAmt = amt; // Значение по умолчанию (для 1000, 2000)
+            
             if (amt === 150) pAmt = 600;
             else if (amt === 300) pAmt = 900;
             else if (sub === "Ночь" && amt === 500) pAmt = 1000;
@@ -110,29 +115,28 @@ function render() {
                     <span>${n} <small class="muted">x${d.count}</small></span>
                     <b>${d.sum.toLocaleString()} ₸</b>
                 </div>
-            `).join("") || "<small class='muted'>Точек не найдено</small>"}
+            `).join("") || "<small class='muted'>Точек для пересчета нет</small>"}
         </div>
-        <div style="display:flex; justify-content:space-between; font-size:14px;">
-            <span>Итого за точки (ВД):</span>
-            <b style="color:var(--accent)">${potDotsSum.toLocaleString()} ₸</b>
+        <div style="display:flex; justify-content:space-between; font-size:14px; color: var(--accent);">
+            <span>Итого (ВД за точки):</span>
+            <b>${potDotsSum.toLocaleString()} ₸</b>
         </div>
         <div class="gain-box">
-            <div style="display:flex; justify-content:space-between;">
-                <span>Выгода (разница):</span>
-                <b class="pos">+${pureGain.toLocaleString()} ₸</b>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:12px;">Выгода к реалу:</span>
+                <b class="pos" style="font-size:18px;">+${pureGain.toLocaleString()} ₸</b>
             </div>
         </div>
     `;
 
-    // ИСТОРИЯ
+    // --- ОСТАЛЬНЫЕ БЛОКИ ---
     document.getElementById("list").innerHTML = filtered.map(t => `
         <div class="item">
             <div><b class="${t.type==='income'?'pos':'neg'}">${t.amount.toLocaleString()} ₸</b><br>
             <small class="muted">${t.date} • ${t.subcategory || t.categoryName}</small></div>
-            <button onclick="deleteTx('${t.id}')" style="background:none; border:none; color:#444;">✕</button>
+            <button onclick="deleteTx('${t.id}')" style="background:none; border:none; color:#444; padding:5px 10px;">✕</button>
         </div>`).join("");
 
-    // СТАТИСТИКА ДОХОДОВ
     const earns = {};
     filtered.filter(t => t.type === 'income').forEach(t => {
         const k = t.subcategory || t.categoryName;
@@ -146,18 +150,16 @@ function render() {
             <div class="stat-sub">${Object.entries(d.b).map(([p, c]) => `${p}×${c}`).join(" | ")}</div>
         </div>`).join("");
 
-    // СТАТИСТИКА РАСХОДОВ (ГРУППИРОВКА)
     const exps = {};
     filtered.filter(t => t.type === 'expense').forEach(t => {
         const k = t.categoryName || "Прочее";
         if (!exps[k]) exps[k] = 0;
         exps[k] += t.amount;
     });
-    
     document.getElementById("expenseDetails").innerHTML = Object.entries(exps).map(([k, v]) => `
         <div class="stat-row">
             <div class="stat-main"><span>${k}</span><b class="neg">${v.toLocaleString()} ₸</b></div>
         </div>`).join("") || "<small class='muted'>Расходов нет</small>";
 }
 
-window.deleteTx = async (id) => { if(confirm("Удалить запись?")) await window.fbMethods.deleteDoc(window.fbMethods.doc(window.fbDB, "transactions", id)); };
+window.deleteTx = async (id) => { if(confirm("Удалить?")) await window.fbMethods.deleteDoc(window.fbMethods.doc(window.fbDB, "transactions", id)); };
