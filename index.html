@@ -9,7 +9,7 @@
     * { box-sizing: border-box; font-family: -apple-system, sans-serif; }
     body { background: var(--bg); color: var(--text); margin: 0; padding: 10px; }
     .wrap { max-width: 500px; margin: 0 auto; }
-    .card { background: var(--card); border-radius: 16px; padding: 15px; margin-bottom: 12px; }
+    .card { background: var(--card); border-radius: 16px; padding: 15px; margin-bottom: 12px; border: 1px solid #222; }
     .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
     input, select { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #333; background: #2c2c2e; color: #fff; font-size: 16px; outline: none; }
     .btn-main { width: 100%; padding: 14px; border: none; border-radius: 10px; background: var(--pos); color: #000; font-weight: bold; font-size: 16px; }
@@ -31,11 +31,11 @@
     
     .stat-row { border-bottom: 1px solid #222; padding: 10px 0; }
     .stat-main { display: flex; justify-content: space-between; width: 100%; font-size: 15px; }
-    .stat-sub { font-size: 10px; color: #666; margin-top: 4px; letter-spacing: 0.5px; }
+    .stat-sub { font-size: 10px; color: #666; margin-top: 4px; }
     .diff-label { font-size: 11px; margin-top: 2px; }
     
     .gain-box { background: #1a2e21; padding: 12px; border-radius: 10px; border: 1px solid var(--pos); margin-top: 10px; display: flex; justify-content: space-between; font-weight: bold; }
-    .item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #333; }
+    .item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #333; align-items: center; }
   </style>
 
   <script type="module">
@@ -106,7 +106,7 @@
           <button type="button" class="chip chip-period" onclick="setRange('yesterday')">Вчера</button>
           <button type="button" class="chip chip-period" onclick="setRange('week')">Неделя</button>
           <button type="button" class="chip chip-period" onclick="setRange('month')">Месяц</button>
-          <button type="button" class="chip chip-period" onclick="setRange('all')">Всё время</button>
+          <button type="button" class="chip chip-period" onclick="setRange('all')">Все</button>
         </div>
       </div>
     </section>
@@ -121,7 +121,7 @@
 
     <section class="card" style="border: 1px solid #444;">
       <div class="collapsible-header" onclick="toggleBlock(this)">
-        <h3>🔮 Возможный доход (ВД)</h3>
+        <h3 style="color:var(--accent)">🔮 Возможный доход (ВД)</h3>
         <span class="arrow">▲</span>
       </div>
       <div id="potentialStats" class="content"></div>
