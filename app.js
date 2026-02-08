@@ -64,39 +64,45 @@ function render() {
     const to = document.getElementById("toDate").value;
     const filtered = allTransactions.filter(t => (!from || t.date >= from) && (!to || t.date <= to));
 
-    // Общий баланс (из твоего кармана)
-    const realInc = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-    const realExp = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+    const realTotalInc = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+    const realTotalExp = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
 
-    document.getElementById("balance").textContent = (realInc - realExp).toLocaleString() + " ₸";
-    document.getElementById("totalIncome").textContent = realInc.toLocaleString() + " ₸";
-    document.getElementById("totalExpense").textContent = realExp.toLocaleString() + " ₸";
+    document.getElementById("balance").textContent = (realTotalInc - realTotalExp).toLocaleString() + " ₸";
+    document.getElementById("totalIncome").textContent = realTotalInc.toLocaleString() + " ₸";
+    document.getElementById("totalExpense").textContent = realTotalExp.toLocaleString() + " ₸";
 
-    // --- РАСЧЕТ ДОХОДА ПО КАТЕГОРИЯМ ---
-    const earns = {};
+    // --- БЛОК 1: ДОХОД (РЕАЛ) С ДЕТАЛИЗАЦИЕЙ ШТУК ---
+    const realStats = {};
     filtered.filter(t => t.type === 'income').forEach(t => {
-        const k = t.subcategory || t.categoryName;
-        if (!earns[k]) earns[k] = { sum: 0, count: 0 };
-        earns[k].sum += t.amount; earns[k].count++;
+        const sub = t.subcategory || t.categoryName;
+        if (!realStats[sub]) realStats[sub] = { sum: 0, count: 0, breakdown: {} };
+        realStats[sub].sum += t.amount;
+        realStats[sub].count++;
+        // Считаем сколько раз встретилась конкретная сумма (например 150₸)
+        realStats[sub].breakdown[t.amount] = (realStats[sub].breakdown[t.amount] || 0) + 1;
     });
 
-    document.getElementById("earningsDetails").innerHTML = Object.entries(earns).map(([k, d]) => `
-        <div class="stat-row" style="margin-bottom:8px;">
-            <span style="color:#aaa;">${k} <small style="color:#555;">(${d.count})</small></span>
-            <b style="font-size:15px; color:#eee;">${d.sum.toLocaleString()} ₸</b>
+    document.getElementById("earningsDetails").innerHTML = Object.entries(realStats).map(([k, d]) => `
+        <div class="stat-row" style="margin-bottom:12px; border-bottom: 1px solid #222; padding-bottom: 4px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="color:#aaa; font-weight:bold;">${k} <small style="color:#555;">(${d.count})</small></span>
+                <b style="font-size:16px; color:#eee;">${d.sum.toLocaleString()} ₸</b>
+            </div>
+            <div style="font-size:11px; color:#666; margin-top:2px;">
+                ${Object.entries(d.breakdown).map(([price, count]) => `${price}₸ × ${count}`).join(" | ")}
+            </div>
         </div>`).join("");
 
-    // --- РАСЧЕТ ПОДРОБНОЙ ВЫГОДЫ ---
+    // --- БЛОК 2: ВОЗМОЖНЫЙ ДОХОД (ВД) ---
     let totalVdSum = 0;
-    let totalRdPointsSum = 0;
-    let pointStats = {};
+    let totalRdOfPoints = 0;
+    const vdDetails = {};
 
     filtered.forEach(t => {
         if (t.type !== 'income') return;
         const sub = t.subcategory || "";
         const amt = t.amount;
 
-        // Берем всё, кроме Карго и Зарплаты (4000+)
         if (["F1", "F2", "F3", "Ночь"].includes(sub) && amt < 4000) {
             let potAmt = amt;
             if (amt === 150) potAmt = 600;
@@ -104,47 +110,47 @@ function render() {
             else if (sub === "Ночь" && amt === 500) potAmt = 1000;
             
             totalVdSum += potAmt;
-            totalRdPointsSum += amt;
+            totalRdOfPoints += amt;
 
-            if (!pointStats[sub]) pointStats[sub] = { vd: 0, rd: 0, count: 0 };
-            pointStats[sub].vd += potAmt;
-            pointStats[sub].rd += amt;
-            pointStats[sub].count++;
+            if (!vdDetails[sub]) vdDetails[sub] = { vdSum: 0, rdSum: 0, count: 0 };
+            vdDetails[sub].vdSum += potAmt;
+            vdDetails[sub].rdSum += amt;
+            vdDetails[sub].count++;
         }
     });
 
-    const totalGain = totalVdSum - totalRdPointsSum;
+    const totalGain = totalVdSum - totalRdOfPoints;
 
     document.getElementById("potentialStats").innerHTML = `
         <div style="border-bottom: 1px solid #222; padding-bottom: 8px; margin-bottom: 10px;">
-            ${Object.entries(pointStats).map(([name, data]) => `
+            ${Object.entries(vdDetails).map(([name, data]) => `
                 <div style="margin-bottom:10px;">
                     <div style="display:flex; justify-content:space-between; font-size:14px; color:#eee;">
                         <span>${name} <small style="color:#555;">x${data.count}</small></span>
-                        <b>${data.vd.toLocaleString()} ₸</b>
+                        <b>${data.vdSum.toLocaleString()} ₸</b>
                     </div>
-                    <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--pos); opacity:0.8;">
-                        <span>Разница:</span>
-                        <b>+${(data.vd - data.rd).toLocaleString()} ₸</b>
+                    <div style="display:flex; justify-content:space-between; font-size:11px; color:#00ff7f; opacity:0.8;">
+                        <span>Разница к реалу:</span>
+                        <b>+${(data.vdSum - data.rdSum).toLocaleString()} ₸</b>
                     </div>
                 </div>
-            `).join("") || "<small class='muted'>Нет точек для анализа</small>"}
+            `).join("") || "<small class='muted'>Точек для анализа нет</small>"}
         </div>
         
-        <div style="display:flex; justify-content:space-between; font-size:16px; color:var(--accent); font-weight:bold; margin-top:5px;">
-            <span>Итого по точкам:</span>
+        <div style="display:flex; justify-content:space-between; font-size:16px; color:var(--accent); font-weight:bold;">
+            <span>Всего за точки:</span>
             <b>${totalVdSum.toLocaleString()} ₸</b>
         </div>
 
-        <div style="margin-top:12px; background: rgba(0,255,127,0.08); border-left: 4px solid var(--pos); padding:10px; border-radius:4px;">
+        <div style="margin-top:12px; background: rgba(0,255,127,0.08); border-left: 4px solid #00ff7f; padding:10px; border-radius:4px;">
             <div style="display:flex; justify-content:space-between; align-items:center;">
                 <span style="font-size:12px; color:#eee;">Общая выгода:</span>
-                <b class="pos" style="font-size:20px;">+${totalGain.toLocaleString()} ₸</b>
+                <b style="color:#00ff7f; font-size:20px;">+${totalGain.toLocaleString()} ₸</b>
             </div>
         </div>
     `;
 
-    // Расходы и История (без изменений, но с чисткой стилей)
+    // Расходы и История
     const exps = {};
     filtered.filter(t => t.type === 'expense').forEach(t => {
         const k = t.categoryName || "Прочее";
@@ -166,4 +172,4 @@ function render() {
         </div>`).join("");
 }
 
-window.deleteTx = async (id) => { if(confirm("Удалить запись?")) await window.fbMethods.deleteDoc(window.fbMethods.doc(window.fbDB, "transactions", id)); };
+window.deleteTx = async (id) => { if(confirm("Удалить?")) await window.fbMethods.deleteDoc(window.fbMethods.doc(window.fbDB, "transactions", id)); };
