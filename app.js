@@ -72,7 +72,7 @@ function render() {
     document.getElementById("gasText").textContent = `Бензин к доходу: ${gasPerc}% (${gasExp.toLocaleString()} ₸)`;
     document.getElementById("gasFill").style.width = Math.min(gasPerc * 3, 100) + "%";
 
-    // --- ДОХОД ПО ТОЧКАМ (РЕАЛЬНЫЙ) ---
+    // --- РЕАЛЬНЫЙ ДОХОД ПО ТОЧКАМ ---
     const realBySub = {};
     filtered.filter(t => t.type === 'income').forEach(t => {
         const k = t.subcategory || t.categoryName;
@@ -87,54 +87,51 @@ function render() {
             <div class="stat-sub">${Object.entries(d.breakdown).map(([p, c]) => `${p}₸×${c}`).join(" | ")}</div>
         </div>`).join("");
 
-    // --- ВОЗМОЖНЫЙ ДОХОД (Исправленная математика выгоды) ---
+    // --- ВОЗМОЖНЫЙ ДОХОД (Зарплата >= 4000 сюда НЕ ИДЕТ) ---
     let totalGain = 0;
     const vdStats = {};
     const pts = ["F1", "F2", "F3", "Ночь"];
 
     filtered.forEach(t => {
-        if (t.type === 'income' && pts.includes(t.subcategory)) {
+        if (t.type === 'income' && pts.includes(t.subcategory) && t.amount < 4000) {
             if(!vdStats[t.subcategory]) vdStats[t.subcategory] = { vdSum: 0, breakdown: {} };
             
-            // Считаем ВД только для сумм меньше 4000
-            if (t.amount < 4000) {
-                let pot = t.amount;
-                if (t.amount === 150) pot = 600;
-                else if (t.amount === 300) pot = 900;
-                else if (t.subcategory === "Ночь" && t.amount === 500) pot = 1000;
-                
-                vdStats[t.subcategory].vdSum += pot;
-                vdStats[t.subcategory].breakdown[pot] = (vdStats[t.subcategory].breakdown[pot] || 0) + 1;
-            }
+            let pot = t.amount;
+            if (t.amount === 150) pot = 600;
+            else if (t.amount === 300) pot = 900;
+            else if (t.subcategory === "Ночь" && t.amount === 500) pot = 1000;
+            // 600, 900, 1000, 2000 остаются как есть в ВД
+            
+            vdStats[t.subcategory].vdSum += pot;
+            vdStats[t.subcategory].breakdown[pot] = (vdStats[t.subcategory].breakdown[pot] || 0) + 1;
         }
     });
 
     const vdHtml = Object.entries(vdStats).map(([p, data]) => {
-        // Выгода = (ВД) - (Весь Реал этой категории)
+        // Здесь вычитаем ВЕСЬ реальный доход по этой точке (включая 5000) из ВД (где только точки)
         const currentRealSum = realBySub[p] ? realBySub[p].sum : 0;
         const diff = data.vdSum - currentRealSum;
         totalGain += diff;
         
-        const breakdownStr = Object.entries(data.breakdown).map(([price, count]) => `${price}₸×${count}`).join(" | ");
+        const breakdownStr = Object.entries(data.breakdown).sort((a,b)=>a[0]-b[0]).map(([price, count]) => `${price}₸×${count}`).join(" | ");
         return `
             <div class="stat-row">
                 <div class="stat-main"><span>${p}</span><b>${data.vdSum.toLocaleString()} ₸</b></div>
-                <div class="stat-sub" style="color:#555">ВД Тарифы: ${breakdownStr || 'Только крупные суммы'}</div>
-                <div class="stat-vd-info">Выгода к реалу: +${diff.toLocaleString()} ₸</div>
+                <div class="stat-sub" style="color:#777">ВД Тарифы: ${breakdownStr}</div>
+                <div class="stat-vd-info">Выгода к реальному: +${diff.toLocaleString()} ₸</div>
             </div>`;
     }).join("");
 
-    document.getElementById("potentialStats").innerHTML = vdHtml || '<div class="muted" style="text-align:center; padding:10px;">Нет данных для расчёта</div>';
-    if (totalGain > 0) {
-        document.getElementById("potentialStats").innerHTML += `<div class="gain-box"><span>ОБЩАЯ ВЫГОДА ВД:</span><span class="pos">+${totalGain.toLocaleString()} ₸</span></div>`;
+    document.getElementById("potentialStats").innerHTML = vdHtml || '<div class="muted" style="text-align:center; padding:10px;">Нет данных для расчёта возможного дохода</div>';
+    if (totalGain !== 0) {
+        document.getElementById("potentialStats").innerHTML += `<div class="gain-box"><span>ОБЩАЯ ВЫГОДА:</span><span class="${totalGain >=0 ? 'pos':'neg'}">${totalGain.toLocaleString()} ₸</span></div>`;
     }
 
-    // РАСХОДЫ
+    // РАСХОДЫ И ИСТОРИЯ
     const exG = {};
     filtered.filter(t => t.type === 'expense').forEach(t => { exG[t.categoryName] = (exG[t.categoryName] || 0) + t.amount; });
     document.getElementById("expenseDetails").innerHTML = Object.entries(exG).map(([n, v]) => `<div class="stat-main" style="padding: 5px 0;"><span>${n}</span><b class="neg">${v.toLocaleString()} ₸</b></div>`).join("");
 
-    // ИСТОРИЯ
     document.getElementById("list").innerHTML = filtered.map(t => `
         <div class="item">
             <div><b class="${t.type==='income'?'pos':'neg'}">${t.amount.toLocaleString()} ₸</b><br>
