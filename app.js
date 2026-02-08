@@ -67,7 +67,7 @@ function render() {
     const to = document.getElementById("toDate").value;
     const filtered = allTransactions.filter(t => (!from || t.date >= from) && (!to || t.date <= to));
 
-    // 1. РЕАЛЬНЫЕ ДЕНЬГИ
+    // --- РЕАЛЬНЫЕ ПОКАЗАТЕЛИ ---
     const realTotalInc = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
     const realTotalExp = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
 
@@ -75,8 +75,9 @@ function render() {
     document.getElementById("totalIncome").textContent = realTotalInc.toLocaleString() + " ₸";
     document.getElementById("totalExpense").textContent = realTotalExp.toLocaleString() + " ₸";
 
-    // 2. РАСЧЕТ ВЫГОДЫ (ВД)
-    let pureGain = 0;
+    // --- РАСЧЕТ ВД (СТРОГО ПО ТВОЕЙ ФОРМУЛЕ) ---
+    let totalPotDotsOnly = 0;   // Сумма всех точек по НОВОМУ тарифу
+    let totalRealDotsOnly = 0;  // Сумма тех же самых записей по СТАРОМУ тарифу
     const potBreakdown = {};
 
     filtered.forEach(t => {
@@ -84,37 +85,44 @@ function render() {
         const sub = t.subcategory || "";
         const amt = t.amount;
 
-        // Считаем ТОЛЬКО точки и ТОЛЬКО если это не зарплата (меньше 4000)
-        if (["F1", "F2", "F3", "Ночь"].includes(sub) && amt < 4000) {
-            let pAmt = amt;
+        // Исключаем Карго и ЗП (4000+)
+        if (sub === "Карго" || amt >= 4000) return;
+
+        // Только точки
+        if (["F1", "F2", "F3", "Ночь"].includes(sub)) {
+            let pAmt = amt; // Значение которое "должно быть"
+            
             if (amt === 150) pAmt = 600;
             else if (amt === 300) pAmt = 900;
             else if (sub === "Ночь" && amt === 500) pAmt = 1000;
+            // 1000 и 2000 остаются как есть
             
-            let gainForThisTask = pAmt - amt;
-            pureGain += gainForThisTask;
-
-            if (!potBreakdown[sub]) potBreakdown[sub] = { count: 0, totalPot: 0 };
+            if (!potBreakdown[sub]) potBreakdown[sub] = { count: 0, sumPot: 0 };
             potBreakdown[sub].count++;
-            potBreakdown[sub].totalPot += pAmt;
+            potBreakdown[sub].sumPot += pAmt;
+            
+            totalPotDotsOnly += pAmt;
+            totalRealDotsOnly += amt;
         }
     });
 
-    // Итоговая сумма ВД = Реальный приход + Чистая выгода
-    const finalVdSum = realTotalInc + pureGain;
+    // Чистая выгода = (Все точки по-новому) МИНУС (Все точки по-старому)
+    const pureGain = totalPotDotsOnly - totalRealDotsOnly;
+    // Финальный ВД = Твой реальный доход (с ЗП и прочим) + выгода
+    const finalVdTotal = realTotalInc + pureGain;
 
     document.getElementById("potentialStats").innerHTML = `
         <div style="border-bottom: 1px solid #333; padding-bottom: 8px; margin-bottom: 10px;">
             ${Object.entries(potBreakdown).map(([n, d]) => `
                 <div style="display:flex; justify-content:space-between; font-size:13px; margin-top:4px;">
                     <span>${n} <small class="muted">x${d.count}</small></span>
-                    <b>${d.totalPot.toLocaleString()} ₸</b>
+                    <b>${d.sumPot.toLocaleString()} ₸</b>
                 </div>
-            `).join("") || "<small class='muted'>Точек для пересчета нет</small>"}
+            `).join("") || "<small class='muted'>Точек для пересчета не найдено</small>"}
         </div>
         <div style="display:flex; justify-content:space-between; font-size:15px; color: var(--accent); font-weight: bold;">
-            <span>Всего (ВД + Зарплаты):</span>
-            <b>${finalVdSum.toLocaleString()} ₸</b>
+            <span>Итого (ВД + Зарплаты):</span>
+            <b>${finalVdTotal.toLocaleString()} ₸</b>
         </div>
         <div class="gain-box">
             <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -124,7 +132,7 @@ function render() {
         </div>
     `;
 
-    // 3. ИСТОРИЯ И СТАТИСТИКА
+    // --- ИСТОРИЯ, ДОХОДЫ И РАСХОДЫ ---
     document.getElementById("list").innerHTML = filtered.map(t => `
         <div class="item">
             <div><b class="${t.type==='income'?'pos':'neg'}">${t.amount.toLocaleString()} ₸</b><br>
@@ -157,4 +165,4 @@ function render() {
         </div>`).join("") || "<small class='muted'>Расходов нет</small>";
 }
 
-window.deleteTx = async (id) => { if(confirm("Удалить?")) await window.fbMethods.deleteDoc(window.fbMethods.doc(window.fbDB, "transactions", id)); };
+window.deleteTx = async (id) => { if(confirm("Удалить запись?")) await window.fbMethods.deleteDoc(window.fbMethods.doc(window.fbDB, "transactions", id)); };
