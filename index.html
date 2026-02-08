@@ -6,110 +6,156 @@
     <title>Courier Finance</title>
     <style>
         :root {
-            --bg: #0d0d0d;
-            --card: #161616;
+            --bg: #000000;
+            --card: #141414;
             --accent: #e2b05f;
-            --text: #eee;
-            --pos: #00ff7f;
-            --neg: #ff4444;
+            --green: #4ade80;
+            --red: #f87171;
+            --text: #ffffff;
         }
-        * { box-sizing: border-box; }
+
         body { 
-            font-family: sans-serif; background: var(--bg); color: var(--text); 
-            margin: 0; padding: 15px; padding-bottom: 50px;
+            font-family: -apple-system, system-ui, sans-serif; 
+            background: var(--bg); color: var(--text); 
+            margin: 0; padding: 12px; 
         }
+
         .card { 
-            background: var(--card); border-radius: 12px; padding: 15px; 
-            margin-bottom: 15px; border: 1px solid #222; 
+            background: var(--card); border-radius: 16px; padding: 16px; 
+            margin-bottom: 12px; border: 1px solid #222; 
         }
-        h3 { margin: 0 0 15px 0; font-size: 14px; color: var(--accent); text-transform: uppercase; }
-        
-        input, select, button { 
-            width: 100%; padding: 12px; margin-bottom: 10px; border-radius: 8px; 
-            border: 1px solid #333; background: #222; color: #fff; font-size: 16px; 
+
+        h3 { margin: 0 0 12px 0; font-size: 14px; color: var(--accent); display: flex; align-items: center; gap: 8px; }
+
+        /* Поля ввода */
+        select, input { 
+            width: 100%; padding: 14px; background: #1a1a1a; border: 1px solid #333; 
+            color: #fff; border-radius: 10px; margin-bottom: 10px; font-size: 16px;
         }
+
+        /* Быстрые кнопки сумм */
+        .quick-amounts { display: flex; gap: 8px; margin-bottom: 12px; overflow-x: auto; padding-bottom: 4px; }
+        .quick-amounts button { 
+            flex: 0 0 auto; background: #222; color: var(--accent); border: 1px solid #333;
+            padding: 8px 16px; border-radius: 8px; font-weight: bold;
+        }
+
+        /* Кнопка Записать */
+        .btn-main { 
+            background: var(--green); color: #000; border: none; font-weight: bold; 
+            padding: 16px; border-radius: 12px; width: 100%; font-size: 18px;
+        }
+
+        /* Блок Баланса */
+        .balance-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; text-align: center; margin-bottom: 15px; }
+        .balance-val { font-size: 18px; font-weight: bold; }
+        .balance-label { font-size: 11px; color: #888; margin-bottom: 4px; }
+
+        /* Кнопки периодов (горизонтальный скролл как на скрине) */
+        .filter-buttons { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 5px; }
+        .filter-buttons button { 
+            flex: 0 0 auto; background: #1a1a1a; color: #fff; border: 1px solid #333;
+            padding: 10px 18px; border-radius: 8px; font-size: 13px;
+        }
+
+        /* Индикатор бензина */
+        .gas-bar-bg { background: #222; height: 6px; border-radius: 10px; margin: 8px 0; overflow: hidden; }
+        .gas-bar-fill { background: var(--accent); height: 100%; transition: 0.3s; }
+
+        /* Списки и аккордеоны */
+        .collapsible { display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+        .collapsible::after { content: '▼'; font-size: 10px; color: #444; }
+        .content { margin-top: 12px; }
         .hidden { display: none; }
 
-        /* Твои кнопки сумм */
-        .quick-amounts { display: flex; gap: 10px; margin-bottom: 10px; }
-        .quick-amounts button { background: #e2b05f22; color: var(--accent); border: 1px solid var(--accent); padding: 8px; margin: 0; }
-
-        /* Кнопки периодов */
-        .filter-buttons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-        .filter-buttons button { 
-            flex: 1 1 30%; padding: 10px 5px; font-size: 11px; background: #1a1a1a; 
-            color: var(--accent); border: 1px solid #333; margin: 0;
-        }
-
-        .stat-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px; }
-        .pos { color: var(--pos); font-weight: bold; }
-        .neg { color: var(--neg); font-weight: bold; }
-        #balance { font-size: 24px; font-weight: bold; text-align: center; color: #fff; }
+        .stat-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #1a1a1a; }
+        .diff-pos { color: var(--green); font-size: 11px; }
+        .diff-neg { color: var(--red); font-size: 11px; }
     </style>
 </head>
 <body>
 
     <div class="card">
-        <h3>Добавить запись</h3>
-        <form id="txForm">
-            <div class="quick-amounts">
-                <button type="button" onclick="setAmount(500)">500</button>
-                <button type="button" onclick="setAmount(5000)">5000</button>
-            </div>
-            <input type="number" id="amount" placeholder="Сумма ₸" inputmode="numeric" required>
-            <select id="type">
-                <option value="income">Доход</option>
-                <option value="expense">Расход</option>
-            </select>
-            <select id="category"></select>
-            <div id="subcatWrap" class="hidden"><select id="subcategory"></select></div>
-            <input type="date" id="date">
-            <button type="submit" style="background: var(--accent); color: #000; font-weight: bold; border: none;">СОХРАНИТЬ</button>
-        </form>
-    </div>
-
-    <div class="card">
-        <div id="balance">0 ₸</div>
-    </div>
-
-    <div class="card">
-        <h3>Период</h3>
         <div style="display: flex; gap: 10px;">
-            <input type="date" id="fromDate" style="margin-bottom: 0;">
-            <input type="date" id="toDate" style="margin-bottom: 0;">
+            <select id="type"><option value="income">Приход</option><option value="expense">Расход</option></select>
+            <select id="category"></select>
         </div>
-        <div class="filter-buttons">
-            <button onclick="setPeriod('today')">Сегодня</button>
-            <button onclick="setPeriod('yesterday')">Вчера</button>
-            <button onclick="setPeriod('week')">Неделя</button>
-            <button onclick="setPeriod('month')">Месяц</button>
-            <button onclick="setPeriod('all')" style="flex: 1 1 100%;">Всё время</button>
+        <div id="subcatWrap" class="hidden"><select id="subcategory"></select></div>
+        <div style="display: flex; gap: 10px;">
+            <input type="number" id="amount" placeholder="Сумма" inputmode="numeric">
+            <input type="date" id="date">
+        </div>
+        <div class="quick-amounts">
+            <button onclick="setAmount(150)">150</button>
+            <button onclick="setAmount(300)">300</button>
+            <button onclick="setAmount(500)">500</button>
+            <button onclick="setAmount(600)">600</button>
+            <button onclick="setAmount(4500)">4500</button>
+            <button onclick="setAmount(5000)">5000</button>
+        </div>
+        <button class="btn-main" id="saveBtn">Записать</button>
+    </div>
+
+    <div class="card">
+        <h3 onclick="toggleBox('balanceBox')">💰 Баланс и Фильтры</h3>
+        <div id="balanceBox">
+            <div class="balance-grid">
+                <div><div class="balance-label">Итог</div><div class="balance-val" id="balanceTotal">0 ₸</div></div>
+                <div><div class="balance-label">Приход</div><div class="balance-val" id="totalIncome" style="color:var(--green)">0 ₸</div></div>
+                <div><div class="balance-label">Расход</div><div class="balance-val" id="totalExpense" style="color:var(--red)">0 ₸</div></div>
+            </div>
+            
+            <div id="gasInfo" style="font-size: 11px; margin-bottom: 10px;">
+                <div style="display:flex; justify-content:space-between">
+                    <span>Чистая прибыль</span>
+                    <span id="gasPercentText">Бензин: 0%</span>
+                </div>
+                <div class="gas-bar-bg"><div class="gas-bar-fill" id="gasBar"></div></div>
+            </div>
+
+            <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                <input type="date" id="fromDate" style="margin:0; padding:10px; font-size:14px;">
+                <input type="date" id="toDate" style="margin:0; padding:10px; font-size:14px;">
+            </div>
+            <div class="filter-buttons">
+                <button onclick="setPeriod('today')">Сегодня</button>
+                <button onclick="setPeriod('yesterday')">Вчера</button>
+                <button onclick="setPeriod('week')">Неделя</button>
+                <button onclick="setPeriod('month')">Месяц</button>
+                <button onclick="setPeriod('all')">Всё время</button>
+            </div>
         </div>
     </div>
 
     <div class="card">
-        <div class="stat-row"><span>Доход:</span> <span id="totalIncome" class="pos">0 ₸</span></div>
-        <div class="stat-row"><span>Расход:</span> <span id="totalExpense" class="neg">0 ₸</span></div>
+        <h3 class="collapsible" onclick="toggleBox('realBox')">📈 Доход по точкам (Реал)</h3>
+        <div id="realBox" class="content">
+            <div id="earningsDetails"></div>
+        </div>
     </div>
 
     <div class="card">
-        <h3>Реальный доход</h3>
-        <div id="earningsDetails"></div>
-    </div>
-
-    <div class="card" style="border-color: #e2b05f66;">
-        <h3>Возможный доход (ВД)</h3>
-        <div id="potentialStats"></div>
+        <h3 class="collapsible" onclick="toggleBox('vdBox')">🔮 Возможный доход (ВД)</h3>
+        <div id="vdBox" class="content">
+            <div id="potentialStats"></div>
+        </div>
     </div>
 
     <div class="card">
-        <h3>Расходы</h3>
-        <div id="expenseDetails"></div>
+        <h3 class="collapsible" onclick="toggleBox('expBox')">📉 Расходы</h3>
+        <div id="expBox" class="content hidden">
+            <div id="expenseDetails"></div>
+        </div>
     </div>
 
-    <h3 style="margin-left: 10px;">История</h3>
     <div id="list"></div>
 
+    <script>
+        function toggleBox(id) {
+            const el = document.getElementById(id);
+            el.classList.toggle('hidden');
+        }
+    </script>
     <script src="app.js"></script>
 </body>
 </html>
