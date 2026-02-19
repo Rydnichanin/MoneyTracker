@@ -16,7 +16,7 @@
     
     .scroll-container { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 5px; margin-bottom: 10px; scrollbar-width: none; }
     .scroll-container::-webkit-scrollbar { display: none; }
-    .chip { flex: 0 0 auto; background: #333; color: var(--accent); padding: 10px 16px; border-radius: 8px; font-weight: bold; border: none; }
+    .chip { flex: 0 0 auto; background: #333; color: var(--accent); padding: 8px 14px; border-radius: 8px; font-weight: bold; border: none; font-size: 14px; }
     .chip-period { color: #fff; background: #2c2c2e; border: 1px solid #444; font-size: 13px; }
 
     .gas-box { margin-top: 10px; font-size: 11px; }
@@ -32,16 +32,17 @@
     .stat-row { border-bottom: 1px solid #222; padding: 12px 0; }
     .stat-main { display: flex; justify-content: space-between; width: 100%; font-size: 16px; font-weight: bold; }
     .stat-sub { font-size: 11px; color: #777; margin-top: 4px; }
-    .stat-vd-info { font-size: 12px; color: var(--pos); margin-top: 4px; font-weight: 500; }
-    
     .gain-box { background: #1a2e21; padding: 15px; border-radius: 12px; border: 1px solid var(--pos); margin-top: 15px; display: flex; justify-content: space-between; font-weight: bold; font-size: 18px; }
     .item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #333; align-items: flex-start; }
-    .comment-text { color: var(--pos); font-size: 13px; margin-top: 4px; font-style: italic; }
+    
+    /* Стили для настроек */
+    .set-item { background: #2c2c2e; padding: 10px; border-radius: 8px; margin-bottom: 8px; font-size: 14px; }
+    .set-item button { background: none; border: none; color: var(--neg); float: right; }
   </style>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBYvSsrzjgkrBwhaBAt0KlCGrAtzgOPYx8",
@@ -54,7 +55,7 @@
 
     const app = initializeApp(firebaseConfig);
     window.fbDB = getFirestore(app);
-    window.fbMethods = { collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc };
+    window.fbMethods = { collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc, arrayUnion, arrayRemove };
   </script>
 </head>
 <body>
@@ -63,14 +64,16 @@
       <form id="txForm">
         <div class="row2">
           <select id="type"><option value="income">Приход</option><option value="expense">Расход</option></select>
+          <select id="accountSelect"></select> </div>
+        <div class="row2">
           <select id="category"></select>
+          <div id="subcatWrap" class="hidden"><select id="subcategory"></select></div>
         </div>
-        <div id="subcatWrap" class="hidden" style="margin-bottom:10px;"><select id="subcategory"></select></div>
         <div class="row2">
           <input id="amount" type="number" inputmode="decimal" placeholder="Сумма" required />
           <input id="date" type="date" required />
         </div>
-        <input id="comment" type="text" placeholder="Примечание (напр. запчасти, чаевые)" style="margin-bottom:10px;" />
+        <input id="comment" type="text" placeholder="Примечание" style="margin-bottom:10px;" />
         
         <div class="scroll-container">
           <button type="button" class="chip" onclick="setAmount(150)">150</button>
@@ -78,72 +81,84 @@
           <button type="button" class="chip" onclick="setAmount(500)">500</button>
           <button type="button" class="chip" onclick="setAmount(600)">600</button>
           <button type="button" class="chip" onclick="setAmount(1000)">1000</button>
-          <button type="button" class="chip" onclick="setAmount(2000)">2000</button>
-          <button type="button" class="chip" onclick="setAmount(2500)">2500</button>
-          <button type="button" class="chip" onclick="setAmount(4500)">4500</button>
-          <button type="button" class="chip" onclick="setAmount(5000)">5000</button>
+          <button type="button" class="chip" onclick="setAmount(2000)">2k</button>
+          <button type="button" class="chip" onclick="setAmount(2500)">2.5k</button>
+          <button type="button" class="chip" onclick="setAmount(4500)">4.5k</button>
+          <button type="button" class="chip" onclick="setAmount(5000)">5k</button>
         </div>
-        
         <button class="btn-main" type="submit">Записать</button>
       </form>
     </section>
 
     <section class="card">
-      <div class="collapsible-header" onclick="toggleBlock(this)">
-        <h3>💰 Баланс и Фильтры</h3>
-        <span class="arrow">▲</span>
-      </div>
+      <div class="collapsible-header" onclick="toggleBlock(this)"><h3>💰 Баланс</h3><span class="arrow">▲</span></div>
       <div class="content">
         <div class="balance-line">
-          <div><small class="muted">Чистая прибыль</small><br><b id="balance" style="font-size: 22px;">0 ₸</b></div>
+          <div><small class="muted">Прибыль</small><br><b id="balance" style="font-size: 20px;">0 ₸</b></div>
           <div><small class="muted">Приход</small><br><b id="totalIncome" class="pos">0 ₸</b></div>
           <div><small class="muted">Расход</small><br><b id="totalExpense" class="neg">0 ₸</b></div>
         </div>
+        <div id="accountBalances" style="font-size: 12px; margin-bottom: 10px; display: flex; gap: 10px; flex-wrap: wrap;"></div>
         <div class="gas-box">
-          <div id="gasText" style="color:#888;">Бензин к доходу: 0% (0 ₸)</div>
+          <div id="gasText" style="color:#888;">Бензин: 0%</div>
           <div class="gas-bar"><div id="gasFill" class="gas-fill"></div></div>
         </div>
-        <div class="row2" style="margin-top:15px;">
+        <div class="row2" style="margin-top:10px;">
           <input type="date" id="fromDate"><input type="date" id="toDate">
-        </div>
-        <div class="scroll-container">
-          <button type="button" class="chip chip-period" onclick="setRange('today')">Сегодня</button>
-          <button type="button" class="chip chip-period" onclick="setRange('yesterday')">Вчера</button>
-          <button type="button" class="chip chip-period" onclick="setRange('week')">Неделя</button>
-          <button type="button" class="chip chip-period" onclick="setRange('all')">Все</button>
         </div>
       </div>
     </section>
 
     <section class="card">
-      <div class="collapsible-header" onclick="toggleBlock(this)">
-        <h3>📈 Доход по точкам (Реальный)</h3>
-        <span class="arrow">▲</span>
-      </div>
+      <div class="collapsible-header" onclick="toggleBlock(this)"><h3>📈 По точкам (Реал)</h3><span class="arrow">▲</span></div>
       <div id="earningsDetails" class="content"></div>
     </section>
 
     <section class="card" style="border: 1px solid #444;">
-      <div class="collapsible-header" onclick="toggleBlock(this)">
-        <h3 style="color:var(--accent)">🔮 Возможный доход</h3>
-        <span class="arrow">▲</span>
-      </div>
+      <div class="collapsible-header" onclick="toggleBlock(this)"><h3 style="color:var(--accent)">🔮 Возможный доход</h3><span class="arrow">▲</span></div>
       <div id="potentialStats" class="content"></div>
     </section>
 
     <section class="card">
-      <div class="collapsible-header" onclick="toggleBlock(this)">
-        <h3>📉 Расходы</h3>
-        <span class="arrow">▼</span>
-      </div>
+      <div class="collapsible-header" onclick="toggleBlock(this)"><h3>📉 Расходы</h3><span class="arrow">▼</span></div>
       <div id="expenseDetails" class="content hidden"></div>
     </section>
 
-    <section class="card">
-      <div class="collapsible-header" onclick="toggleBlock(this)">
-        <h3>📝 История</h3>
-        <span class="arrow">▼</span>
+    <section class="card" style="border: 1px solid #333;">
+      <div class="collapsible-header" onclick="toggleBlock(this)"><h3>⚙️ Настройки</h3><span class="arrow">▼</span></div>
+      <div class="content hidden">
+        <div style="margin-bottom: 15px;">
+          <small class="muted">Добавить Категорию</small>
+          <div class="row2" style="margin-top:5px;">
+            <select id="setCatType"><option value="income">Доход</option><option value="expense">Расход</option></select>
+            <input id="setCatName" type="text" placeholder="Название">
+          </div>
+          <button class="btn-main" style="background:#333; color:#fff; padding:8px;" onclick="addCategory()">Добавить</button>
+        </div>
+
+        <div style="margin-bottom: 15px; border-top: 1px solid #222; padding-top: 10px;">
+          <small class="muted">Добавить Подкатегорию</small>
+          <div class="row2" style="margin-top:5px;">
+            <select id="setParentCat"></select>
+            <input id="setSubName" type="text" placeholder="Название подкат.">
+          </div>
+          <button class="btn-main" style="background:#333; color:#fff; padding:8px;" onclick="addSub()">Добавить подкат.</button>
+        </div>
+
+        <div style="margin-bottom: 15px; border-top: 1px solid #222; padding-top: 10px;">
+          <small class="muted">Добавить Счет (Кошелек)</small>
+          <div class="row2" style="margin-top:5px;">
+            <input id="setAccName" type="text" placeholder="Напр: Каспи">
+            <button class="btn-main" style="background:#333; color:#fff; padding:8px; margin:0;" onclick="addAccount()">ОК</button>
+          </div>
+        </div>
+
+        <div id="settingsList" style="margin-top: 10px;"></div>
       </div>
+    </section>
+
+    <section class="card">
+      <div class="collapsible-header" onclick="toggleBlock(this)"><h3>📝 История</h3><span class="arrow">▼</span></div>
       <div id="list" class="content hidden"></div>
     </section>
   </div>
@@ -156,19 +171,6 @@
       el.querySelector('.arrow').textContent = content.classList.contains('hidden') ? '▼' : '▲';
     };
     window.setAmount = function(v) { document.getElementById('amount').value = v; };
-    window.setRange = function(mode) {
-      const now = new Date().toISOString().split('T')[0];
-      const f = document.getElementById('fromDate'), t = document.getElementById('toDate');
-      if(mode === 'today') { f.value = now; t.value = now; }
-      else if(mode === 'yesterday') { 
-        let d = new Date(); d.setDate(d.getDate() - 1);
-        const y = d.toISOString().split('T')[0]; f.value = y; t.value = y;
-      } else if(mode === 'week') {
-        let d = new Date(); d.setDate(d.getDate() - 7);
-        f.value = d.toISOString().split('T')[0]; t.value = now;
-      } else { f.value = ""; t.value = ""; }
-      if(window.render) window.render();
-    };
   </script>
 </body>
 </html>
