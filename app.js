@@ -155,46 +155,53 @@ window.setRange = (mode) => {
 };
 
 function render() {
-    const from = document.getElementById("fromDate").value;
-    const to = document.getElementById("toDate").value;
+    // 1. Проверяем, есть ли элементы на странице, чтобы не было ошибок
+    const fromEl = document.getElementById("fromDate");
+    const toEl = document.getElementById("toDate");
+    if (!fromEl || !toEl) return;
+
+    const from = fromEl.value;
+    const to = toEl.value;
+
+    // 2. Фильтруем данные
     const filtered = allTx.filter(t => (!from || t.date >= from) && (!to || t.date <= to));
 
+    // 3. Считаем основные цифры
     const inc = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
     const exp = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
 
-    // --- ОБНОВЛЕННЫЙ БЛОК БЕНЗИНА ---
-    const gas = filtered.filter(t => {
-        const isExpense = t.type === 'expense';
-        // Ищем "Бензин" и в подкатегории, и в названии категории
-        const sub = (t.subcategory || "").trim();
-        const cat = (t.categoryName || "").trim();
-        return isExpense && (sub === 'Бензин' || cat === 'Бензин');
-    }).reduce((s, t) => s + t.amount, 0);
+    // 4. Считаем бензин (упрощенная и надежная версия)
+    const gas = filtered.filter(t => 
+        t.type === 'expense' && 
+        ((t.subcategory || "") === 'Бензин' || (t.categoryName || "") === 'Бензин')
+    ).reduce((s, t) => s + t.amount, 0);
 
+    // 5. Выводим Баланс
+    document.getElementById("balance").textContent = (inc - exp).toLocaleString() + " ₸";
+    document.getElementById("totalIncome").textContent = inc.toLocaleString() + " ₸";
+    document.getElementById("totalExpense").textContent = exp.toLocaleString() + " ₸";
+
+    // 6. Полоска бензина
     const gasP = inc > 0 ? ((gas / inc) * 100).toFixed(1) : 0;
-    
-    // Отрисовка текста и полоски
-    const gasTextEl = document.getElementById("gasText");
-    const gasFillEl = document.getElementById("gasFill");
-    if (gasTextEl) gasTextEl.textContent = `Бензин: ${gasP}% (${gas.toLocaleString()} ₸)`;
-    if (gasFillEl) gasFillEl.style.width = Math.min(gasP * 3, 100) + "%"; 
-    
- document.getElementById("balance").textContent = (inc - exp).toLocaleString() + " ₸";
-    
-    // Баланс по счетам
+    const gasText = document.getElementById("gasText");
+    const gasFill = document.getElementById("gasFill");
+    if (gasText) gasText.textContent = `Бензин: ${gasP}% (${gas.toLocaleString()} ₸)`;
+    if (gasFill) gasFill.style.width = Math.min(gasP * 3, 100) + "%";
+
+    // 7. Баланс по счетам
     const accs = {};
     filtered.forEach(t => {
         if(!accs[t.account]) accs[t.account] = 0;
         accs[t.account] += (t.type === 'income' ? t.amount : -t.amount);
     });
-    document.getElementById("accountBalances").innerHTML = Object.entries(accs).map(([n, v]) => 
-        `<span>${n}: <b style="color:${v>=0?'#65d48b':'#ff6b6b'}">${v.toLocaleString()}</b></span>`).join(" | ");
+    const accEl = document.getElementById("accountBalances");
+    if (accEl) {
+        accEl.innerHTML = Object.entries(accs).map(([n, v]) => 
+            `<span>${n}: <b style="color:${v>=0?'#65d48b':'#ff6b6b'}">${v.toLocaleString()}</b></span>`
+        ).join(" | ");
+    }
 
-    const gasP = inc > 0 ? ((gas / inc) * 100).toFixed(1) : 0;
-    document.getElementById("gasText").textContent = `Бензин: ${gasP}% (${gas.toLocaleString()} ₸)`;
-    document.getElementById("gasFill").style.width = Math.min(gasP * 3, 100) + "%";
-
-    // Статистика дохода
+    // 8. Статистика РД (Реальный Доход)
     const statsInc = {};
     filtered.filter(t => t.type === 'income').forEach(t => {
         const key = t.subcategory || t.categoryName;
@@ -206,8 +213,11 @@ function render() {
         <div class="stat-row"><div class="stat-main"><span>${k} (${d.cnt})</span><b>${d.sum.toLocaleString()} ₸</b></div>
         <div class="stat-sub">${Object.entries(d.br).map(([p, c]) => `${p}₸×${c}`).join(" | ")}</div></div>`).join("");
 
-    // ВОЗМОЖНЫЙ ДОХОД (ВД)
-    let totalGain = 0; const vdStats = {}; const vds = ["F1", "F2", "F3", "Ночь"];
+    // 9. Статистика ВД (Возможный Доход)
+    let totalGain = 0; 
+    const vdStats = {}; 
+    const vds = ["F1", "F2", "F3", "Ночь"];
+    
     filtered.forEach(t => {
         if (t.type === 'income' && vds.includes(t.subcategory) && t.amount < 3000) {
             if(!vdStats[t.subcategory]) vdStats[t.subcategory] = { vdSum: 0 };
@@ -218,16 +228,18 @@ function render() {
             vdStats[t.subcategory].vdSum += p;
         }
     });
+
     const vdHtml = Object.entries(vdStats).map(([p, data]) => {
         const rSum = statsInc[p] ? statsInc[p].sum : 0;
         const diff = data.vdSum - rSum; totalGain += diff;
         return `<div class="stat-row"><div class="stat-main"><span>${p}</span><b>${data.vdSum.toLocaleString()} ₸</b></div>
-                <div class="stat-vd-info" style="color:#65d48b; font-size:12px;">Выгода: +${diff.toLocaleString()} ₸</div></div>`;
+                <div style="color:#65d48b; font-size:12px;">Выгода: +${diff.toLocaleString()} ₸</div></div>`;
     }).join("");
+    
     document.getElementById("potentialStats").innerHTML = vdHtml || '<div class="muted">Нет данных ВД</div>';
     if(totalGain > 0) document.getElementById("potentialStats").innerHTML += `<div class="gain-box"><span>ВЫГОДА ВД:</span><span class="pos">+${totalGain.toLocaleString()} ₸</span></div>`;
 
-    // Расходы
+    // 10. Расходы
     const statsExp = {};
     filtered.filter(t => t.type === 'expense').forEach(t => {
         if(!statsExp[t.categoryName]) statsExp[t.categoryName] = { sum: 0, subs: {} };
@@ -238,12 +250,10 @@ function render() {
         <div class="stat-row"><div class="stat-main"><span>${c}</span><b class="neg">${d.sum.toLocaleString()} ₸</b></div>
         <div class="stat-sub">${Object.entries(d.subs).map(([s, v]) => `${s}: ${v.toLocaleString()}`).join(" | ")}</div></div>`).join("");
 
-    // История
+    // 11. История
     document.getElementById("list").innerHTML = filtered.map(t => `
         <div class="item"><div><b class="${t.type==='income'?'pos':'neg'}">${t.amount.toLocaleString()} ₸</b><br>
         <small class="muted">${t.time} | ${t.subcategory || t.categoryName} [${t.account}]</small>
         ${t.comment ? `<div style="color:#65d48b; font-size:12px;">📝 ${t.comment}</div>` : ''}</div>
         <button onclick="deleteTx('${t.id}')" style="background:none;border:none;color:#444;padding:10px;">✕</button></div>`).join("");
 }
-
-window.deleteTx = async (id) => { if(confirm("Удалить?")) await window.fbMethods.deleteDoc(window.fbMethods.doc(window.fbDB, "transactions", id)); };
