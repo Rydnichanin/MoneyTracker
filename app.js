@@ -170,13 +170,13 @@ function render() {
     const inc = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
     const exp = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
 
-    // 4. УМНЫЙ РАСЧЕТ БЕНЗИНА
+        // 4. Улучшенный расчет бензина (теперь пробелы не страшны)
     const gas = filtered.filter(t => {
         if (t.type !== 'expense') return false;
-        // Приводим к нижнему регистру и убираем пробелы для сравнения
-        const sub = (t.subcategory || "").toLowerCase().trim();
-        const cat = (t.categoryName || "").toLowerCase().trim();
-        return sub === 'бензин' || cat === 'бензин';
+        // Переводим в нижний регистр и проверяем, есть ли там буквы "бенз"
+        const sub = (t.subcategory || "").toLowerCase();
+        const cat = (t.categoryName || "").toLowerCase();
+        return sub.includes('бенз') || cat.includes('бенз');
     }).reduce((s, t) => s + t.amount, 0);
 
     // 5. Вывод основных показателей
