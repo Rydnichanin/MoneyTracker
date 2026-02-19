@@ -178,9 +178,8 @@ function render() {
     const gasFillEl = document.getElementById("gasFill");
     if (gasTextEl) gasTextEl.textContent = `Бензин: ${gasP}% (${gas.toLocaleString()} ₸)`;
     if (gasFillEl) gasFillEl.style.width = Math.min(gasP * 3, 100) + "%"; 
-    // --------------------------------
-
-    document.getElementById("balance").textContent = (inc - exp).toLocaleString() + " ₸";
+    
+ document.getElementById("balance").textContent = (inc - exp).toLocaleString() + " ₸";
     
     // Баланс по счетам
     const accs = {};
