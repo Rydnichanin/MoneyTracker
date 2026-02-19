@@ -32,6 +32,7 @@
     .stat-row { border-bottom: 1px solid #222; padding: 12px 0; }
     .stat-main { display: flex; justify-content: space-between; width: 100%; font-size: 16px; font-weight: bold; }
     .stat-sub { font-size: 11px; color: #777; margin-top: 4px; }
+    .stat-vd-info { color: var(--pos); font-size: 12px; margin-top: 2px; }
     
     .item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #333; align-items: flex-start; }
     .set-item { background: #2c2c2e; padding: 10px; border-radius: 8px; margin-bottom: 8px; font-size: 14px; }
@@ -91,10 +92,10 @@
     </section>
 
     <section class="card">
-      <div class="collapsible-header" onclick="toggleBlock(this)"><h3>💰 Баланс и Период</h3><span class="arrow">▲</span></div>
+      <div class="collapsible-header" onclick="toggleBlock(this)"><h3>💰 Баланс</h3><span class="arrow">▲</span></div>
       <div class="content">
         <div class="balance-line">
-          <div><small class="muted">Чистая</small><br><b id="balance" style="font-size: 20px;">0 ₸</b></div>
+          <div><small class="muted">Прибыль</small><br><b id="balance" style="font-size: 20px;">0 ₸</b></div>
           <div><small class="muted">Приход</small><br><b id="totalIncome" class="pos">0 ₸</b></div>
           <div><small class="muted">Расход</small><br><b id="totalExpense" class="neg">0 ₸</b></div>
         </div>
@@ -106,8 +107,7 @@
         </div>
 
         <div class="row2" style="margin-top:15px;">
-          <input type="date" id="fromDate">
-          <input type="date" id="toDate">
+          <input type="date" id="fromDate"><input type="date" id="toDate">
         </div>
         <div class="scroll-container">
           <button type="button" class="chip chip-period" onclick="setRange('today')">Сегодня</button>
@@ -128,7 +128,7 @@
     </section>
 
     <section class="card">
-      <div class="collapsible-header" onclick="toggleBlock(this)"><h3>📉 Расходы по категориям</h3><span class="arrow">▼</span></div>
+      <div class="collapsible-header" onclick="toggleBlock(this)"><h3>📉 Расходы</h3><span class="arrow">▼</span></div>
       <div id="expenseDetails" class="content hidden"></div>
     </section>
 
@@ -136,7 +136,7 @@
       <div class="collapsible-header" onclick="toggleBlock(this)"><h3>⚙️ Настройки</h3><span class="arrow">▼</span></div>
       <div class="content hidden">
         <div style="margin-bottom: 15px;">
-          <small class="muted">Категория:</small>
+          <small class="muted">Добавить Категорию</small>
           <div class="row2" style="margin-top:5px;">
             <select id="setCatType"><option value="income">Приход</option><option value="expense">Расход</option></select>
             <input id="setCatName" type="text" placeholder="Название">
@@ -145,7 +145,7 @@
         </div>
 
         <div style="margin-bottom: 15px; border-top: 1px solid #222; padding-top: 10px;">
-          <small class="muted">Подкатегория:</small>
+          <small class="muted">Добавить Подкатегорию</small>
           <div class="row2" style="margin-top:5px;">
             <select id="setParentCat"></select>
             <input id="setSubName" type="text" placeholder="Название">
@@ -154,7 +154,7 @@
         </div>
 
         <div style="margin-bottom: 15px; border-top: 1px solid #222; padding-top: 10px;">
-          <small class="muted">Счет:</small>
+          <small class="muted">Добавить Счет</small>
           <div class="row2" style="margin-top:5px;">
             <input id="setAccName" type="text" placeholder="Напр: Каспи">
             <button class="btn-main" style="background:#444; color:#fff; padding:8px; margin:0;" onclick="addAccount()">ОК</button>
