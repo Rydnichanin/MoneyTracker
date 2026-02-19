@@ -161,12 +161,27 @@ function render() {
 
     const inc = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
     const exp = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
-    const gas = filtered.filter(t => t.subcategory === 'Бензин').reduce((s, t) => s + t.amount, 0);
+
+    // --- ОБНОВЛЕННЫЙ БЛОК БЕНЗИНА ---
+    const gas = filtered.filter(t => {
+        const isExpense = t.type === 'expense';
+        // Ищем "Бензин" и в подкатегории, и в названии категории
+        const sub = (t.subcategory || "").trim();
+        const cat = (t.categoryName || "").trim();
+        return isExpense && (sub === 'Бензин' || cat === 'Бензин');
+    }).reduce((s, t) => s + t.amount, 0);
+
+    const gasP = inc > 0 ? ((gas / inc) * 100).toFixed(1) : 0;
+    
+    // Отрисовка текста и полоски
+    const gasTextEl = document.getElementById("gasText");
+    const gasFillEl = document.getElementById("gasFill");
+    if (gasTextEl) gasTextEl.textContent = `Бензин: ${gasP}% (${gas.toLocaleString()} ₸)`;
+    if (gasFillEl) gasFillEl.style.width = Math.min(gasP * 3, 100) + "%"; 
+    // --------------------------------
 
     document.getElementById("balance").textContent = (inc - exp).toLocaleString() + " ₸";
-    document.getElementById("totalIncome").textContent = inc.toLocaleString() + " ₸";
-    document.getElementById("totalExpense").textContent = exp.toLocaleString() + " ₸";
-
+    
     // Баланс по счетам
     const accs = {};
     filtered.forEach(t => {
