@@ -11,6 +11,13 @@ function initApp() {
     const txRef = fbMethods.collection(fbDB, "transactions");
     const setRef = fbMethods.collection(fbDB, "settings");
 
+    // Сразу вешаем "слежку" за календарями
+    document.getElementById("fromDate").addEventListener("change", render);
+    document.getElementById("toDate").addEventListener("change", render);
+
+    // Дальше твой остальной код (setToday, onSnapshot и т.д.)
+    // ...
+
     // Функция автозаполнения даты
     const setToday = () => {
         const now = new Date();
