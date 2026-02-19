@@ -79,11 +79,11 @@
           <button type="button" class="chip" onclick="setAmount(150)">150</button>
           <button type="button" class="chip" onclick="setAmount(300)">300</button>
           <button type="button" class="chip" onclick="setAmount(500)">500</button>
-          <button type="button" class="chip" onclick="setAmount(600)">600</button>
-          <button type="button" class="chip" onclick="setAmount(1000)">1000</button>
-          <button type="button" class="chip" onclick="setAmount(1500)">1500</button>
-          <button type="button" class="chip" onclick="setAmount(2000)">2000</button>
-          <button type="button" class="chip" onclick="setAmount(3000)">3000</button>
+          <button type="button" class="chip" onclick="setAmount(1000)">1k</button>
+          <button type="button" class="chip" onclick="setAmount(1500)">1.5k</button>
+          <button type="button" class="chip" onclick="setAmount(2000)">2k</button>
+          <button type="button" class="chip" onclick="setAmount(3000)">3k</button>
+          <button type="button" class="chip" onclick="setAmount(5000)">5k</button>
         </div>
         <button class="btn-main" type="submit">Записать</button>
       </form>
@@ -93,22 +93,24 @@
       <div class="collapsible-header" onclick="toggleBlock(this)"><h3>💰 Баланс</h3><span class="arrow">▲</span></div>
       <div class="content">
         <div class="balance-line">
-          <div><small class="muted">Чистая</small><br><b id="balance" style="font-size: 20px;">0 ₸</b></div>
+          <div><small class="muted">Прибыль</small><br><b id="balance" style="font-size: 20px;">0 ₸</b></div>
           <div><small class="muted">Приход</small><br><b id="totalIncome" class="pos">0 ₸</b></div>
           <div><small class="muted">Расход</small><br><b id="totalExpense" class="neg">0 ₸</b></div>
         </div>
         <div id="accountBalances" style="font-size: 11px; color:#aaa; margin-bottom:10px;"></div>
+        
         <div class="gas-box">
           <div id="gasText" style="color:#888;">Бензин: 0%</div>
           <div class="gas-bar"><div id="gasFill" class="gas-fill"></div></div>
         </div>
-        <div class="row2" style="margin-top:10px;">
+
+        <div class="row2" style="margin-top:15px;">
           <input type="date" id="fromDate"><input type="date" id="toDate">
         </div>
         <div class="scroll-container">
           <button type="button" class="chip chip-period" onclick="setRange('today')">Сегодня</button>
           <button type="button" class="chip chip-period" onclick="setRange('yesterday')">Вчера</button>
-          <button type="button" class="chip chip-period" onclick="setRange('all')">Все</button>
+          <button type="button" class="chip chip-period" onclick="setRange('all')">Все время</button>
         </div>
       </div>
     </section>
@@ -129,28 +131,28 @@
     </section>
 
     <section class="card" style="border: 1px solid #333;">
-      <div class="collapsible-header" onclick="toggleBlock(this)"><h3>⚙️ Настройки системы</h3><span class="arrow">▼</span></div>
+      <div class="collapsible-header" onclick="toggleBlock(this)"><h3>⚙️ Настройки</h3><span class="arrow">▼</span></div>
       <div class="content hidden">
         <div style="margin-bottom:15px;">
-          <small>Категория:</small>
+          <small class="muted">Добавить Категорию</small>
           <div class="row2" style="margin-top:5px;">
             <select id="setCatType"><option value="income">Приход</option><option value="expense">Расход</option></select>
             <input id="setCatName" type="text" placeholder="Название">
           </div>
-          <button class="btn-main" style="background:#444; color:#fff; padding:8px;" onclick="addCategory()">Добавить</button>
+          <button class="btn-main" style="background:#444; color:#fff; padding:8px;" onclick="addCategory()">ОК</button>
         </div>
         <div style="margin-bottom:15px; border-top:1px solid #222; padding-top:10px;">
-          <small>Подкатегория:</small>
+          <small class="muted">Подкатегория</small>
           <div class="row2" style="margin-top:5px;">
             <select id="setParentCat"></select>
             <input id="setSubName" type="text" placeholder="Название">
           </div>
-          <button class="btn-main" style="background:#444; color:#fff; padding:8px;" onclick="addSub()">Добавить</button>
+          <button class="btn-main" style="background:#444; color:#fff; padding:8px;" onclick="addSub()">ОК</button>
         </div>
         <div style="margin-bottom:15px; border-top:1px solid #222; padding-top:10px;">
-          <small>Счет:</small>
+          <small class="muted">Счет</small>
           <div class="row2" style="margin-top:5px;">
-            <input id="setAccName" type="text" placeholder="Напр: Каспи">
+            <input id="setAccName" type="text" placeholder="Каспи">
             <button class="btn-main" style="background:#444; color:#fff; padding:8px; margin:0;" onclick="addAccount()">ОК</button>
           </div>
         </div>
