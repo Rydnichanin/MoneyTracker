@@ -195,7 +195,7 @@ function render() {
     // ВОЗМОЖНЫЙ ДОХОД (ВД)
     let totalGain = 0; const vdStats = {}; const vds = ["F1", "F2", "F3", "Ночь"];
     filtered.forEach(t => {
-        if (t.type === 'income' && vds.includes(t.subcategory) && t.amount < 4000) {
+        if (t.type === 'income' && vds.includes(t.subcategory) && t.amount < 3000) {
             if(!vdStats[t.subcategory]) vdStats[t.subcategory] = { vdSum: 0 };
             let p = t.amount;
             if (t.amount === 150) p = 600;
