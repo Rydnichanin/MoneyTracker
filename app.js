@@ -155,7 +155,7 @@ window.setRange = (mode) => {
 };
 
 function render() {
-    // 1. Проверяем, есть ли элементы на странице, чтобы не было ошибок
+    // 1. Проверка элементов интерфейса
     const fromEl = document.getElementById("fromDate");
     const toEl = document.getElementById("toDate");
     if (!fromEl || !toEl) return;
@@ -163,30 +163,39 @@ function render() {
     const from = fromEl.value;
     const to = toEl.value;
 
-    // 2. Фильтруем данные
+    // 2. Фильтрация по датам
     const filtered = allTx.filter(t => (!from || t.date >= from) && (!to || t.date <= to));
 
-    // 3. Считаем основные цифры
+    // 3. Расчет основных сумм
     const inc = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
     const exp = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
 
-    // 4. Считаем бензин (упрощенная и надежная версия)
-    const gas = filtered.filter(t => 
-        t.type === 'expense' && 
-        ((t.subcategory || "") === 'Бензин' || (t.categoryName || "") === 'Бензин')
-    ).reduce((s, t) => s + t.amount, 0);
+    // 4. УМНЫЙ РАСЧЕТ БЕНЗИНА
+    const gas = filtered.filter(t => {
+        if (t.type !== 'expense') return false;
+        // Приводим к нижнему регистру и убираем пробелы для сравнения
+        const sub = (t.subcategory || "").toLowerCase().trim();
+        const cat = (t.categoryName || "").toLowerCase().trim();
+        return sub === 'бензин' || cat === 'бензин';
+    }).reduce((s, t) => s + t.amount, 0);
 
-    // 5. Выводим Баланс
+    // 5. Вывод основных показателей
     document.getElementById("balance").textContent = (inc - exp).toLocaleString() + " ₸";
     document.getElementById("totalIncome").textContent = inc.toLocaleString() + " ₸";
     document.getElementById("totalExpense").textContent = exp.toLocaleString() + " ₸";
 
-    // 6. Полоска бензина
+    // 6. ОБНОВЛЕНИЕ ПОЛОСКИ БЕНЗИНА
     const gasP = inc > 0 ? ((gas / inc) * 100).toFixed(1) : 0;
     const gasText = document.getElementById("gasText");
     const gasFill = document.getElementById("gasFill");
-    if (gasText) gasText.textContent = `Бензин: ${gasP}% (${gas.toLocaleString()} ₸)`;
-    if (gasFill) gasFill.style.width = Math.min(gasP * 3, 100) + "%";
+    
+    if (gasText) {
+        gasText.textContent = `Бензин: ${gasP}% (${gas.toLocaleString()} ₸)`;
+    }
+    if (gasFill) {
+        // Множитель * 3 делает полоску заметнее (33% расхода заполнит её всю)
+        gasFill.style.width = Math.min(gasP * 3, 100) + "%";
+    }
 
     // 7. Баланс по счетам
     const accs = {};
@@ -239,7 +248,7 @@ function render() {
     document.getElementById("potentialStats").innerHTML = vdHtml || '<div class="muted">Нет данных ВД</div>';
     if(totalGain > 0) document.getElementById("potentialStats").innerHTML += `<div class="gain-box"><span>ВЫГОДА ВД:</span><span class="pos">+${totalGain.toLocaleString()} ₸</span></div>`;
 
-    // 10. Расходы
+    // 10. Статистика Расходов
     const statsExp = {};
     filtered.filter(t => t.type === 'expense').forEach(t => {
         if(!statsExp[t.categoryName]) statsExp[t.categoryName] = { sum: 0, subs: {} };
@@ -250,7 +259,7 @@ function render() {
         <div class="stat-row"><div class="stat-main"><span>${c}</span><b class="neg">${d.sum.toLocaleString()} ₸</b></div>
         <div class="stat-sub">${Object.entries(d.subs).map(([s, v]) => `${s}: ${v.toLocaleString()}`).join(" | ")}</div></div>`).join("");
 
-    // 11. История
+    // 11. История операций
     document.getElementById("list").innerHTML = filtered.map(t => `
         <div class="item"><div><b class="${t.type==='income'?'pos':'neg'}">${t.amount.toLocaleString()} ₸</b><br>
         <small class="muted">${t.time} | ${t.subcategory || t.categoryName} [${t.account}]</small>
