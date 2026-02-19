@@ -12,7 +12,7 @@
     .card { background: var(--card); border-radius: 16px; padding: 15px; margin-bottom: 12px; border: 1px solid #222; }
     .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
     input, select { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #333; background: #2c2c2e; color: #fff; font-size: 16px; outline: none; }
-    .btn-main { width: 100%; padding: 14px; border: none; border-radius: 10px; background: var(--pos); color: #000; font-weight: bold; font-size: 16px; }
+    .btn-main { width: 100%; padding: 14px; border: none; border-radius: 10px; background: var(--pos); color: #000; font-weight: bold; font-size: 16px; margin-top: 10px; }
     
     .scroll-container { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 5px; margin-bottom: 10px; scrollbar-width: none; }
     .scroll-container::-webkit-scrollbar { display: none; }
@@ -35,7 +35,8 @@
     .stat-vd-info { font-size: 12px; color: var(--pos); margin-top: 4px; font-weight: 500; }
     
     .gain-box { background: #1a2e21; padding: 15px; border-radius: 12px; border: 1px solid var(--pos); margin-top: 15px; display: flex; justify-content: space-between; font-weight: bold; font-size: 18px; }
-    .item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #333; align-items: center; }
+    .item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #333; align-items: flex-start; }
+    .comment-text { color: var(--pos); font-size: 13px; margin-top: 4px; font-style: italic; }
   </style>
 
   <script type="module">
@@ -69,14 +70,12 @@
           <input id="amount" type="number" inputmode="decimal" placeholder="Сумма" required />
           <input id="date" type="date" required />
         </div>
+        <input id="comment" type="text" placeholder="Примечание (напр. запчасти, чаевые)" style="margin-bottom:10px;" />
         <div class="scroll-container">
           <button type="button" class="chip" onclick="setAmount(150)">150</button>
           <button type="button" class="chip" onclick="setAmount(300)">300</button>
           <button type="button" class="chip" onclick="setAmount(500)">500</button>
-          <button type="button" class="chip" onclick="setAmount(600)">600</button>
           <button type="button" class="chip" onclick="setAmount(1000)">1000</button>
-          <button type="button" class="chip" onclick="setAmount(2000)">2000</button>
-          <button type="button" class="chip" onclick="setAmount(4500)">4500</button>
           <button type="button" class="chip" onclick="setAmount(5000)">5000</button>
         </div>
         <button class="btn-main" type="submit">Записать</button>
