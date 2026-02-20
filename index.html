@@ -221,6 +221,10 @@
       const setToday = () => {
         const now = new Date();
         const offset = now.getTimezoneOffset() * 60000;
+        // Если время до 03:00 — считаем что ещё "вчера"
+        if (now.getHours() < 3) {
+          now.setDate(now.getDate() - 1);
+        }
         const local = new Date(now - offset).toISOString().split('T')[0];
         document.getElementById("date").value = local;
         return local;
