@@ -32,6 +32,22 @@
     .set-item { background: #2c2c2e; padding: 10px; border-radius: 8px; margin-bottom: 8px; font-size: 14px; }
     .set-item button { background: none; border: none; color: var(--neg); float: right; font-size: 16px; cursor: pointer; }
     .gain-box { background: #1a2e21; padding: 15px; border-radius: 12px; border: 1px solid var(--pos); margin-top: 15px; display: flex; justify-content: space-between; font-weight: bold; font-size: 18px; }
+
+    /* Аналитика */
+    .analytics-title { font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 1px; margin: 15px 0 8px; }
+    .best-worst { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 5px; }
+    .bw-card { border-radius: 10px; padding: 10px; text-align: center; }
+    .bw-card.best { background: #1a2e21; border: 1px solid var(--pos); }
+    .bw-card.worst { background: #2e1a1a; border: 1px solid var(--neg); }
+    .bw-date { font-size: 10px; color: #888; margin-bottom: 3px; }
+    .bw-sum { font-size: 18px; font-weight: bold; }
+    .month-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #222; font-size: 14px; }
+    .month-bar-wrap { height: 3px; background: #333; border-radius: 2px; margin-top: 4px; }
+    .month-bar { height: 100%; background: #a78bfa; border-radius: 2px; transition: 0.3s; }
+
+    /* График */
+    .chart-wrap { overflow-x: auto; padding-bottom: 5px; margin-bottom: 5px; }
+    .chart-svg { display: block; }
   </style>
 
   <!-- Firebase — единственная инициализация -->
@@ -129,6 +145,14 @@
     <section class="card">
       <div class="collapsible-header" onclick="toggleBlock(this)"><h3>📉 Расходы по категориям</h3><span class="arrow">▼</span></div>
       <div id="expenseDetails" class="content hidden"></div>
+    </section>
+
+    <!-- АНАЛИТИКА -->
+    <section class="card" style="border: 1px solid #2a2a4a;">
+      <div class="collapsible-header" onclick="toggleBlock(this)"><h3 style="color:#a78bfa;">📊 Аналитика</h3><span class="arrow">▼</span></div>
+      <div class="content hidden">
+        <div id="analyticsContent"></div>
+      </div>
     </section>
 
     <!-- НАСТРОЙКИ -->
@@ -470,9 +494,140 @@
           <button onclick="deleteTx('${t.id}')" style="background:none;border:none;color:#444;padding:10px;cursor:pointer;">✕</button>
         </div>`;
       }).join("") || '<div class="muted" style="padding:10px;">Нет записей</div>';
+
+      renderAnalytics();
     }
 
     window.render = render;
+
+    function renderAnalytics() {
+      const el = document.getElementById("analyticsContent");
+      if (!el) return;
+
+      // Группируем все транзакции по дате
+      const byDay = {};
+      const byMonth = {};
+
+      allTx.forEach(t => {
+        if (t.type !== 'income') return;
+        const d = t.date || '';
+        const m = d.slice(0, 7); // YYYY-MM
+        if (!byDay[d]) byDay[d] = 0;
+        byDay[d] += t.amount;
+        if (!byMonth[m]) byMonth[m] = { inc: 0, exp: 0 };
+        byMonth[m].inc += t.amount;
+      });
+      allTx.forEach(t => {
+        if (t.type !== 'expense') return;
+        const m = (t.date || '').slice(0, 7);
+        if (!byMonth[m]) byMonth[m] = { inc: 0, exp: 0 };
+        byMonth[m].exp += t.amount;
+      });
+
+      // Лучший и худший день
+      const days = Object.entries(byDay).filter(([d]) => d);
+      let bestDay = null, worstDay = null;
+      if (days.length > 0) {
+        bestDay = days.reduce((a, b) => b[1] > a[1] ? b : a);
+        worstDay = days.reduce((a, b) => b[1] < a[1] ? b : a);
+      }
+
+      const formatDate = (d) => {
+        if (!d) return '—';
+        const [y, mo, day] = d.split('-');
+        return `${day}.${mo}.${y}`;
+      };
+
+      const formatMonth = (m) => {
+        if (!m) return '—';
+        const months = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
+        const [y, mo] = m.split('-');
+        return `${months[parseInt(mo) - 1]} ${y}`;
+      };
+
+      // График по дням (последние 14 дней из текущего фильтра)
+      const from = document.getElementById("fromDate").value;
+      const to = document.getElementById("toDate").value;
+      const filteredDays = Object.entries(byDay)
+        .filter(([d]) => d && (!from || d >= from) && (!to || d <= to))
+        .sort((a, b) => a[0] > b[0] ? 1 : -1)
+        .slice(-14);
+
+      let chartHtml = '';
+      if (filteredDays.length > 1) {
+        const maxVal = Math.max(...filteredDays.map(([, v]) => v));
+        const W = Math.max(filteredDays.length * 36, 300);
+        const H = 80;
+        const pad = 5;
+        const points = filteredDays.map(([, v], i) => {
+          const x = pad + i * ((W - pad * 2) / (filteredDays.length - 1));
+          const y = H - pad - ((v / maxVal) * (H - pad * 2));
+          return `${x},${y}`;
+        }).join(' ');
+
+        const labels = filteredDays.map(([d, v], i) => {
+          const x = pad + i * ((W - pad * 2) / (filteredDays.length - 1));
+          const day = d.slice(8);
+          return `<text x="${x}" y="${H + 12}" text-anchor="middle" font-size="9" fill="#555">${day}</text>`;
+        }).join('');
+
+        chartHtml = `
+          <div class="analytics-title">График дохода по дням</div>
+          <div class="chart-wrap">
+            <svg class="chart-svg" width="${W}" height="${H + 16}" viewBox="0 0 ${W} ${H + 16}">
+              <polyline points="${points}" fill="none" stroke="#a78bfa" stroke-width="2" stroke-linejoin="round"/>
+              ${filteredDays.map(([, v], i) => {
+                const x = pad + i * ((W - pad * 2) / (filteredDays.length - 1));
+                const y = H - pad - ((v / maxVal) * (H - pad * 2));
+                return `<circle cx="${x}" cy="${y}" r="3" fill="#a78bfa"/>`;
+              }).join('')}
+              ${labels}
+            </svg>
+          </div>`;
+      }
+
+      // Лучший/худший
+      const bwHtml = bestDay ? `
+        <div class="analytics-title">Лучший и худший день</div>
+        <div class="best-worst">
+          <div class="bw-card best">
+            <div class="bw-date">🏆 Лучший</div>
+            <div class="bw-sum pos">${bestDay[1].toLocaleString()} ₸</div>
+            <div class="bw-date">${formatDate(bestDay[0])}</div>
+          </div>
+          <div class="bw-card worst">
+            <div class="bw-date">📉 Худший</div>
+            <div class="bw-sum neg">${worstDay[1].toLocaleString()} ₸</div>
+            <div class="bw-date">${formatDate(worstDay[0])}</div>
+          </div>
+        </div>` : '';
+
+      // Сравнение по месяцам
+      const sortedMonths = Object.entries(byMonth).sort((a, b) => b[0] > a[0] ? 1 : -1).slice(0, 6);
+      const maxInc = Math.max(...sortedMonths.map(([, d]) => d.inc), 1);
+      const monthHtml = sortedMonths.length > 0 ? `
+        <div class="analytics-title">Сравнение по месяцам</div>
+        ${sortedMonths.map(([m, d]) => `
+          <div class="month-row">
+            <div style="flex:1;">
+              <div style="display:flex;justify-content:space-between;">
+                <span>${formatMonth(m)}</span>
+                <span class="pos">${d.inc.toLocaleString()} ₸</span>
+              </div>
+              <div class="month-bar-wrap">
+                <div class="month-bar" style="width:${(d.inc / maxInc * 100).toFixed(1)}%"></div>
+              </div>
+            </div>
+            <div style="margin-left:12px;text-align:right;font-size:12px;">
+              <div class="neg">−${d.exp.toLocaleString()}</div>
+              <div style="color:#aaa;font-size:11px;">чист: ${(d.inc - d.exp).toLocaleString()}</div>
+            </div>
+          </div>`).join('')}` : '';
+
+      el.innerHTML = chartHtml + bwHtml + monthHtml || '<div class="muted" style="padding:10px;">Недостаточно данных</div>';
+    }
+
+    window.renderAnalytics = renderAnalytics;
 
     window.deleteTx = async (id) => {
       if (confirm("Удалить?")) {
