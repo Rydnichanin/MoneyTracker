@@ -12,35 +12,51 @@
     .card { background: var(--card); border-radius: 16px; padding: 15px; margin-bottom: 12px; border: 1px solid #222; }
     .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
     input, select { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #333; background: #2c2c2e; color: #fff; font-size: 16px; outline: none; }
-    .btn-main { width: 100%; padding: 14px; border: none; border-radius: 10px; background: var(--pos); color: #000; font-weight: bold; font-size: 16px; margin-top: 10px; }
-    
+    .btn-main { width: 100%; padding: 14px; border: none; border-radius: 10px; background: var(--pos); color: #000; font-weight: bold; font-size: 16px; margin-top: 10px; cursor: pointer; }
     .scroll-container { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 5px; margin-bottom: 10px; scrollbar-width: none; }
     .scroll-container::-webkit-scrollbar { display: none; }
-    .chip { flex: 0 0 auto; background: #333; color: var(--accent); padding: 8px 14px; border-radius: 8px; font-weight: bold; border: none; font-size: 14px; }
+    .chip { flex: 0 0 auto; background: #333; color: var(--accent); padding: 8px 14px; border-radius: 8px; font-weight: bold; border: none; font-size: 14px; cursor: pointer; }
     .chip-period { color: #fff; background: #2c2c2e; border: 1px solid #444; font-size: 13px; }
-
     .gas-box { margin-top: 10px; font-size: 11px; }
     .gas-bar { height: 4px; background: #333; border-radius: 2px; margin: 4px 0; overflow: hidden; }
     .gas-fill { height: 100%; background: var(--accent); width: 0%; transition: 0.3s; }
-
     .collapsible-header { cursor: pointer; display: flex; justify-content: space-between; align-items: center; padding: 5px 0; }
     .arrow { font-size: 12px; color: #666; }
     .hidden { display: none; }
     .balance-line { display: flex; justify-content: space-between; text-align: center; margin-bottom: 10px; }
     .pos { color: var(--pos); } .neg { color: var(--neg); } .muted { color: #888; }
-    
     .stat-row { border-bottom: 1px solid #222; padding: 12px 0; }
     .stat-main { display: flex; justify-content: space-between; width: 100%; font-size: 16px; font-weight: bold; }
     .stat-sub { font-size: 11px; color: #777; margin-top: 4px; }
-    
     .item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #333; align-items: flex-start; }
     .set-item { background: #2c2c2e; padding: 10px; border-radius: 8px; margin-bottom: 8px; font-size: 14px; }
-    .set-item button { background: none; border: none; color: var(--neg); float: right; font-size: 16px; }
+    .set-item button { background: none; border: none; color: var(--neg); float: right; font-size: 16px; cursor: pointer; }
     .gain-box { background: #1a2e21; padding: 15px; border-radius: 12px; border: 1px solid var(--pos); margin-top: 15px; display: flex; justify-content: space-between; font-weight: bold; font-size: 18px; }
   </style>
+
+  <!-- Firebase — единственная инициализация -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBYvSsrzjgkrBwhaBAt0KlCGrAtzgOPYx8",
+      authDomain: "moneytracker-5335b.firebaseapp.com",
+      projectId: "moneytracker-5335b",
+      storageBucket: "moneytracker-5335b.firebasestorage.app",
+      messagingSenderId: "440589448883",
+      appId: "1:440589448883:web:5ad507b270fa414731a2c6"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    window.fbDB = getFirestore(app);
+    window.fbMethods = { collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc, arrayUnion };
+  </script>
 </head>
 <body>
   <div class="wrap">
+
+    <!-- ФОРМА ЗАПИСИ -->
     <section class="card">
       <form id="txForm">
         <div class="row2">
@@ -56,7 +72,6 @@
           <input id="date" type="date" required />
         </div>
         <input id="comment" type="text" placeholder="Примечание" style="margin-bottom:10px;" />
-        
         <div class="scroll-container">
           <button type="button" class="chip" onclick="setAmount(150)">150</button>
           <button type="button" class="chip" onclick="setAmount(300)">300</button>
@@ -64,12 +79,15 @@
           <button type="button" class="chip" onclick="setAmount(600)">600</button>
           <button type="button" class="chip" onclick="setAmount(1000)">1000</button>
           <button type="button" class="chip" onclick="setAmount(2000)">2k</button>
+          <button type="button" class="chip" onclick="setAmount(2500)">2.5k</button>
+          <button type="button" class="chip" onclick="setAmount(4500)">4.5k</button>
           <button type="button" class="chip" onclick="setAmount(5000)">5k</button>
         </div>
         <button class="btn-main" type="submit">Записать</button>
       </form>
     </section>
 
+    <!-- БАЛАНС И ПЕРИОД -->
     <section class="card">
       <div class="collapsible-header" onclick="toggleBlock(this)"><h3>💰 Баланс и Период</h3><span class="arrow">▲</span></div>
       <div class="content">
@@ -78,13 +96,11 @@
           <div><small class="muted">Приход</small><br><b id="totalIncome" class="pos">0 ₸</b></div>
           <div><small class="muted">Расход</small><br><b id="totalExpense" class="neg">0 ₸</b></div>
         </div>
-        <div id="accountBalances" style="font-size: 11px; margin-bottom: 12px; color:#aaa; display:flex; gap:10px; flex-wrap:wrap;"></div>
-        
+        <div id="accountBalances" style="font-size:11px; margin-bottom:12px; color:#aaa; display:flex; gap:10px; flex-wrap:wrap;"></div>
         <div class="gas-box">
           <div id="gasText" style="color:#888;">Бензин: 0%</div>
           <div class="gas-bar"><div id="gasFill" class="gas-fill"></div></div>
         </div>
-
         <div class="row2" style="margin-top:15px;">
           <input type="date" id="fromDate">
           <input type="date" id="toDate">
@@ -97,25 +113,29 @@
       </div>
     </section>
 
+    <!-- ДОХОД ПО ТОЧКАМ -->
     <section class="card">
       <div class="collapsible-header" onclick="toggleBlock(this)"><h3>📈 Доход по точкам</h3><span class="arrow">▲</span></div>
       <div id="earningsDetails" class="content"></div>
     </section>
 
+    <!-- ВОЗМОЖНЫЙ ДОХОД -->
     <section class="card" style="border: 1px solid #444;">
       <div class="collapsible-header" onclick="toggleBlock(this)"><h3 style="color:var(--accent)">🔮 Возможный доход</h3><span class="arrow">▲</span></div>
       <div id="potentialStats" class="content"></div>
     </section>
 
+    <!-- РАСХОДЫ ПО КАТЕГОРИЯМ -->
     <section class="card">
       <div class="collapsible-header" onclick="toggleBlock(this)"><h3>📉 Расходы по категориям</h3><span class="arrow">▼</span></div>
       <div id="expenseDetails" class="content hidden"></div>
     </section>
 
+    <!-- НАСТРОЙКИ -->
     <section class="card" style="border: 1px solid #333;">
       <div class="collapsible-header" onclick="toggleBlock(this)"><h3>⚙️ Настройки</h3><span class="arrow">▼</span></div>
       <div class="content hidden">
-        <div style="margin-bottom: 15px;">
+        <div style="margin-bottom:15px;">
           <small class="muted">Категория:</small>
           <div class="row2" style="margin-top:5px;">
             <select id="setCatType"><option value="income">Приход</option><option value="expense">Расход</option></select>
@@ -123,8 +143,7 @@
           </div>
           <button class="btn-main" style="background:#444; color:#fff; padding:8px;" onclick="addCategory()">Добавить</button>
         </div>
-
-        <div style="margin-bottom: 15px; border-top: 1px solid #222; padding-top: 10px;">
+        <div style="margin-bottom:15px; border-top:1px solid #222; padding-top:10px;">
           <small class="muted">Подкатегория:</small>
           <div class="row2" style="margin-top:5px;">
             <select id="setParentCat"></select>
@@ -132,25 +151,24 @@
           </div>
           <button class="btn-main" style="background:#444; color:#fff; padding:8px;" onclick="addSub()">Добавить подкат.</button>
         </div>
-
-        <div style="margin-bottom: 15px; border-top: 1px solid #222; padding-top: 10px;">
+        <div style="margin-bottom:15px; border-top:1px solid #222; padding-top:10px;">
           <small class="muted">Счет:</small>
           <div class="row2" style="margin-top:5px;">
             <input id="setAccName" type="text" placeholder="Напр: Каспи">
             <button class="btn-main" style="background:#444; color:#fff; padding:8px; margin:0;" onclick="addAccount()">ОК</button>
           </div>
         </div>
-        <div id="settingsList" style="margin-top: 15px;"></div>
+        <div id="settingsList" style="margin-top:15px;"></div>
       </div>
     </section>
 
+    <!-- ИСТОРИЯ -->
     <section class="card">
       <div class="collapsible-header" onclick="toggleBlock(this)"><h3>📝 История</h3><span class="arrow">▼</span></div>
       <div id="list" class="content hidden"></div>
     </section>
-  </div>
 
-  <script type="module" src="./app.js"></script>
+  </div>
 
   <script>
     window.toggleBlock = function(el) {
@@ -158,8 +176,276 @@
       content.classList.toggle('hidden');
       el.querySelector('.arrow').textContent = content.classList.contains('hidden') ? '▼' : '▲';
     };
-    window.setAmount = function(v) { 
-        document.getElementById('amount').value = v; 
+    window.setAmount = function(v) { document.getElementById('amount').value = v; };
+  </script>
+
+  <script>
+    let DEFAULTS = { income: [], expense: [] };
+    let ACCOUNTS = [];
+    let allTx = [];
+
+    // Ждём пока Firebase загрузится через module script
+    const checkFB = setInterval(() => {
+      if (window.fbDB && window.fbMethods) { clearInterval(checkFB); initApp(); }
+    }, 100);
+
+    function initApp() {
+      const { fbDB, fbMethods } = window;
+      const txRef = fbMethods.collection(fbDB, "transactions");
+      const setRef = fbMethods.collection(fbDB, "settings");
+
+      const setToday = () => {
+        const now = new Date();
+        const offset = now.getTimezoneOffset() * 60000;
+        const local = new Date(now - offset).toISOString().split('T')[0];
+        document.getElementById("date").value = local;
+        return local;
+      };
+      setToday();
+
+      document.getElementById("fromDate").oninput = render;
+      document.getElementById("toDate").oninput = render;
+
+      // НАСТРОЙКИ — слушаем изменения в реальном времени
+      fbMethods.onSnapshot(setRef, (snap) => {
+        DEFAULTS = { income: [], expense: [] };
+        ACCOUNTS = [];
+        let setHtml = "";
+
+        snap.forEach(d => {
+          const data = d.data();
+          if (data.type === 'category') {
+            DEFAULTS[data.catType].push({ id: d.id, ...data });
+            setHtml += `<div class="set-item">📂 ${data.name} (${data.catType === 'income' ? '+' : '-'})
+              <button onclick="deleteSet('${d.id}')">✕</button>
+              <div style="font-size:10px;color:#666;">${(data.sub || []).join(", ")}</div>
+            </div>`;
+          } else if (data.type === 'account') {
+            ACCOUNTS.push({ id: d.id, ...data });
+            setHtml += `<div class="set-item">💳 ${data.name} <button onclick="deleteSet('${d.id}')">✕</button></div>`;
+          }
+        });
+
+        document.getElementById("settingsList").innerHTML = setHtml || '<div class="muted">Нет настроек</div>';
+        updateUI();
+      });
+
+      window.addCategory = async () => {
+        const name = document.getElementById("setCatName").value.trim();
+        const catType = document.getElementById("setCatType").value;
+        if (name) await fbMethods.addDoc(setRef, { type: 'category', name, catType, sub: [] });
+        document.getElementById("setCatName").value = "";
+      };
+
+      window.addAccount = async () => {
+        const name = document.getElementById("setAccName").value.trim();
+        if (name) await fbMethods.addDoc(setRef, { type: 'account', name });
+        document.getElementById("setAccName").value = "";
+      };
+
+      window.addSub = async () => {
+        const parentId = document.getElementById("setParentCat").value;
+        const subName = document.getElementById("setSubName").value.trim();
+        if (parentId && subName) {
+          await fbMethods.updateDoc(fbMethods.doc(fbDB, "settings", parentId), {
+            sub: fbMethods.arrayUnion(subName)
+          });
+        }
+        document.getElementById("setSubName").value = "";
+      };
+
+      window.deleteSet = async (id) => {
+        if (confirm("Удалить?")) await fbMethods.deleteDoc(fbMethods.doc(fbDB, "settings", id));
+      };
+
+      function updateUI() {
+        const elT = document.getElementById("type");
+        const elC = document.getElementById("category");
+        const elS = document.getElementById("subcategory");
+        const elAcc = document.getElementById("accountSelect");
+
+        elAcc.innerHTML = ACCOUNTS.length
+          ? ACCOUNTS.map(a => `<option value="${a.name}">${a.name}</option>`).join("")
+          : '<option value="">Счет не выбран</option>';
+
+        const currentCats = DEFAULTS[elT.value] || [];
+        elC.innerHTML = currentCats.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
+
+        document.getElementById("setParentCat").innerHTML = [...DEFAULTS.income, ...DEFAULTS.expense]
+          .map(c => `<option value="${c.id}">${c.name}</option>`).join("");
+
+        const fillSubs = () => {
+          const cat = currentCats.find(c => c.id === elC.value);
+          if (cat && cat.sub && cat.sub.length > 0) {
+            document.getElementById("subcatWrap").classList.remove("hidden");
+            elS.innerHTML = cat.sub.map(s => `<option value="${s}">${s}</option>`).join("");
+          } else {
+            document.getElementById("subcatWrap").classList.add("hidden");
+            elS.innerHTML = "";
+          }
+        };
+
+        elT.onchange = updateUI;
+        elC.onchange = fillSubs;
+        fillSubs();
+      }
+
+      // ТРАНЗАКЦИИ — слушаем в реальном времени
+      fbMethods.onSnapshot(fbMethods.query(txRef, fbMethods.orderBy("date", "desc")), (snap) => {
+        allTx = [];
+        snap.forEach(d => allTx.push({ id: d.id, ...d.data() }));
+        if (!document.getElementById("fromDate").value) setRange('today');
+        else render();
+      });
+
+      // ФОРМА
+      document.getElementById("txForm").onsubmit = async (e) => {
+        e.preventDefault();
+        const amt = Number(document.getElementById("amount").value);
+        if (!amt) return;
+        const catId = document.getElementById("category").value;
+        const catObj = [...DEFAULTS.income, ...DEFAULTS.expense].find(c => c.id === catId);
+        await fbMethods.addDoc(txRef, {
+          type: document.getElementById("type").value,
+          amount: amt,
+          categoryName: catObj ? catObj.name : "Без категории",
+          subcategory: document.getElementById("subcategory").value || "",
+          account: document.getElementById("accountSelect").value,
+          date: document.getElementById("date").value,
+          time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
+          createdAt: Date.now(),
+          comment: document.getElementById("comment").value
+        });
+        document.getElementById("amount").value = "";
+        document.getElementById("comment").value = "";
+        setToday();
+      };
+    }
+
+    // ПЕРЕКЛЮЧЕНИЕ ПЕРИОДА
+    window.setRange = (mode) => {
+      const f = document.getElementById("fromDate");
+      const t = document.getElementById("toDate");
+      const now = new Date();
+      const offset = now.getTimezoneOffset() * 60000;
+      const today = new Date(now - offset).toISOString().split('T')[0];
+
+      if (mode === 'today') {
+        f.value = today; t.value = today;
+      } else if (mode === 'yesterday') {
+        const y = new Date(now - offset);
+        y.setDate(y.getDate() - 1);
+        const yStr = y.toISOString().split('T')[0];
+        f.value = yStr; t.value = yStr;
+      } else {
+        f.value = ""; t.value = "";
+      }
+      render();
+    };
+
+    // РЕНДЕР
+    function render() {
+      const from = document.getElementById("fromDate").value;
+      const to = document.getElementById("toDate").value;
+      const filtered = allTx.filter(t => (!from || t.date >= from) && (!to || t.date <= to));
+
+      const inc = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+      const exp = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+      const gas = filtered.filter(t => t.subcategory === 'Бензин').reduce((s, t) => s + t.amount, 0);
+
+      document.getElementById("balance").textContent = (inc - exp).toLocaleString() + " ₸";
+      document.getElementById("totalIncome").textContent = inc.toLocaleString() + " ₸";
+      document.getElementById("totalExpense").textContent = exp.toLocaleString() + " ₸";
+
+      // Баланс по счетам
+      const accs = {};
+      filtered.forEach(t => {
+        if (!accs[t.account]) accs[t.account] = 0;
+        accs[t.account] += (t.type === 'income' ? t.amount : -t.amount);
+      });
+      document.getElementById("accountBalances").innerHTML = Object.entries(accs)
+        .map(([n, v]) => `<span>${n}: <b style="color:${v >= 0 ? '#65d48b' : '#ff6b6b'}">${v.toLocaleString()}</b></span>`)
+        .join(" | ");
+
+      const gasP = inc > 0 ? ((gas / inc) * 100).toFixed(1) : 0;
+      document.getElementById("gasText").textContent = `Бензин: ${gasP}% (${gas.toLocaleString()} ₸)`;
+      document.getElementById("gasFill").style.width = Math.min(gasP * 3, 100) + "%";
+
+      // Доход по точкам
+      const statsInc = {};
+      filtered.filter(t => t.type === 'income').forEach(t => {
+        const key = t.subcategory || t.categoryName;
+        if (!statsInc[key]) statsInc[key] = { sum: 0, cnt: 0, br: {} };
+        statsInc[key].sum += t.amount;
+        statsInc[key].cnt++;
+        statsInc[key].br[t.amount] = (statsInc[key].br[t.amount] || 0) + 1;
+      });
+      document.getElementById("earningsDetails").innerHTML = Object.entries(statsInc).map(([k, d]) => `
+        <div class="stat-row">
+          <div class="stat-main"><span>${k} (${d.cnt})</span><b>${d.sum.toLocaleString()} ₸</b></div>
+          <div class="stat-sub">${Object.entries(d.br).map(([p, c]) => `${p}₸×${c}`).join(" | ")}</div>
+        </div>`).join("") || '<div class="muted" style="padding:10px;">Нет данных</div>';
+
+      // Возможный доход
+      let totalGain = 0;
+      const vdStats = {};
+      const vds = ["F1", "F2", "F3", "Ночь"];
+      filtered.forEach(t => {
+        if (t.type === 'income' && vds.includes(t.subcategory) && t.amount < 4000) {
+          if (!vdStats[t.subcategory]) vdStats[t.subcategory] = { vdSum: 0 };
+          let p = t.amount;
+          if (t.amount === 150) p = 600;
+          else if (t.amount === 300) p = 900;
+          else if (t.subcategory === "Ночь" && t.amount === 500) p = 1000;
+          vdStats[t.subcategory].vdSum += p;
+        }
+      });
+      const vdHtml = Object.entries(vdStats).map(([p, data]) => {
+        const rSum = statsInc[p] ? statsInc[p].sum : 0;
+        const diff = data.vdSum - rSum;
+        totalGain += diff;
+        return `<div class="stat-row">
+          <div class="stat-main"><span>${p}</span><b>${data.vdSum.toLocaleString()} ₸</b></div>
+          <div style="color:#65d48b;font-size:12px;">Выгода: +${diff.toLocaleString()} ₸</div>
+        </div>`;
+      }).join("");
+      document.getElementById("potentialStats").innerHTML = vdHtml || '<div class="muted" style="padding:10px;">Нет данных ВД</div>';
+      if (totalGain > 0) {
+        document.getElementById("potentialStats").innerHTML +=
+          `<div class="gain-box"><span>ВЫГОДА ВД:</span><span class="pos">+${totalGain.toLocaleString()} ₸</span></div>`;
+      }
+
+      // Расходы по категориям
+      const statsExp = {};
+      filtered.filter(t => t.type === 'expense').forEach(t => {
+        if (!statsExp[t.categoryName]) statsExp[t.categoryName] = { sum: 0, subs: {} };
+        statsExp[t.categoryName].sum += t.amount;
+        if (t.subcategory) statsExp[t.categoryName].subs[t.subcategory] = (statsExp[t.categoryName].subs[t.subcategory] || 0) + t.amount;
+      });
+      document.getElementById("expenseDetails").innerHTML = Object.entries(statsExp).map(([c, d]) => `
+        <div class="stat-row">
+          <div class="stat-main"><span>${c}</span><b class="neg">${d.sum.toLocaleString()} ₸</b></div>
+          <div class="stat-sub">${Object.entries(d.subs).map(([s, v]) => `${s}: ${v.toLocaleString()}`).join(" | ")}</div>
+        </div>`).join("") || '<div class="muted" style="padding:10px;">Нет расходов</div>';
+
+      // История
+      document.getElementById("list").innerHTML = filtered.map(t => `
+        <div class="item">
+          <div>
+            <b class="${t.type === 'income' ? 'pos' : 'neg'}">${t.amount.toLocaleString()} ₸</b><br>
+            <small class="muted">${t.time || t.date} | ${t.subcategory || t.categoryName}${t.account ? ' [' + t.account + ']' : ''}</small>
+            ${t.comment ? `<div style="color:#65d48b;font-size:12px;">📝 ${t.comment}</div>` : ''}
+          </div>
+          <button onclick="deleteTx('${t.id}')" style="background:none;border:none;color:#444;padding:10px;cursor:pointer;">✕</button>
+        </div>`).join("") || '<div class="muted" style="padding:10px;">Нет записей</div>';
+    }
+
+    window.render = render;
+
+    window.deleteTx = async (id) => {
+      if (confirm("Удалить?")) {
+        await window.fbMethods.deleteDoc(window.fbMethods.doc(window.fbDB, "transactions", id));
+      }
     };
   </script>
 </body>
