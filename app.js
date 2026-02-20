@@ -90,6 +90,19 @@ function initApp() {
 
     window.deleteSet = async (id) => { if(confirm("Удалить?")) await fbMethods.deleteDoc(fbMethods.doc(fbDB, "settings", id)); };
 
+window.deleteTx = async (id) => {
+    if (confirm("Удалить эту запись?")) {
+        try {
+            // Удаляем именно из коллекции "transactions"
+            await fbMethods.deleteDoc(fbMethods.doc(fbDB, "transactions", id));
+            // render() вызовется сам благодаря onSnapshot
+        } catch (e) {
+            console.error("Ошибка удаления:", e);
+            alert("Не удалось удалить запись");
+        }
+    }
+};
+
     // 3. UI И ТРАНЗАКЦИИ
     function updateUI() {
         const elT = document.getElementById("type"), elC = document.getElementById("category"), 
