@@ -1,29 +1,45 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { 
+    getFirestore, collection, addDoc, onSnapshot, query, orderBy, doc, deleteDoc, updateDoc, arrayUnion 
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+// Используем конфиг из твоего последнего HTML
+const firebaseConfig = {
+    apiKey: "AIzaSyBYvSsrzjgkrBwhaBAt0KlCGrAtzgOPYx8",
+    authDomain: "moneytracker-5335b.firebaseapp.com",
+    projectId: "moneytracker-5335b",
+    storageBucket: "moneytracker-5335b.firebasestorage.app",
+    messagingSenderId: "440589448883",
+    appId: "1:440589448883:web:5ad507b270fa414731a2c6"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
 let DEFAULTS = { income: [], expense: [] };
 let ACCOUNTS = [];
 let allTx = [];
 
-const checkFB = setInterval(() => {
-    if (window.fbDB && window.fbMethods) { clearInterval(checkFB); initApp(); }
-}, 100);
+// Привязываем к window для работы кнопок из HTML
+window.fbDB = db;
+window.fbMethods = { collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc, arrayUnion };
 
 function initApp() {
-    const { fbDB, fbMethods } = window;
-    const txRef = fbMethods.collection(fbDB, "transactions");
-    const setRef = fbMethods.collection(fbDB, "settings");
+    const txRef = collection(db, "transactions");
+    const setRef = collection(db, "settings");
 
-    // Функция автозаполнения даты
     const setToday = () => {
         const now = new Date();
         const offset = now.getTimezoneOffset() * 60000;
         const local = new Date(now - offset).toISOString().split('T')[0];
-        document.getElementById("date").value = local;
+        const el = document.getElementById("date");
+        if(el) el.value = local;
         return local;
     };
-    
     setToday();
 
     // 1. ЗАГРУЗКА НАСТРОЕК
-    fbMethods.onSnapshot(setRef, (snap) => {
+    onSnapshot(setRef, (snap) => {
         DEFAULTS = { income: [], expense: [] };
         ACCOUNTS = [];
         let setHtml = "";
@@ -40,7 +56,8 @@ function initApp() {
                 setHtml += `<div class="set-item">💳 ${data.name} <button onclick="deleteSet('${d.id}')">✕</button></div>`;
             }
         });
-        document.getElementById("settingsList").innerHTML = setHtml;
+        const listEl = document.getElementById("settingsList");
+        if(listEl) listEl.innerHTML = setHtml;
         updateUI();
     });
 
@@ -48,13 +65,13 @@ function initApp() {
     window.addCategory = async () => {
         const name = document.getElementById("setCatName").value;
         const catType = document.getElementById("setCatType").value;
-        if (name) await fbMethods.addDoc(setRef, { type: 'category', name, catType, sub: [] });
+        if (name) await addDoc(setRef, { type: 'category', name, catType, sub: [] });
         document.getElementById("setCatName").value = "";
     };
 
     window.addAccount = async () => {
         const name = document.getElementById("setAccName").value;
-        if (name) await fbMethods.addDoc(setRef, { type: 'account', name });
+        if (name) await addDoc(setRef, { type: 'account', name });
         document.getElementById("setAccName").value = "";
     };
 
@@ -62,26 +79,28 @@ function initApp() {
         const parentId = document.getElementById("setParentCat").value;
         const subName = document.getElementById("setSubName").value;
         if (parentId && subName) {
-            await fbMethods.updateDoc(fbMethods.doc(fbDB, "settings", parentId), {
-                sub: fbMethods.arrayUnion(subName)
+            await updateDoc(doc(db, "settings", parentId), {
+                sub: arrayUnion(subName)
             });
         }
         document.getElementById("setSubName").value = "";
     };
 
-    window.deleteSet = async (id) => { if(confirm("Удалить?")) await fbMethods.deleteDoc(fbMethods.doc(fbDB, "settings", id)); };
+    window.deleteSet = async (id) => { if(confirm("Удалить?")) await deleteDoc(doc(db, "settings", id)); };
 
-    // 3. UI И ТРАНЗАКЦИИ
+    // 3. UI ТРАНЗАКЦИЙ
     function updateUI() {
         const elT = document.getElementById("type"), elC = document.getElementById("category"), 
               elS = document.getElementById("subcategory"), elAcc = document.getElementById("accountSelect");
+        if(!elT || !elC) return;
 
         elAcc.innerHTML = ACCOUNTS.map(a => `<option value="${a.name}">${a.name}</option>`).join("") || '<option>Счет не выбран</option>';
         
         const currentCats = DEFAULTS[elT.value];
         elC.innerHTML = currentCats.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
         
-        document.getElementById("setParentCat").innerHTML = [...DEFAULTS.income, ...DEFAULTS.expense].map(c => `<option value="${c.id}">${c.name}</option>`).join("");
+        const parentCatEl = document.getElementById("setParentCat");
+        if(parentCatEl) parentCatEl.innerHTML = [...DEFAULTS.income, ...DEFAULTS.expense].map(c => `<option value="${c.id}">${c.name}</option>`).join("");
 
         const fillSubs = () => {
             const cat = currentCats.find(c => c.id === elC.value);
@@ -99,10 +118,9 @@ function initApp() {
         fillSubs();
     }
 
-    fbMethods.onSnapshot(fbMethods.query(txRef, fbMethods.orderBy("date", "desc")), (snap) => {
-        allTx = [];
-        snap.forEach(d => allTx.push({ id: d.id, ...d.data() }));
-        if (!document.getElementById("fromDate").value) setRange('today'); 
+    onSnapshot(query(txRef, orderBy("date", "desc")), (snap) => {
+        allTx = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        if (!document.getElementById("fromDate").value) window.setRange('today'); 
         else render();
     });
 
@@ -114,7 +132,7 @@ function initApp() {
         const catId = document.getElementById("category").value;
         const catObj = [...DEFAULTS.income, ...DEFAULTS.expense].find(c => c.id === catId);
         
-        await fbMethods.addDoc(txRef, {
+        await addDoc(txRef, {
             type: document.getElementById("type").value,
             amount: amt,
             categoryName: catObj ? catObj.name : "Без категории",
@@ -132,6 +150,7 @@ function initApp() {
     };
 }
 
+// 4. ГЛОБАЛЬНЫЕ ФУНКЦИИ ФИЛЬТРОВ И РЕНДЕРА
 window.setRange = (mode) => {
     const f = document.getElementById("fromDate"), t = document.getElementById("toDate");
     const now = new Date();
@@ -154,13 +173,18 @@ function render() {
 
     const inc = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
     const exp = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
-    const gas = filtered.filter(t => t.subcategory === 'Бензин').reduce((s, t) => s + t.amount, 0);
+    
+    // УМНЫЙ БЕНЗИН: ищет подстроку "бенз" в подкатегории или категории
+    const gas = filtered.filter(t => {
+        const sub = (t.subcategory || "").toLowerCase();
+        const cat = (t.categoryName || "").toLowerCase();
+        return t.type === 'expense' && (sub.includes("бенз") || cat.includes("бенз"));
+    }).reduce((s, t) => s + t.amount, 0);
 
     document.getElementById("balance").textContent = (inc - exp).toLocaleString() + " ₸";
     document.getElementById("totalIncome").textContent = inc.toLocaleString() + " ₸";
     document.getElementById("totalExpense").textContent = exp.toLocaleString() + " ₸";
 
-    // Баланс по счетам
     const accs = {};
     filtered.forEach(t => {
         if(!accs[t.account]) accs[t.account] = 0;
@@ -173,7 +197,6 @@ function render() {
     document.getElementById("gasText").textContent = `Бензин: ${gasP}% (${gas.toLocaleString()} ₸)`;
     document.getElementById("gasFill").style.width = Math.min(gasP * 3, 100) + "%";
 
-    // Статистика дохода
     const statsInc = {};
     filtered.filter(t => t.type === 'income').forEach(t => {
         const key = t.subcategory || t.categoryName;
@@ -185,10 +208,10 @@ function render() {
         <div class="stat-row"><div class="stat-main"><span>${k} (${d.cnt})</span><b>${d.sum.toLocaleString()} ₸</b></div>
         <div class="stat-sub">${Object.entries(d.br).map(([p, c]) => `${p}₸×${c}`).join(" | ")}</div></div>`).join("");
 
-    // ВОЗМОЖНЫЙ ДОХОД (ВД)
+    // ВД: ЛИМИТ 3000
     let totalGain = 0; const vdStats = {}; const vds = ["F1", "F2", "F3", "Ночь"];
     filtered.forEach(t => {
-        if (t.type === 'income' && vds.includes(t.subcategory) && t.amount < 4000) {
+        if (t.type === 'income' && vds.includes(t.subcategory) && t.amount < 3000) {
             if(!vdStats[t.subcategory]) vdStats[t.subcategory] = { vdSum: 0 };
             let p = t.amount;
             if (t.amount === 150) p = 600;
@@ -206,7 +229,6 @@ function render() {
     document.getElementById("potentialStats").innerHTML = vdHtml || '<div class="muted">Нет данных ВД</div>';
     if(totalGain > 0) document.getElementById("potentialStats").innerHTML += `<div class="gain-box"><span>ВЫГОДА ВД:</span><span class="pos">+${totalGain.toLocaleString()} ₸</span></div>`;
 
-    // Расходы
     const statsExp = {};
     filtered.filter(t => t.type === 'expense').forEach(t => {
         if(!statsExp[t.categoryName]) statsExp[t.categoryName] = { sum: 0, subs: {} };
@@ -217,7 +239,6 @@ function render() {
         <div class="stat-row"><div class="stat-main"><span>${c}</span><b class="neg">${d.sum.toLocaleString()} ₸</b></div>
         <div class="stat-sub">${Object.entries(d.subs).map(([s, v]) => `${s}: ${v.toLocaleString()}`).join(" | ")}</div></div>`).join("");
 
-    // История
     document.getElementById("list").innerHTML = filtered.map(t => `
         <div class="item"><div><b class="${t.type==='income'?'pos':'neg'}">${t.amount.toLocaleString()} ₸</b><br>
         <small class="muted">${t.time} | ${t.subcategory || t.categoryName} [${t.account}]</small>
@@ -225,4 +246,8 @@ function render() {
         <button onclick="deleteTx('${t.id}')" style="background:none;border:none;color:#444;padding:10px;">✕</button></div>`).join("");
 }
 
-window.deleteTx = async (id) => { if(confirm("Удалить?")) await window.fbMethods.deleteDoc(window.fbMethods.doc(window.fbDB, "transactions", id)); };
+window.deleteTx = async (id) => { if(confirm("Удалить?")) await deleteDoc(doc(db, "transactions", id)); };
+
+// Запуск приложения
+initApp();
+window.render = render;
