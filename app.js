@@ -1,9 +1,8 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { 
-    getFirestore, collection, addDoc, onSnapshot, query, orderBy, doc, deleteDoc 
+    getFirestore, collection, addDoc, onSnapshot, query, orderBy, doc, deleteDoc, updateDoc, arrayUnion 
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-// 1. КОНФИГУРАЦИЯ
 const firebaseConfig = {
     apiKey: "AIzaSyDNk1We9du5BJyrgGbQrkqd7tSDscneIOA",
     authDomain: "gold-11fa4.firebaseapp.com",
@@ -17,111 +16,258 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+// Глобальные переменные
+let DEFAULTS = { income: [], expense: [] };
+let ACCOUNTS = [];
 let allTx = [];
-let allSets = [];
 
-// 2. ФУНКЦИИ УДАЛЕНИЯ (Выносим в window сразу)
-window.deleteTx = async (id) => {
-    if (!id || !confirm("Удалить эту запись?")) return;
-    try {
-        await deleteDoc(doc(db, "transactions", id));
-    } catch (e) { console.error("Ошибка удаления транзакции:", e); }
-};
+// Прокидываем методы в window для старых функций
+window.fbDB = db;
+window.fbMethods = { collection, addDoc, onSnapshot, query, orderBy, doc, deleteDoc, updateDoc, arrayUnion };
 
-window.deleteSet = async (id) => {
-    if (!id || !confirm("Удалить из настроек?")) return;
-    try {
-        await deleteDoc(doc(db, "settings", id));
-    } catch (e) { console.error("Ошибка удаления настройки:", e); }
-};
+// 1. ИНИЦИАЛИЗАЦИЯ
+function initApp() {
+    const setRef = collection(db, "settings");
+    const txRef = collection(db, "transactions");
 
-// 3. ОБНОВЛЕНИЕ ИНТЕРФЕЙСА НАСТРОЕК (Счета и Категории)
-function updateSettingsUI() {
-    const accSelect = document.getElementById("accSelect");
-    const catSelect = document.getElementById("catSelect");
-    const setList = document.getElementById("settingsList");
+    const setToday = () => {
+        const now = new Date();
+        const offset = now.getTimezoneOffset() * 60000;
+        const local = new Date(now - offset).toISOString().split('T')[0];
+        if(document.getElementById("date")) document.getElementById("date").value = local;
+        return local;
+    };
+    setToday();
 
-    if (setList) {
-        setList.innerHTML = allSets.map(s => `
-            <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; border-bottom:1px solid #333;">
-                <span><small style="color:#888;">${s.type === 'acc' ? 'Счёт' : 'Кат'}:</small> ${s.name}</span>
-                <button onclick="deleteSet('${s.id}')" style="background:none; border:none; color:#ff6b6b; cursor:pointer; padding:5px;">✕</button>
-            </div>`).join("");
-    }
+    // Загрузка настроек
+    onSnapshot(setRef, (snap) => {
+        DEFAULTS = { income: [], expense: [] };
+        ACCOUNTS = [];
+        let setHtml = "";
 
-    // Заполнение выпадающих списков
-    if (accSelect) {
-        const accs = allSets.filter(s => s.type === 'acc');
-        accSelect.innerHTML = accs.length ? accs.map(a => `<option value="${a.name}">${a.name}</option>`).join("") : '<option value="">Нет счетов</option>';
-    }
-    if (catSelect) {
-        const cats = allSets.filter(s => s.type === 'cat');
-        catSelect.innerHTML = cats.length ? cats.map(c => `<option value="${c.name}">${c.name}</option>`).join("") : '<option value="">Нет категорий</option>';
+        snap.forEach(d => {
+            const data = d.data();
+            if (data.type === 'category') {
+                DEFAULTS[data.catType].push({ id: d.id, ...data });
+                setHtml += `<div class="set-item">📂 ${data.name} (${data.catType === 'income'?'+':'-'}) 
+                    <button onclick="deleteSet('${d.id}')">✕</button>
+                    <div style="font-size:10px; color:#666;">${(data.sub || []).join(", ")}</div></div>`;
+            } else if (data.type === 'account') {
+                ACCOUNTS.push({ id: d.id, ...data });
+                setHtml += `<div class="set-item">💳 ${data.name} <button onclick="deleteSet('${d.id}')">✕</button></div>`;
+            }
+        });
+        const setListEl = document.getElementById("settingsList");
+        if(setListEl) setListEl.innerHTML = setHtml;
+        updateUI();
+    });
+
+    // Загрузка транзакций
+    onSnapshot(query(txRef, orderBy("date", "desc")), (snap) => {
+        allTx = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        if (!document.getElementById("fromDate").value) window.setRange('today'); 
+        else render();
+    });
+
+    // Обработка формы
+    const form = document.getElementById("txForm");
+    if(form) {
+        form.onsubmit = async (e) => {
+            e.preventDefault();
+            const amt = Number(document.getElementById("amount").value);
+            if(!amt) return;
+            
+            const catId = document.getElementById("category").value;
+            const catObj = [...DEFAULTS.income, ...DEFAULTS.expense].find(c => c.id === catId);
+            
+            await addDoc(txRef, {
+                type: document.getElementById("type").value,
+                amount: amt,
+                categoryName: catObj ? catObj.name : "Без категории",
+                subcategory: document.getElementById("subcategory").value || "",
+                account: document.getElementById("accountSelect").value,
+                date: document.getElementById("date").value,
+                time: new Date().toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'}),
+                createdAt: Date.now(),
+                comment: document.getElementById("comment").value
+            });
+            
+            document.getElementById("amount").value = "";
+            document.getElementById("comment").value = "";
+            setToday();
+        };
     }
 }
 
-// 4. ГЛАВНАЯ ФУНКЦИЯ ОТРИСОВКИ (RENDER)
-function render() {
-    const from = document.getElementById("fromDate")?.value;
-    const to = document.getElementById("toDate")?.value;
+// 2. УПРАВЛЕНИЕ ИНТЕРФЕЙСОМ ВВОДА
+function updateUI() {
+    const elT = document.getElementById("type"), 
+          elC = document.getElementById("category"), 
+          elS = document.getElementById("subcategory"), 
+          elAcc = document.getElementById("accountSelect");
 
+    if(!elT || !elC) return;
+
+    elAcc.innerHTML = ACCOUNTS.map(a => `<option value="${a.name}">${a.name}</option>`).join("") || '<option>Счет не выбран</option>';
+    
+    const currentCats = DEFAULTS[elT.value];
+    elC.innerHTML = currentCats.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
+    
+    const parentCatSelect = document.getElementById("setParentCat");
+    if(parentCatSelect) {
+        parentCatSelect.innerHTML = [...DEFAULTS.income, ...DEFAULTS.expense].map(c => `<option value="${c.id}">${c.name}</option>`).join("");
+    }
+
+    const fillSubs = () => {
+        const cat = currentCats.find(c => c.id === elC.value);
+        if (cat && cat.sub && cat.sub.length > 0) {
+            document.getElementById("subcatWrap").classList.remove("hidden");
+            elS.innerHTML = cat.sub.map(s => `<option value="${s}">${s}</option>`).join("");
+        } else {
+            document.getElementById("subcatWrap").classList.add("hidden");
+            elS.innerHTML = "";
+        }
+    };
+
+    elT.onchange = updateUI;
+    elC.onchange = fillSubs;
+    fillSubs();
+}
+
+// 3. ФУНКЦИИ НАСТРОЕК (Глобальные)
+window.addCategory = async () => {
+    const name = document.getElementById("setCatName").value;
+    const catType = document.getElementById("setCatType").value;
+    if (name) await addDoc(collection(db, "settings"), { type: 'category', name, catType, sub: [] });
+    document.getElementById("setCatName").value = "";
+};
+
+window.addAccount = async () => {
+    const name = document.getElementById("setAccName").value;
+    if (name) await addDoc(collection(db, "settings"), { type: 'account', name });
+    document.getElementById("setAccName").value = "";
+};
+
+window.addSub = async () => {
+    const parentId = document.getElementById("setParentCat").value;
+    const subName = document.getElementById("setSubName").value;
+    if (parentId && subName) {
+        await updateDoc(doc(db, "settings", parentId), {
+            sub: arrayUnion(subName)
+        });
+    }
+    document.getElementById("setSubName").value = "";
+};
+
+window.deleteSet = async (id) => { 
+    if(confirm("Удалить пункт настроек?")) await deleteDoc(doc(db, "settings", id)); 
+};
+
+window.deleteTx = async (id) => { 
+    if(confirm("Удалить запись из истории?")) await deleteDoc(doc(db, "transactions", id)); 
+};
+
+window.setRange = (mode) => {
+    const f = document.getElementById("fromDate"), t = document.getElementById("toDate");
+    const now = new Date();
+    const offset = now.getTimezoneOffset() * 60000;
+    const today = new Date(now - offset).toISOString().split('T')[0];
+
+    if (mode === 'today') { f.value = today; t.value = today; }
+    else if (mode === 'yesterday') {
+        const y = new Date(now - offset); y.setDate(y.getDate() - 1);
+        const yStr = y.toISOString().split('T')[0];
+        f.value = yStr; t.value = yStr;
+    } else { f.value = ""; t.value = ""; }
+    render();
+};
+
+// 4. ГЛАВНЫЙ РЕНДЕР СТАТИСТИКИ
+function render() {
+    const from = document.getElementById("fromDate").value;
+    const to = document.getElementById("toDate").value;
     const filtered = allTx.filter(t => (!from || t.date >= from) && (!to || t.date <= to));
 
     const inc = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
     const exp = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
 
-    // Бензин
+    // УМНЫЙ ПОИСК БЕНЗИНА (теперь через includes)
     const gas = filtered.filter(t => {
-        if (t.type !== 'expense') return false;
-        const sub = (t.subcategory || "").toLowerCase();
-        const cat = (t.categoryName || "").toLowerCase();
-        return sub.includes('бенз') || cat.includes('бенз');
+        const s = (t.subcategory || "").toLowerCase();
+        const c = (t.categoryName || "").toLowerCase();
+        return t.type === 'expense' && (s.includes('бенз') || c.includes('бенз'));
     }).reduce((s, t) => s + t.amount, 0);
 
-    // Вывод цифр
-    if(document.getElementById("balance")) document.getElementById("balance").textContent = (inc - exp).toLocaleString() + " ₸";
-    if(document.getElementById("totalIncome")) document.getElementById("totalIncome").textContent = inc.toLocaleString() + " ₸";
-    if(document.getElementById("totalExpense")) document.getElementById("totalExpense").textContent = exp.toLocaleString() + " ₸";
+    document.getElementById("balance").textContent = (inc - exp).toLocaleString() + " ₸";
+    document.getElementById("totalIncome").textContent = inc.toLocaleString() + " ₸";
+    document.getElementById("totalExpense").textContent = exp.toLocaleString() + " ₸";
+
+    // Баланс по счетам
+    const accs = {};
+    filtered.forEach(t => {
+        if(!accs[t.account]) accs[t.account] = 0;
+        accs[t.account] += (t.type === 'income' ? t.amount : -t.amount);
+    });
+    document.getElementById("accountBalances").innerHTML = Object.entries(accs).map(([n, v]) => 
+        `<span>${n}: <b style="color:${v>=0?'#65d48b':'#ff6b6b'}">${v.toLocaleString()}</b></span>`).join(" | ");
 
     // Полоска бензина
     const gasP = inc > 0 ? ((gas / inc) * 100).toFixed(1) : 0;
-    const gasText = document.getElementById("gasText");
-    const gasFill = document.getElementById("gasFill");
-    if (gasText) gasText.textContent = `Бензин: ${gasP}% (${gas.toLocaleString()} ₸)`;
-    if (gasFill) gasFill.style.width = Math.min(gasP * 3, 100) + "%";
+    document.getElementById("gasText").textContent = `Бензин: ${gasP}% (${gas.toLocaleString()} ₸)`;
+    document.getElementById("gasFill").style.width = Math.min(gasP * 3, 100) + "%";
+
+    // Статистика дохода
+    const statsInc = {};
+    filtered.filter(t => t.type === 'income').forEach(t => {
+        const key = t.subcategory || t.categoryName;
+        if(!statsInc[key]) statsInc[key] = { sum: 0, cnt: 0, br: {} };
+        statsInc[key].sum += t.amount; statsInc[key].cnt++;
+        statsInc[key].br[t.amount] = (statsInc[key].br[t.amount] || 0) + 1;
+    });
+    document.getElementById("earningsDetails").innerHTML = Object.entries(statsInc).map(([k, d]) => `
+        <div class="stat-row"><div class="stat-main"><span>${k} (${d.cnt})</span><b>${d.sum.toLocaleString()} ₸</b></div>
+        <div class="stat-sub">${Object.entries(d.br).map(([p, c]) => `${p}₸×${c}`).join(" | ")}</div></div>`).join("");
+
+    // ВОЗМОЖНЫЙ ДОХОД (ВД) - ЛИМИТ 3000
+    let totalGain = 0; const vdStats = {}; const vds = ["F1", "F2", "F3", "Ночь"];
+    filtered.forEach(t => {
+        if (t.type === 'income' && vds.includes(t.subcategory) && t.amount < 3000) {
+            if(!vdStats[t.subcategory]) vdStats[t.subcategory] = { vdSum: 0 };
+            let p = t.amount;
+            if (t.amount === 150) p = 600;
+            else if (t.amount === 300) p = 900;
+            else if (t.subcategory === "Ночь" && t.amount === 500) p = 1000;
+            vdStats[t.subcategory].vdSum += p;
+        }
+    });
+    const vdHtml = Object.entries(vdStats).map(([p, data]) => {
+        const rSum = statsInc[p] ? statsInc[p].sum : 0;
+        const diff = data.vdSum - rSum; totalGain += diff;
+        return `<div class="stat-row"><div class="stat-main"><span>${p}</span><b>${data.vdSum.toLocaleString()} ₸</b></div>
+                <div style="color:#65d48b; font-size:12px;">Выгода: +${diff.toLocaleString()} ₸</div></div>`;
+    }).join("");
+    document.getElementById("potentialStats").innerHTML = vdHtml || '<div class="muted">Нет данных ВД</div>';
+    if(totalGain > 0) document.getElementById("potentialStats").innerHTML += `<div class="gain-box"><span>ВЫГОДА ВД:</span><span class="pos">+${totalGain.toLocaleString()} ₸</span></div>`;
+
+    // Расходы
+    const statsExp = {};
+    filtered.filter(t => t.type === 'expense').forEach(t => {
+        if(!statsExp[t.categoryName]) statsExp[t.categoryName] = { sum: 0, subs: {} };
+        statsExp[t.categoryName].sum += t.amount;
+        if(t.subcategory) statsExp[t.categoryName].subs[t.subcategory] = (statsExp[t.categoryName].subs[t.subcategory] || 0) + t.amount;
+    });
+    document.getElementById("expenseDetails").innerHTML = Object.entries(statsExp).map(([c, d]) => `
+        <div class="stat-row"><div class="stat-main"><span>${c}</span><b class="neg">${d.sum.toLocaleString()} ₸</b></div>
+        <div class="stat-sub">${Object.entries(d.subs).map(([s, v]) => `${s}: ${v.toLocaleString()}`).join(" | ")}</div></div>`).join("");
 
     // История
-    const listEl = document.getElementById("list");
-    if (listEl) {
-        listEl.innerHTML = filtered.map(t => `
-            <div class="item">
-                <div>
-                    <b class="${t.type==='income'?'pos':'neg'}">${t.amount.toLocaleString()} ₸</b><br>
-                    <small class="muted">${t.time} | ${t.subcategory || t.categoryName} [${t.account}]</small>
-                </div>
-                <button onclick="deleteTx('${t.id}')" style="background:none; border:none; color:#555; padding:10px; cursor:pointer;">✕</button>
-            </div>`).join("");
-    }
-    
-    // Вызов остальных расчетов (ВД и т.д.) если функции есть
-    if (window.updateStats) window.updateStats(filtered, inc);
+    document.getElementById("list").innerHTML = filtered.map(t => `
+        <div class="item"><div><b class="${t.type==='income'?'pos':'neg'}">${t.amount.toLocaleString()} ₸</b><br>
+        <small class="muted">${t.time} | ${t.subcategory || t.categoryName} [${t.account}]</small>
+        ${t.comment ? `<div style="color:#65d48b; font-size:12px;">📝 ${t.comment}</div>` : ''}</div>
+        <button onclick="deleteTx('${t.id}')" style="background:none;border:none;color:#444;padding:10px;cursor:pointer;">✕</button></div>`).join("");
 }
 
-// 5. ЗАПУСК И СЛУШАТЕЛИ
-const init = () => {
-    // Слушаем транзакции
-    onSnapshot(query(collection(db, "transactions"), orderBy("date", "desc")), (snap) => {
-        allTx = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        render();
-    });
-
-    // Слушаем настройки
-    onSnapshot(query(collection(db, "settings"), orderBy("name")), (snap) => {
-        allSets = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        updateSettingsUI();
-        render();
-    });
-};
-
-init();
+// Запуск
+initApp();
 window.render = render;
