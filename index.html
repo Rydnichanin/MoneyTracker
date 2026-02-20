@@ -526,10 +526,22 @@
 
       // Лучший и худший день
       const days = Object.entries(byDay).filter(([d]) => d);
+
+      // Дни где были доставки F1/F2/F3/Ночь
+      const deliveryDays = new Set();
+      allTx.forEach(t => {
+        if (t.type === 'income' && ["F1","F2","F3","Ночь"].includes(t.subcategory)) {
+          deliveryDays.add(t.date);
+        }
+      });
+
       let bestDay = null, worstDay = null;
       if (days.length > 0) {
         bestDay = days.reduce((a, b) => b[1] > a[1] ? b : a);
-        worstDay = days.reduce((a, b) => b[1] < a[1] ? b : a);
+        const deliveryDaysList = days.filter(([d]) => deliveryDays.has(d));
+        if (deliveryDaysList.length > 0) {
+          worstDay = deliveryDaysList.reduce((a, b) => b[1] < a[1] ? b : a);
+        }
       }
 
       const formatDate = (d) => {
