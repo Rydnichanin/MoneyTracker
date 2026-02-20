@@ -39,23 +39,7 @@
     .gain-box { background: #1a2e21; padding: 15px; border-radius: 12px; border: 1px solid var(--pos); margin-top: 15px; display: flex; justify-content: space-between; font-weight: bold; font-size: 18px; }
   </style>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyBYvSsrzjgkrBwhaBAt0KlCGrAtzgOPYx8",
-      authDomain: "moneytracker-5335b.firebaseapp.com",
-      projectId: "moneytracker-5335b",
-      storageBucket: "moneytracker-5335b.firebasestorage.app",
-      messagingSenderId: "440589448883",
-      appId: "1:440589448883:web:5ad507b270fa414731a2c6"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    window.fbDB = getFirestore(app);
-    window.fbMethods = { collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc, arrayUnion };
-  </script>
 </head>
 <body>
   <div class="wrap">
