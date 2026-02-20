@@ -395,10 +395,11 @@
       let totalGain = 0;
       const vdStats = {};
       const vds = ["F1", "F2", "F3", "Ночь"];
+
+      // Считаем ВД только по записям < 3000
       filtered.forEach(t => {
         if (t.type === 'income' && vds.includes(t.subcategory) && t.amount < 3000) {
-          if (!vdStats[t.subcategory]) vdStats[t.subcategory] = { vdSum: 0, realSum: 0 };
-          vdStats[t.subcategory].realSum += t.amount;
+          if (!vdStats[t.subcategory]) vdStats[t.subcategory] = { vdSum: 0 };
           let p = t.amount;
           if (t.amount === 150) p = 600;
           else if (t.amount === 300) p = 900;
@@ -406,8 +407,11 @@
           vdStats[t.subcategory].vdSum += p;
         }
       });
+
       const vdHtml = Object.entries(vdStats).map(([p, data]) => {
-        const diff = data.vdSum - data.realSum;
+        // Вычитаем ВСЕ реальные доходы с этой точки (включая ≥3000)
+        const rSum = statsInc[p] ? statsInc[p].sum : 0;
+        const diff = data.vdSum - rSum;
         totalGain += diff;
         return `<div class="stat-row">
           <div class="stat-main"><span>${p}</span><b>${data.vdSum.toLocaleString()} ₸</b></div>
