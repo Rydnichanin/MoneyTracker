@@ -394,7 +394,7 @@
       const vdStats = {};
       const vds = ["F1", "F2", "F3", "Ночь"];
       filtered.forEach(t => {
-        if (t.type === 'income' && vds.includes(t.subcategory) && t.amount < 4000) {
+        if (t.type === 'income' && vds.includes(t.subcategory) && t.amount < 3000) {
           if (!vdStats[t.subcategory]) vdStats[t.subcategory] = { vdSum: 0 };
           let p = t.amount;
           if (t.amount === 150) p = 600;
@@ -404,55 +404,4 @@
         }
       });
       const vdHtml = Object.entries(vdStats).map(([p, data]) => {
-        const rSum = statsInc[p] ? statsInc[p].sum : 0;
-        const diff = data.vdSum - rSum;
-        totalGain += diff;
-        return `<div class="stat-row">
-          <div class="stat-main"><span>${p}</span><b>${data.vdSum.toLocaleString()} ₸</b></div>
-          <div style="color:#65d48b;font-size:12px;">Выгода: +${diff.toLocaleString()} ₸</div>
-        </div>`;
-      }).join("");
-      document.getElementById("potentialStats").innerHTML = vdHtml || '<div class="muted" style="padding:10px;">Нет данных ВД</div>';
-      if (totalGain > 0) {
-        document.getElementById("potentialStats").innerHTML +=
-          `<div class="gain-box"><span>ВЫГОДА ВД:</span><span class="pos">+${totalGain.toLocaleString()} ₸</span></div>`;
-      }
-
-      // Расходы по категориям
-      const statsExp = {};
-      filtered.filter(t => t.type === 'expense').forEach(t => {
-        if (!statsExp[t.categoryName]) statsExp[t.categoryName] = { sum: 0, subs: {} };
-        statsExp[t.categoryName].sum += t.amount;
-        if (t.subcategory) statsExp[t.categoryName].subs[t.subcategory] = (statsExp[t.categoryName].subs[t.subcategory] || 0) + t.amount;
-      });
-      document.getElementById("expenseDetails").innerHTML = Object.entries(statsExp).map(([c, d]) => `
-        <div class="stat-row">
-          <div class="stat-main"><span>${c}</span><b class="neg">${d.sum.toLocaleString()} ₸</b></div>
-          <div class="stat-sub">${Object.entries(d.subs).map(([s, v]) => `${s}: ${v.toLocaleString()}`).join(" | ")}</div>
-        </div>`).join("") || '<div class="muted" style="padding:10px;">Нет расходов</div>';
-
-      // История
-      document.getElementById("list").innerHTML = filtered.map(t => {
-        const acc = t.account && t.account !== 'undefined' && t.account !== '' ? ` [${t.account}]` : '';
-        const timeStr = t.time ? `${t.date} ${t.time}` : t.date;
-        return `<div class="item">
-          <div>
-            <b class="${t.type === 'income' ? 'pos' : 'neg'}">${t.amount.toLocaleString()} ₸</b><br>
-            <small class="muted">${timeStr} | ${t.subcategory || t.categoryName}${acc}</small>
-            ${t.comment ? `<div style="color:#65d48b;font-size:12px;">📝 ${t.comment}</div>` : ''}
-          </div>
-          <button onclick="deleteTx('${t.id}')" style="background:none;border:none;color:#444;padding:10px;cursor:pointer;">✕</button>
-        </div>`;
-      }).join("") || '<div class="muted" style="padding:10px;">Нет записей</div>';
-    }
-
-    window.render = render;
-
-    window.deleteTx = async (id) => {
-      if (confirm("Удалить?")) {
-        await window.fbMethods.deleteDoc(window.fbMethods.doc(window.fbDB, "transactions", id));
-      }
-    };
-  </script>
-</body>
-</html>
+        const rSum = statsInc[p] ? statsInc[p].su
