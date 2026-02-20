@@ -12,13 +12,12 @@ import {
 
 // ====== CONFIG ======
 const firebaseConfig = {
-  apiKey: "AIzaSyDNk1We9du5BJyrgGbQrkqd7tSDscneIOA",
-  authDomain: "gold-11fa4.firebaseapp.com",
-  projectId: "gold-11fa4",
-  storageBucket: "gold-11fa4.firebasestorage.app",
-  messagingSenderId: "226774330161",
-  appId: "1:226774330161:web:d1e1c93ade5dcea31d5e10",
-  measurementId: "G-7MLLBN1YZ4"
+  apiKey: "AIzaSyBYvSsrzjgkrBwhaBAt0KlCGrAtzgOPYx8",
+  authDomain: "moneytracker-5335b.firebaseapp.com",
+  projectId: "moneytracker-5335b",
+  storageBucket: "moneytracker-5335b.firebasestorage.app",
+  messagingSenderId: "440589448883",
+  appId: "1:440589448883:web:5ad507b270fa414731a2c6"
 };
 
 const app = initializeApp(firebaseConfig);
