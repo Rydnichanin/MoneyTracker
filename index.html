@@ -351,7 +351,10 @@
 
       const inc = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
       const exp = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
-      const gas = filtered.filter(t => t.subcategory === 'Бензин').reduce((s, t) => s + t.amount, 0);
+      const gas = filtered.filter(t => t.type === 'expense' && (
+        String(t.subcategory || '').toLowerCase().includes('бенз') ||
+        String(t.categoryName || '').toLowerCase().includes('бенз')
+      )).reduce((s, t) => s + t.amount, 0);
 
       document.getElementById("balance").textContent = (inc - exp).toLocaleString() + " ₸";
       document.getElementById("totalIncome").textContent = inc.toLocaleString() + " ₸";
@@ -369,7 +372,7 @@
 
       const gasP = inc > 0 ? ((gas / inc) * 100).toFixed(1) : 0;
       document.getElementById("gasText").textContent = `Бензин: ${gasP}% (${gas.toLocaleString()} ₸)`;
-      document.getElementById("gasFill").style.width = Math.min(gasP * 3, 100) + "%";
+      document.getElementById("gasFill").style.width = Math.min(Number(gasP), 100) + "%";
 
       // Доход по точкам
       const statsInc = {};
@@ -429,15 +432,18 @@
         </div>`).join("") || '<div class="muted" style="padding:10px;">Нет расходов</div>';
 
       // История
-      document.getElementById("list").innerHTML = filtered.map(t => `
-        <div class="item">
+      document.getElementById("list").innerHTML = filtered.map(t => {
+        const acc = t.account && t.account !== 'undefined' && t.account !== '' ? ` [${t.account}]` : '';
+        const timeStr = t.time ? `${t.date} ${t.time}` : t.date;
+        return `<div class="item">
           <div>
             <b class="${t.type === 'income' ? 'pos' : 'neg'}">${t.amount.toLocaleString()} ₸</b><br>
-            <small class="muted">${t.time || t.date} | ${t.subcategory || t.categoryName}${t.account ? ' [' + t.account + ']' : ''}</small>
+            <small class="muted">${timeStr} | ${t.subcategory || t.categoryName}${acc}</small>
             ${t.comment ? `<div style="color:#65d48b;font-size:12px;">📝 ${t.comment}</div>` : ''}
           </div>
           <button onclick="deleteTx('${t.id}')" style="background:none;border:none;color:#444;padding:10px;cursor:pointer;">✕</button>
-        </div>`).join("") || '<div class="muted" style="padding:10px;">Нет записей</div>';
+        </div>`;
+      }).join("") || '<div class="muted" style="padding:10px;">Нет записей</div>';
     }
 
     window.render = render;
