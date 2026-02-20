@@ -216,9 +216,15 @@
           const data = d.data();
           if (data.type === 'category') {
             DEFAULTS[data.catType].push({ id: d.id, ...data });
+            const subButtons = (data.sub || []).map(s =>
+              `<span style="display:inline-flex;align-items:center;gap:3px;background:#333;border-radius:5px;padding:2px 6px;margin:2px;">
+                ${s}
+                <button onclick="deleteSub('${d.id}','${s}')" style="background:none;border:none;color:var(--neg);font-size:12px;padding:0;cursor:pointer;line-height:1;">✕</button>
+              </span>`
+            ).join("");
             setHtml += `<div class="set-item">📂 ${data.name} (${data.catType === 'income' ? '+' : '-'})
               <button onclick="deleteSet('${d.id}')">✕</button>
-              <div style="font-size:10px;color:#666;">${(data.sub || []).join(", ")}</div>
+              <div style="margin-top:5px;flex-wrap:wrap;display:flex;gap:2px;">${subButtons || '<span style="color:#555;font-size:10px;">нет подкатегорий</span>'}</div>
             </div>`;
           } else if (data.type === 'account') {
             ACCOUNTS.push({ id: d.id, ...data });
@@ -256,6 +262,15 @@
 
       window.deleteSet = async (id) => {
         if (confirm("Удалить?")) await fbMethods.deleteDoc(fbMethods.doc(fbDB, "settings", id));
+      };
+
+      window.deleteSub = async (catId, subName) => {
+        if (confirm(`Удалить подкатегорию "${subName}"?`)) {
+          const cat = [...DEFAULTS.income, ...DEFAULTS.expense].find(c => c.id === catId);
+          if (!cat) return;
+          const newSubs = (cat.sub || []).filter(s => s !== subName);
+          await fbMethods.updateDoc(fbMethods.doc(fbDB, "settings", catId), { sub: newSubs });
+        }
       };
 
       function updateUI() {
@@ -347,7 +362,12 @@
     function render() {
       const from = document.getElementById("fromDate").value;
       const to = document.getElementById("toDate").value;
-      const filtered = allTx.filter(t => (!from || t.date >= from) && (!to || t.date <= to));
+      const filtered = allTx
+        .filter(t => (!from || t.date >= from) && (!to || t.date <= to))
+        .sort((a, b) => {
+          if (b.date !== a.date) return b.date > a.date ? 1 : -1;
+          return (b.createdAt || 0) - (a.createdAt || 0);
+        });
 
       const inc = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
       const exp = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
