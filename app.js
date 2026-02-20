@@ -1,3 +1,15 @@
+// В самом верху файла
+import { 
+    getFirestore, collection, addDoc, onSnapshot, query, orderBy, 
+    doc, deleteDoc // <-- Проверь, чтобы эти двое были тут!
+} from "https://www.gstatic.com/firebasejs/10.x.x/firebase-firestore.js";
+
+// ... ниже, где ты прописываешь window.fbMethods
+window.fbMethods = { 
+    collection, addDoc, onSnapshot, query, orderBy, 
+    doc, deleteDoc // <-- И здесь тоже!
+};
+
 let DEFAULTS = { income: [], expense: [] };
 let ACCOUNTS = [];
 let allTx = [];
