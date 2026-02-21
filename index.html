@@ -638,13 +638,16 @@
 
         chartHtml = `
           <div class="analytics-title">График дохода по дням</div>
+          <div id="chartTooltip" style="text-align:center;height:20px;font-size:13px;font-weight:bold;color:#a78bfa;margin-bottom:4px;"></div>
           <div class="chart-wrap">
             <svg class="chart-svg" width="${W}" height="${H + 16}" viewBox="0 0 ${W} ${H + 16}">
               <polyline points="${points}" fill="none" stroke="#a78bfa" stroke-width="2" stroke-linejoin="round"/>
-              ${filteredDays.map(([, v], i) => {
+              ${filteredDays.map(([d, v], i) => {
                 const x = pad + i * ((W - pad * 2) / (filteredDays.length - 1));
                 const y = H - pad - ((v / maxVal) * (H - pad * 2));
-                return `<circle cx="${x}" cy="${y}" r="3" fill="#a78bfa"/>`;
+                const label = `${d.slice(8)}.${d.slice(5,7)} — ${v.toLocaleString()} ₸`;
+                return `<circle cx="${x}" cy="${y}" r="6" fill="transparent" onclick="document.getElementById('chartTooltip').textContent='${label}'"/>
+                        <circle cx="${x}" cy="${y}" r="3" fill="#a78bfa" pointer-events="none"/>`;
               }).join('')}
               ${labels}
             </svg>
