@@ -619,22 +619,13 @@
         .slice(-14);
 
       let chartHtml = '';
+      let chartData = null;
       if (filteredDays.length > 1) {
         const maxVal = Math.max(...filteredDays.map(([, v]) => v));
         const W = Math.max(filteredDays.length * 36, 300);
         const H = 80;
         const pad = 5;
-        const points = filteredDays.map(([, v], i) => {
-          const x = pad + i * ((W - pad * 2) / (filteredDays.length - 1));
-          const y = H - pad - ((v / maxVal) * (H - pad * 2));
-          return `${x},${y}`;
-        }).join(' ');
-
-        const labels = filteredDays.map(([d, v], i) => {
-          const x = pad + i * ((W - pad * 2) / (filteredDays.length - 1));
-          const day = d.slice(8);
-          return `<text x="${x}" y="${H + 12}" text-anchor="middle" font-size="9" fill="#555">${day}</text>`;
-        }).join('');
+        chartData = { filteredDays, maxVal, W, H, pad };
 
         chartHtml = `
           <div class="analytics-title">График дохода по дням</div>
@@ -643,129 +634,10 @@
               <span id="chartTipDate" style="font-size:11px;color:#888;"></span>
               <span id="chartTipVal" style="font-size:16px;font-weight:bold;color:#a78bfa;"></span>
             </div>
-            <div class="chart-wrap" style="position:relative;">
+            <div class="chart-wrap">
               <canvas id="incomeChart" width="${W}" height="${H + 20}" style="display:block;cursor:crosshair;"></canvas>
             </div>
-          </div>
-          <script>
-            (function() {
-              const data = ${JSON.stringify(filteredDays)};
-              const canvas = document.getElementById('incomeChart');
-              const ctx = canvas.getContext('2d');
-              const W = ${W}, H = ${H}, pad = ${pad};
-              const maxVal = ${maxVal};
-
-              function getX(i) { return pad + i * ((W - pad*2) / (data.length - 1)); }
-              function getY(v) { return H - pad - ((v / maxVal) * (H - pad*2)); }
-
-              function draw(activeIdx) {
-                ctx.clearRect(0, 0, W, H + 20);
-
-                // Градиент под линией
-                const grad = ctx.createLinearGradient(0, 0, 0, H);
-                grad.addColorStop(0, 'rgba(167,139,250,0.3)');
-                grad.addColorStop(1, 'rgba(167,139,250,0)');
-                ctx.beginPath();
-                ctx.moveTo(getX(0), getY(data[0][1]));
-                data.forEach(([,v], i) => ctx.lineTo(getX(i), getY(v)));
-                ctx.lineTo(getX(data.length-1), H);
-                ctx.lineTo(getX(0), H);
-                ctx.closePath();
-                ctx.fillStyle = grad;
-                ctx.fill();
-
-                // Линия
-                ctx.beginPath();
-                ctx.strokeStyle = '#a78bfa';
-                ctx.lineWidth = 2.5;
-                ctx.lineJoin = 'round';
-                ctx.moveTo(getX(0), getY(data[0][1]));
-                data.forEach(([,v], i) => ctx.lineTo(getX(i), getY(v)));
-                ctx.stroke();
-
-                // Точки
-                data.forEach(([,v], i) => {
-                  const x = getX(i), y = getY(v);
-                  const isActive = i === activeIdx;
-                  if (isActive) {
-                    // Вертикальная линия
-                    ctx.beginPath();
-                    ctx.strokeStyle = 'rgba(167,139,250,0.4)';
-                    ctx.lineWidth = 1;
-                    ctx.setLineDash([4,3]);
-                    ctx.moveTo(x, 0); ctx.lineTo(x, H);
-                    ctx.stroke();
-                    ctx.setLineDash([]);
-                    // Большая точка
-                    ctx.beginPath();
-                    ctx.arc(x, y, 7, 0, Math.PI*2);
-                    ctx.fillStyle = 'rgba(167,139,250,0.25)';
-                    ctx.fill();
-                    ctx.beginPath();
-                    ctx.arc(x, y, 4, 0, Math.PI*2);
-                    ctx.fillStyle = '#fff';
-                    ctx.fill();
-                    ctx.beginPath();
-                    ctx.arc(x, y, 2.5, 0, Math.PI*2);
-                    ctx.fillStyle = '#a78bfa';
-                    ctx.fill();
-                  } else {
-                    ctx.beginPath();
-                    ctx.arc(x, y, 3, 0, Math.PI*2);
-                    ctx.fillStyle = '#a78bfa';
-                    ctx.fill();
-                  }
-                });
-
-                // Подписи дней
-                ctx.fillStyle = '#555';
-                ctx.font = '9px sans-serif';
-                ctx.textAlign = 'center';
-                data.forEach(([d,], i) => {
-                  ctx.fillText(d.slice(8), getX(i), H + 14);
-                });
-              }
-
-              function getClosestIdx(clientX) {
-                const rect = canvas.getBoundingClientRect();
-                const scaleX = W / rect.width;
-                const mx = (clientX - rect.left) * scaleX;
-                let closest = 0, minDist = Infinity;
-                data.forEach(([,], i) => {
-                  const dist = Math.abs(getX(i) - mx);
-                  if (dist < minDist) { minDist = dist; closest = i; }
-                });
-                return closest;
-              }
-
-              function showTip(idx) {
-                const [d, v] = data[idx];
-                const day = d.slice(8) + '.' + d.slice(5,7);
-                document.getElementById('chartTipDate').textContent = day;
-                document.getElementById('chartTipVal').textContent = v.toLocaleString() + ' ₸';
-                draw(idx);
-              }
-
-              function hideTip() {
-                document.getElementById('chartTipDate').textContent = '';
-                document.getElementById('chartTipVal').textContent = '';
-                draw(-1);
-              }
-
-              canvas.addEventListener('touchmove', e => {
-                e.preventDefault();
-                showTip(getClosestIdx(e.touches[0].clientX));
-              }, { passive: false });
-              canvas.addEventListener('touchstart', e => {
-                showTip(getClosestIdx(e.touches[0].clientX));
-              }, { passive: true });
-              canvas.addEventListener('touchend', () => hideTip());
-              canvas.addEventListener('mousemove', e => showTip(getClosestIdx(e.clientX)));
-              canvas.addEventListener('mouseleave', () => hideTip());
-
-              draw(-1);
-            })();
-          <\/script>`;
+          </div>`;
       }
 
       // Лучший/худший
@@ -807,6 +679,115 @@
           </div>`).join('')}` : '';
 
       el.innerHTML = chartHtml + bwHtml + monthHtml || '<div class="muted" style="padding:10px;">Недостаточно данных</div>';
+
+      // Инициализируем canvas ПОСЛЕ вставки в DOM
+      if (chartData) {
+        const { filteredDays, maxVal, W, H, pad } = chartData;
+        const canvas = document.getElementById('incomeChart');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+
+        function getX(i) { return pad + i * ((W - pad*2) / (filteredDays.length - 1)); }
+        function getY(v) { return H - pad - ((v / maxVal) * (H - pad*2)); }
+
+        function draw(activeIdx) {
+          ctx.clearRect(0, 0, W, H + 20);
+
+          // Градиент под линией
+          const grad = ctx.createLinearGradient(0, 0, 0, H);
+          grad.addColorStop(0, 'rgba(167,139,250,0.3)');
+          grad.addColorStop(1, 'rgba(167,139,250,0)');
+          ctx.beginPath();
+          ctx.moveTo(getX(0), getY(filteredDays[0][1]));
+          filteredDays.forEach(([,v], i) => ctx.lineTo(getX(i), getY(v)));
+          ctx.lineTo(getX(filteredDays.length-1), H);
+          ctx.lineTo(getX(0), H);
+          ctx.closePath();
+          ctx.fillStyle = grad;
+          ctx.fill();
+
+          // Линия
+          ctx.beginPath();
+          ctx.strokeStyle = '#a78bfa';
+          ctx.lineWidth = 2.5;
+          ctx.lineJoin = 'round';
+          ctx.moveTo(getX(0), getY(filteredDays[0][1]));
+          filteredDays.forEach(([,v], i) => ctx.lineTo(getX(i), getY(v)));
+          ctx.stroke();
+
+          // Точки
+          filteredDays.forEach(([,v], i) => {
+            const x = getX(i), y = getY(v);
+            if (i === activeIdx) {
+              ctx.beginPath();
+              ctx.strokeStyle = 'rgba(167,139,250,0.4)';
+              ctx.lineWidth = 1;
+              ctx.setLineDash([4,3]);
+              ctx.moveTo(x, 0); ctx.lineTo(x, H);
+              ctx.stroke();
+              ctx.setLineDash([]);
+              ctx.beginPath();
+              ctx.arc(x, y, 7, 0, Math.PI*2);
+              ctx.fillStyle = 'rgba(167,139,250,0.25)';
+              ctx.fill();
+              ctx.beginPath();
+              ctx.arc(x, y, 4, 0, Math.PI*2);
+              ctx.fillStyle = '#fff';
+              ctx.fill();
+              ctx.beginPath();
+              ctx.arc(x, y, 2.5, 0, Math.PI*2);
+              ctx.fillStyle = '#a78bfa';
+              ctx.fill();
+            } else {
+              ctx.beginPath();
+              ctx.arc(x, y, 3, 0, Math.PI*2);
+              ctx.fillStyle = '#a78bfa';
+              ctx.fill();
+            }
+          });
+
+          // Подписи дней
+          ctx.fillStyle = '#555';
+          ctx.font = '9px sans-serif';
+          ctx.textAlign = 'center';
+          filteredDays.forEach(([d,], i) => {
+            ctx.fillText(d.slice(8), getX(i), H + 14);
+          });
+        }
+
+        function getClosestIdx(clientX) {
+          const rect = canvas.getBoundingClientRect();
+          const scaleX = W / rect.width;
+          const mx = (clientX - rect.left) * scaleX;
+          let closest = 0, minDist = Infinity;
+          filteredDays.forEach(([,], i) => {
+            const dist = Math.abs(getX(i) - mx);
+            if (dist < minDist) { minDist = dist; closest = i; }
+          });
+          return closest;
+        }
+
+        function showTip(idx) {
+          const [d, v] = filteredDays[idx];
+          document.getElementById('chartTipDate').textContent = d.slice(8) + '.' + d.slice(5,7);
+          document.getElementById('chartTipVal').textContent = v.toLocaleString() + ' ₸';
+          draw(idx);
+        }
+
+        function hideTip() {
+          document.getElementById('chartTipDate').textContent = '';
+          document.getElementById('chartTipVal').textContent = '';
+          draw(-1);
+        }
+
+        canvas.addEventListener('touchmove', e => { e.preventDefault(); showTip(getClosestIdx(e.touches[0].clientX)); }, { passive: false });
+        canvas.addEventListener('touchstart', e => { showTip(getClosestIdx(e.touches[0].clientX)); }, { passive: true });
+        canvas.addEventListener('touchend', () => hideTip());
+        canvas.addEventListener('mousemove', e => showTip(getClosestIdx(e.clientX)));
+        canvas.addEventListener('mouseleave', () => hideTip());
+
+        draw(-1);
+      }
     }
 
     window.renderAnalytics = renderAnalytics;
