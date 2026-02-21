@@ -657,26 +657,44 @@
         </div>` : '';
 
       // Сравнение по месяцам
+      // Рабочие дни по месяцам (дни где были F1/F2/F3/Ночь)
+      const workDaysByMonth = {};
+      allTx.forEach(t => {
+        if (t.type === 'income' && ["F1","F2","F3","Ночь"].includes(t.subcategory)) {
+          const m = (t.date || '').slice(0, 7);
+          const d = t.date || '';
+          if (!workDaysByMonth[m]) workDaysByMonth[m] = new Set();
+          workDaysByMonth[m].add(d);
+        }
+      });
+
       const sortedMonths = Object.entries(byMonth).sort((a, b) => b[0] > a[0] ? 1 : -1).slice(0, 6);
       const maxInc = Math.max(...sortedMonths.map(([, d]) => d.inc), 1);
       const monthHtml = sortedMonths.length > 0 ? `
         <div class="analytics-title">Сравнение по месяцам</div>
-        ${sortedMonths.map(([m, d]) => `
+        ${sortedMonths.map(([m, d]) => {
+          const workDays = workDaysByMonth[m] ? workDaysByMonth[m].size : 0;
+          const avgPerDay = workDays > 0 ? Math.round(d.inc / workDays) : 0;
+          return `
           <div class="month-row">
             <div style="flex:1;">
-              <div style="display:flex;justify-content:space-between;">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;">
                 <span>${formatMonth(m)}</span>
                 <span class="pos">${d.inc.toLocaleString()} ₸</span>
               </div>
               <div class="month-bar-wrap">
                 <div class="month-bar" style="width:${(d.inc / maxInc * 100).toFixed(1)}%"></div>
               </div>
+              <div style="font-size:10px;color:#555;margin-top:3px;">
+                📅 ${workDays} дн. работы · ≈ ${avgPerDay.toLocaleString()} ₸/день
+              </div>
             </div>
             <div style="margin-left:12px;text-align:right;font-size:12px;">
               <div class="neg">−${d.exp.toLocaleString()}</div>
               <div style="color:#aaa;font-size:11px;">чист: ${(d.inc - d.exp).toLocaleString()}</div>
             </div>
-          </div>`).join('')}` : '';
+          </div>`;
+        }).join('')}` : '';
 
       el.innerHTML = chartHtml + bwHtml + monthHtml || '<div class="muted" style="padding:10px;">Недостаточно данных</div>';
 
