@@ -54,6 +54,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBYvSsrzjgkrBwhaBAt0KlCGrAtzgOPYx8",
@@ -67,9 +68,58 @@
     const app = initializeApp(firebaseConfig);
     window.fbDB = getFirestore(app);
     window.fbMethods = { collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc, arrayUnion };
+
+    const auth = getAuth(app);
+    const provider = new GoogleAuthProvider();
+
+    window.fbSignIn = () => signInWithPopup(auth, provider);
+    window.fbSignOut = () => signOut(auth);
+
+    onAuthStateChanged(auth, (user) => {
+      const loginScreen = document.getElementById("loginScreen");
+      const appScreen = document.getElementById("appScreen");
+      const userInfo = document.getElementById("userInfo");
+
+      if (user) {
+        loginScreen.style.display = "none";
+        appScreen.style.display = "block";
+        userInfo.textContent = user.displayName || user.email;
+        window.fbUser = user;
+        // Запускаем приложение только после авторизации
+        if (!window.appStarted) {
+          window.appStarted = true;
+          window.dispatchEvent(new Event("fbReady"));
+        }
+      } else {
+        loginScreen.style.display = "flex";
+        appScreen.style.display = "none";
+        window.fbUser = null;
+        window.appStarted = false;
+      }
+    });
   </script>
 </head>
 <body>
+
+  <!-- ЭКРАН ВХОДА -->
+  <div id="loginScreen" style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; background:#000; text-align:center; padding:20px;">
+    <div style="font-size:48px; margin-bottom:16px;">💰</div>
+    <h2 style="color:#fff; margin-bottom:8px;">Учёт Курьера Pro</h2>
+    <p style="color:#888; margin-bottom:32px; font-size:14px;">Войдите чтобы продолжить</p>
+    <button onclick="fbSignIn()" style="display:flex; align-items:center; gap:12px; background:#fff; color:#000; border:none; border-radius:12px; padding:14px 24px; font-size:16px; font-weight:bold; cursor:pointer;">
+      <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#4285F4" d="M44.5 20H24v8.5h11.8C34.7 33.9 29.8 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 5.1 29.6 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21c10.5 0 20-7.6 20-21 0-1.4-.1-2.7-.5-4z"/></svg>
+      Войти через Google
+    </button>
+  </div>
+
+  <!-- ПРИЛОЖЕНИЕ -->
+  <div id="appScreen" style="display:none;">
+    <!-- Шапка с пользователем -->
+    <div style="max-width:500px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; padding:8px 4px; margin-bottom:4px;">
+      <span id="userInfo" style="font-size:12px; color:#666;"></span>
+      <button onclick="fbSignOut()" style="background:none; border:1px solid #333; color:#666; border-radius:8px; padding:4px 10px; font-size:12px; cursor:pointer;">Выйти</button>
+    </div>
+
   <div class="wrap">
 
     <!-- ФОРМА ЗАПИСИ -->
@@ -193,6 +243,7 @@
     </section>
 
   </div>
+  </div> <!-- /appScreen -->
 
   <script>
     window.toggleBlock = function(el) {
@@ -208,10 +259,8 @@
     let ACCOUNTS = [];
     let allTx = [];
 
-    // Ждём пока Firebase загрузится через module script
-    const checkFB = setInterval(() => {
-      if (window.fbDB && window.fbMethods) { clearInterval(checkFB); initApp(); }
-    }, 100);
+    // Ждём сигнала от Firebase Auth что пользователь вошёл
+    window.addEventListener("fbReady", initApp);
 
     function initApp() {
       const { fbDB, fbMethods } = window;
