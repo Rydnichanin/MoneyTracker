@@ -793,8 +793,10 @@
           draw(-1);
         }
 
-        canvas.addEventListener('touchmove', e => { e.preventDefault(); showTip(getClosestIdx(e.touches[0].clientX)); }, { passive: false });
-        canvas.addEventListener('touchstart', e => { showTip(getClosestIdx(e.touches[0].clientX)); }, { passive: true });
+        canvas.addEventListener('touchstart', e => {
+          const idx = getClosestIdx(e.touches[0].clientX);
+          showTip(idx);
+        }, { passive: true });
         canvas.addEventListener('touchend', () => hideTip());
         canvas.addEventListener('mousemove', e => showTip(getClosestIdx(e.clientX)));
         canvas.addEventListener('mouseleave', () => hideTip());
