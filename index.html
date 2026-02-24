@@ -615,16 +615,15 @@
       const to = document.getElementById("toDate").value;
       const filteredDays = Object.entries(byDay)
         .filter(([d]) => d && (!from || d >= from) && (!to || d <= to))
-        .sort((a, b) => a[0] > b[0] ? 1 : -1)
-        .slice(-14);
+        .sort((a, b) => a[0] > b[0] ? 1 : -1);
 
       let chartHtml = '';
       let chartData = null;
       if (filteredDays.length > 1) {
         const maxVal = Math.max(...filteredDays.map(([, v]) => v));
-        const W = Math.max(filteredDays.length * 36, 300);
+        const W = Math.max(filteredDays.length * 50, 300);
         const H = 80;
-        const pad = 5;
+        const pad = 10;
         chartData = { filteredDays, maxVal, W, H, pad };
 
         chartHtml = `
@@ -634,7 +633,7 @@
               <span id="chartTipDate" style="font-size:11px;color:#888;"></span>
               <span id="chartTipVal" style="font-size:16px;font-weight:bold;color:#a78bfa;"></span>
             </div>
-            <div class="chart-wrap">
+            <div class="chart-wrap" style="overflow-x:scroll;-webkit-overflow-scrolling:touch;">
               <canvas id="incomeChart" width="${W}" height="${H + 20}" style="display:block;cursor:crosshair;"></canvas>
             </div>
           </div>`;
@@ -688,10 +687,6 @@
               <div style="font-size:10px;color:#555;margin-top:3px;">
                 📅 ${workDays} дн. работы · ≈ ${avgPerDay.toLocaleString()} ₸/день
               </div>
-            </div>
-            <div style="margin-left:12px;text-align:right;font-size:12px;">
-              <div class="neg">−${d.exp.toLocaleString()}</div>
-              <div style="color:#aaa;font-size:11px;">чист: ${(d.inc - d.exp).toLocaleString()}</div>
             </div>
           </div>`;
         }).join('')}` : '';
