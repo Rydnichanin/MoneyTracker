@@ -205,6 +205,22 @@
       </div>
     </section>
 
+    <!-- ПЕРЕВОД МЕЖДУ СЧЕТАМИ -->
+    <section class="card" style="border: 1px solid #2a3a2a;">
+      <div class="collapsible-header" onclick="toggleBlock(this)"><h3 style="color:#65d48b;">💸 Перевод между счетами</h3><span class="arrow">▼</span></div>
+      <div class="content hidden">
+        <div class="row2" style="margin-top:5px;">
+          <select id="transferFrom"></select>
+          <select id="transferTo"></select>
+        </div>
+        <div class="row2">
+          <input id="transferAmount" type="number" inputmode="decimal" placeholder="Сумма" />
+          <input id="transferDate" type="date" />
+        </div>
+        <button class="btn-main" style="background:#2a3a2a; color:#65d48b; border:1px solid #65d48b;" onclick="doTransfer()">Перевести</button>
+      </div>
+    </section>
+
     <!-- НАСТРОЙКИ -->
     <section class="card" style="border: 1px solid #333;">
       <div class="collapsible-header" onclick="toggleBlock(this)"><h3>⚙️ Настройки</h3><span class="arrow">▼</span></div>
@@ -365,6 +381,18 @@
           ? sortedAccounts.map(a => `<option value="${a.name}">${a.name}</option>`).join("")
           : '<option value="">Счет не выбран</option>';
 
+        // Обновляем селекты перевода
+        const fromSel = document.getElementById("transferFrom");
+        const toSel = document.getElementById("transferTo");
+        if (fromSel && toSel && sortedAccounts.length >= 1) {
+          const opts = sortedAccounts.map(a => `<option value="${a.name}">${a.name}</option>`).join("");
+          fromSel.innerHTML = opts;
+          toSel.innerHTML = opts;
+          // По умолчанию to — второй счёт если есть
+          if (sortedAccounts.length > 1) toSel.selectedIndex = 1;
+        }
+          : '<option value="">Счет не выбран</option>';
+
         const currentCats = DEFAULTS[elT.value] || [];
         elC.innerHTML = currentCats.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
 
@@ -419,6 +447,47 @@
       };
     }
 
+    // ПЕРЕВОД МЕЖДУ СЧЕТАМИ
+    window.doTransfer = async () => {
+      const from = document.getElementById("transferFrom").value;
+      const to = document.getElementById("transferTo").value;
+      const amt = Number(document.getElementById("transferAmount").value);
+      const date = document.getElementById("transferDate").value;
+
+      if (!amt || amt <= 0) return alert("Введите сумму");
+      if (from === to) return alert("Счета должны быть разными");
+      if (!date) return alert("Выберите дату");
+
+      const { fbDB, fbMethods } = window;
+      const txRef = fbMethods.collection(fbDB, "transactions");
+
+      await fbMethods.addDoc(txRef, {
+        type: 'transfer',
+        amount: amt,
+        fromAccount: from,
+        toAccount: to,
+        account: from,
+        categoryName: `Перевод → ${to}`,
+        subcategory: '',
+        date: date,
+        time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
+        createdAt: Date.now(),
+        comment: `${from} → ${to}`
+      });
+
+      document.getElementById("transferAmount").value = "";
+      alert(`Переведено ${amt.toLocaleString()} ₸: ${from} → ${to}`);
+    };
+
+    // Устанавливаем дату перевода по умолчанию
+    const tDateEl = document.getElementById("transferDate");
+    if (tDateEl) {
+      const now = new Date();
+      const offset = now.getTimezoneOffset() * 60000;
+      if (now.getHours() < 3) now.setDate(now.getDate() - 1);
+      tDateEl.value = new Date(now - offset).toISOString().split('T')[0];
+    }
+
     // ПЕРЕКЛЮЧЕНИЕ ПЕРИОДА
     window.setRange = (mode) => {
       const f = document.getElementById("fromDate");
@@ -452,8 +521,7 @@
         });
 
       const inc = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-      const exp = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
-      const gas = filtered.filter(t => t.type === 'expense' && (
+      const exp = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);      const gas = filtered.filter(t => t.type === 'expense' && (
         String(t.subcategory || '').toLowerCase().includes('бенз') ||
         String(t.categoryName || '').toLowerCase().includes('бенз')
       )).reduce((s, t) => s + t.amount, 0);
@@ -462,15 +530,24 @@
       document.getElementById("totalIncome").textContent = inc.toLocaleString() + " ₸";
       document.getElementById("totalExpense").textContent = exp.toLocaleString() + " ₸";
 
-      // Баланс по счетам
+      // Баланс по счетам — считаем по ВСЕМ транзакциям, не за период
       const accs = {};
-      filtered.forEach(t => {
-        const acc = t.account && t.account !== 'undefined' ? t.account : null;
+      allTx.forEach(t => {
+        const acc = t.account && t.account !== 'undefined' && t.account !== '' && t.account !== 'Счет не выбран' ? t.account : null;
         if (!acc) return;
+        if (t.type === 'transfer') {
+          // переводы обрабатываем отдельно
+          if (!accs[t.fromAccount]) accs[t.fromAccount] = 0;
+          if (!accs[t.toAccount]) accs[t.toAccount] = 0;
+          accs[t.fromAccount] -= t.amount;
+          accs[t.toAccount] += t.amount;
+          return;
+        }
         if (!accs[acc]) accs[acc] = 0;
         accs[acc] += (t.type === 'income' ? t.amount : -t.amount);
       });
       document.getElementById("accountBalances").innerHTML = Object.entries(accs)
+        .filter(([n]) => n && n !== 'undefined' && n !== 'Счет не выбран')
         .map(([n, v]) => `<span>${n}: <b style="color:${v >= 0 ? '#65d48b' : '#ff6b6b'}">${v.toLocaleString()}</b></span>`)
         .join(" | ");
 
@@ -541,8 +618,17 @@
 
       // История
       document.getElementById("list").innerHTML = filtered.map(t => {
-        const acc = t.account && t.account !== 'undefined' && t.account !== '' ? ` [${t.account}]` : '';
+        const acc = t.account && t.account !== 'undefined' && t.account !== '' && t.account !== 'Счет не выбран' ? ` [${t.account}]` : '';
         const timeStr = t.time ? `${t.date} ${t.time}` : t.date;
+        if (t.type === 'transfer') {
+          return `<div class="item">
+            <div>
+              <b style="color:#ffd166;">↔ ${t.amount.toLocaleString()} ₸</b><br>
+              <small class="muted">${timeStr} | ${t.fromAccount} → ${t.toAccount}</small>
+            </div>
+            <button onclick="deleteTx('${t.id}')" style="background:none;border:none;color:#444;padding:10px;cursor:pointer;">✕</button>
+          </div>`;
+        }
         return `<div class="item">
           <div>
             <b class="${t.type === 'income' ? 'pos' : 'neg'}">${t.amount.toLocaleString()} ₸</b><br>
