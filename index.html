@@ -5,79 +5,140 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <title>Учёт Курьера Pro</title>
   <style>
-    :root { --bg: #000; --card: #1c1c1e; --text: #fff; --pos: #65d48b; --neg: #ff6b6b; --accent: #ffd166; --nav-h: 65px; }
+    :root { --bg: #000; --card: #1c1c1e; --pos: #65d48b; --neg: #ff6b6b; --accent: #ffd166; --nav-h: 65px; }
     * { box-sizing: border-box; font-family: -apple-system, sans-serif; -webkit-tap-highlight-color: transparent; }
-    body { background: var(--bg); color: var(--text); margin: 0; padding: 0; overflow-x: hidden; }
+    body { background: var(--bg); color: #fff; margin: 0; padding: 0; overflow-x: hidden; }
 
-    .top-bar { position: fixed; top: 0; left: 0; right: 0; z-index: 100; background: #000; padding: 10px 12px 6px; }
-    .top-balance { display: flex; justify-content: space-between; align-items: center; padding: 12px 15px; background: #1c1c1e; border-radius: 16px; border: 1px solid #2a2a2a; }
-    .top-balance-main { font-size: 22px; font-weight: bold; }
-    .top-balance-side { text-align: right; font-size: 11px; color: #666; }
-    .top-balance-side b { display: block; font-size: 14px; }
-    .acc-row { font-size: 11px; color: #555; margin-top: 5px; display: flex; gap: 8px; flex-wrap: wrap; }
+    /* ТОПБАР */
+    .topbar {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+      height: 52px; background: #000; display: flex; align-items: center;
+      padding: 0 14px; border-bottom: 1px solid #111;
+    }
+    .topbar-title { flex: 1; text-align: center; font-size: 15px; font-weight: 600; color: #fff; }
+    .menu-btn { background: none; border: none; color: #fff; font-size: 22px; cursor: pointer; padding: 8px; line-height: 1; }
+    .period-row {
+      position: fixed; top: 52px; left: 0; right: 0; z-index: 199;
+      display: flex; gap: 6px; padding: 6px 12px; background: #000;
+      border-bottom: 1px solid #0a0a0a;
+    }
+    .period-btn { flex: 1; padding: 7px 0; border: 1px solid #1a1a1a; border-radius: 8px; background: #111; color: #444; font-size: 12px; cursor: pointer; font-weight: 600; }
+    .period-btn.active { background: #1c1c1e; color: #fff; border-color: #333; }
 
-    .gas-wrap { padding: 4px 2px 0; }
-    .gas-label { font-size: 10px; color: #444; margin-bottom: 2px; }
-    .gas-bar-bg { height: 3px; background: #1a1a1a; border-radius: 2px; overflow: hidden; }
-    .gas-bar-fill { height: 100%; background: var(--accent); width: 0%; transition: 0.4s; }
+    /* СТРАНИЦА */
+    .page-wrap { max-width: 500px; margin: 0 auto; padding-top: 106px; padding-bottom: calc(var(--nav-h) + 8px); padding-left: 10px; padding-right: 10px; }
 
-    .period-row { display: flex; gap: 6px; padding: 6px 12px 4px; position: fixed; top: 100px; left: 0; right: 0; z-index: 99; background: #000; }
-    .period-btn { flex: 1; padding: 7px 0; border: 1px solid #222; border-radius: 8px; background: #111; color: #555; font-size: 12px; cursor: pointer; font-weight: 600; }
-    .period-btn.active { background: #1c1c1e; color: #fff; border-color: #444; }
-
-    .page-wrap { max-width: 500px; margin: 0 auto; padding-top: 138px; padding-bottom: calc(var(--nav-h) + 8px); padding-left: 10px; padding-right: 10px; }
-
-    .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; z-index: 100; display: flex; background: #0a0a0a; border-top: 1px solid #1a1a1a; height: var(--nav-h); max-width: 500px; margin: 0 auto; }
-    .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; cursor: pointer; color: #333; border: none; background: none; padding-bottom: 6px; transition: color 0.15s; }
+    /* НАВ */
+    .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; z-index: 200; display: flex; background: #0a0a0a; border-top: 1px solid #1a1a1a; height: var(--nav-h); max-width: 500px; margin: 0 auto; }
+    .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; cursor: pointer; color: #2a2a2a; border: none; background: none; padding-bottom: 6px; transition: color 0.15s; }
     .nav-item.active { color: var(--pos); }
     .nav-icon { font-size: 22px; line-height: 1; }
     .nav-label { font-size: 10px; font-weight: 600; }
 
+    /* ВКЛАДКИ */
     .tab { display: none; }
     .tab.active { display: block; }
 
-    .card { background: var(--card); border-radius: 16px; padding: 14px; margin-bottom: 10px; border: 1px solid #222; }
-    .card-title { font-size: 11px; color: #555; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+    /* БАЛАНС БЛОК (внутри вкладки) */
+    .balance-block { background: #1c1c1e; border-radius: 16px; padding: 16px; margin-bottom: 10px; border: 1px solid #222; }
+    .bal-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+    .bal-main { font-size: 28px; font-weight: bold; }
+    .bal-label { font-size: 10px; color: #444; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 4px; }
+    .bal-side { text-align: right; font-size: 11px; color: #555; }
+    .bal-side b { display: block; font-size: 14px; }
+    .acc-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+    .acc-chip { background: #2a2a2a; border-radius: 8px; padding: 5px 10px; font-size: 12px; }
+    .gas-wrap { margin-top: 8px; }
+    .gas-label { font-size: 10px; color: #444; margin-bottom: 3px; }
+    .gas-bg { height: 3px; background: #1a1a1a; border-radius: 2px; overflow: hidden; }
+    .gas-fill { height: 100%; background: var(--accent); width: 0%; transition: 0.4s; }
+
+    /* КАРТОЧКИ */
+    .card { background: var(--card); border-radius: 16px; padding: 14px; margin-bottom: 10px; border: 1px solid #1a1a1a; }
+    .card-title { font-size: 11px; color: #444; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
     .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
     input, select { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #2a2a2a; background: #2c2c2e; color: #fff; font-size: 16px; outline: none; }
     .btn-main { width: 100%; padding: 14px; border: none; border-radius: 12px; background: var(--pos); color: #000; font-weight: bold; font-size: 16px; margin-top: 8px; cursor: pointer; }
     .chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 8px; scrollbar-width: none; }
     .chips::-webkit-scrollbar { display: none; }
-    .chip { flex: 0 0 auto; background: #2c2c2e; color: var(--accent); padding: 8px 14px; border-radius: 8px; font-weight: bold; border: 1px solid #333; font-size: 14px; cursor: pointer; }
+    .chip { flex: 0 0 auto; background: #2c2c2e; color: var(--accent); padding: 8px 14px; border-radius: 8px; font-weight: bold; border: 1px solid #2a2a2a; font-size: 14px; cursor: pointer; }
 
     .stat-row { border-bottom: 1px solid #1a1a1a; padding: 11px 0; }
     .stat-main { display: flex; justify-content: space-between; font-size: 15px; font-weight: bold; }
-    .stat-sub { font-size: 11px; color: #555; margin-top: 3px; }
+    .stat-sub { font-size: 11px; color: #444; margin-top: 3px; }
     .gain-box { background: #0a1f10; padding: 13px; border-radius: 12px; border: 1px solid var(--pos); margin-top: 12px; display: flex; justify-content: space-between; font-weight: bold; font-size: 17px; }
 
     .hist-item { display: flex; justify-content: space-between; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid #1a1a1a; }
-    .hist-del { background: none; border: none; color: #2a2a2a; padding: 8px; cursor: pointer; font-size: 16px; }
+    .hist-del { background: none; border: none; color: #222; padding: 8px; cursor: pointer; font-size: 16px; }
 
     .bw-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 4px; }
     .bw-card { border-radius: 12px; padding: 12px; text-align: center; }
     .bw-card.best { background: #0a1f10; border: 1px solid var(--pos); }
     .bw-card.worst { background: #1f0a0a; border: 1px solid var(--neg); }
-    .bw-label { font-size: 10px; color: #666; margin-bottom: 4px; }
+    .bw-label { font-size: 10px; color: #555; margin-bottom: 4px; }
     .bw-val { font-size: 20px; font-weight: bold; }
-    .bw-date { font-size: 10px; color: #555; margin-top: 3px; }
+    .bw-date { font-size: 10px; color: #444; margin-top: 3px; }
 
     .month-row { padding: 10px 0; border-bottom: 1px solid #1a1a1a; }
     .month-top { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 4px; }
     .month-bar-bg { height: 3px; background: #1a1a1a; border-radius: 2px; }
     .month-bar-fill { height: 100%; background: #a78bfa; border-radius: 2px; transition: 0.4s; }
-    .month-meta { font-size: 10px; color: #3a3a3a; margin-top: 3px; }
+    .month-meta { font-size: 10px; color: #333; margin-top: 3px; }
 
     .sec-title { font-size: 11px; color: #444; text-transform: uppercase; letter-spacing: 1px; margin: 14px 0 8px; }
     .chart-wrap { overflow-x: scroll; -webkit-overflow-scrolling: touch; }
 
-    .set-item { background: #242424; padding: 10px 12px; border-radius: 10px; margin-bottom: 8px; }
+    .pos { color: var(--pos); } .neg { color: var(--neg); } .muted { color: #444; }
+    .hidden { display: none; }
+
+    /* БОКОВОЕ МЕНЮ */
+    .drawer-overlay {
+      position: fixed; inset: 0; z-index: 300;
+      background: rgba(0,0,0,0.6); opacity: 0; pointer-events: none; transition: opacity 0.25s;
+    }
+    .drawer-overlay.open { opacity: 1; pointer-events: all; }
+    .drawer {
+      position: fixed; top: 0; left: 0; bottom: 0; z-index: 301;
+      width: 280px; background: #111; border-right: 1px solid #222;
+      transform: translateX(-100%); transition: transform 0.25s ease;
+      display: flex; flex-direction: column;
+    }
+    .drawer.open { transform: translateX(0); }
+    .drawer-header { padding: 50px 20px 20px; border-bottom: 1px solid #1a1a1a; }
+    .drawer-avatar { width: 50px; height: 50px; border-radius: 50%; background: #333; display: flex; align-items: center; justify-content: center; font-size: 22px; margin-bottom: 10px; }
+    .drawer-name { font-size: 15px; font-weight: 600; color: #fff; }
+    .drawer-email { font-size: 11px; color: #444; margin-top: 2px; }
+    .drawer-nav { flex: 1; padding: 12px 0; overflow-y: auto; }
+    .drawer-item {
+      display: flex; align-items: center; gap: 14px; padding: 14px 20px;
+      font-size: 15px; color: #aaa; cursor: pointer; border: none; background: none;
+      width: 100%; text-align: left; transition: background 0.15s, color 0.15s;
+    }
+    .drawer-item:hover, .drawer-item:active { background: #1a1a1a; color: #fff; }
+    .drawer-item .di-icon { font-size: 20px; width: 28px; text-align: center; }
+    .drawer-item.home { color: var(--pos); font-weight: 600; }
+    .drawer-item.danger { color: var(--neg); }
+    .drawer-section { padding: 6px 20px 2px; font-size: 10px; color: #333; text-transform: uppercase; letter-spacing: 1px; }
+
+    /* СТРАНИЦА НАСТРОЕК (внутри drawer) */
+    .settings-page {
+      position: fixed; inset: 0; z-index: 302; background: #000;
+      transform: translateX(100%); transition: transform 0.25s ease;
+      overflow-y: auto; padding: 0 0 80px;
+    }
+    .settings-page.open { transform: translateX(0); }
+    .settings-topbar {
+      position: sticky; top: 0; background: #000; padding: 12px 14px;
+      display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #111; z-index: 10;
+    }
+    .back-btn { background: none; border: none; color: var(--pos); font-size: 22px; cursor: pointer; padding: 4px 8px; }
+    .settings-inner { padding: 12px; max-width: 500px; margin: 0 auto; }
+
+    .set-item { background: #1c1c1e; padding: 10px 12px; border-radius: 10px; margin-bottom: 8px; border: 1px solid #1a1a1a; }
     .set-item-top { display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
     .set-del { background: none; border: none; color: var(--neg); font-size: 18px; cursor: pointer; padding: 0; }
 
     .transfer-card { background: #0a1a0a; border: 1px solid #1a2e1a; border-radius: 16px; padding: 14px; margin-bottom: 10px; }
-
-    .pos { color: var(--pos); } .neg { color: var(--neg); } .muted { color: #555; }
-    .hidden { display: none; }
   </style>
 
   <script type="module">
@@ -102,7 +163,8 @@
       if (user) {
         document.getElementById("loginScreen").style.display = "none";
         document.getElementById("appScreen").style.display = "block";
-        document.getElementById("userInfo").textContent = user.displayName || user.email;
+        document.getElementById("drawerName").textContent = user.displayName || user.email;
+        document.getElementById("drawerEmail").textContent = user.email;
         window.fbUser = user;
         if (!window.appStarted) { window.appStarted = true; window.dispatchEvent(new Event("fbReady")); }
       } else {
@@ -119,7 +181,7 @@
 <div id="loginScreen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:#000;text-align:center;padding:20px;">
   <div style="font-size:52px;margin-bottom:16px;">💰</div>
   <h2 style="margin-bottom:8px;">Учёт Курьера Pro</h2>
-  <p style="color:#555;margin-bottom:36px;font-size:14px;">Войдите чтобы продолжить</p>
+  <p style="color:#444;margin-bottom:36px;font-size:14px;">Войдите чтобы продолжить</p>
   <button onclick="fbSignIn()" style="display:flex;align-items:center;gap:12px;background:#fff;color:#000;border:none;border-radius:14px;padding:15px 28px;font-size:16px;font-weight:bold;cursor:pointer;">
     <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#4285F4" d="M44.5 20H24v8.5h11.8C34.7 33.9 29.8 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 5.1 29.6 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21c10.5 0 20-7.6 20-21 0-1.4-.1-2.7-.5-4z"/></svg>
     Войти через Google
@@ -127,25 +189,80 @@
 </div>
 
 <!-- ПРИЛОЖЕНИЕ -->
-<div id="appScreen" style="display:none;min-height:100vh;">
+<div id="appScreen" style="display:none;">
 
-  <!-- ШАПКА -->
-  <div class="top-bar">
-    <div class="top-balance">
-      <div>
-        <div style="font-size:10px;color:#444;margin-bottom:2px;">ЧИСТАЯ ПРИБЫЛЬ</div>
-        <div class="top-balance-main" id="balance">0 ₸</div>
-        <div class="acc-row" id="accountBalances"></div>
-      </div>
-      <div class="top-balance-side">
-        <span>Приход</span><b class="pos" id="totalIncome">0 ₸</b>
-        <span style="margin-top:6px;display:block;">Расход</span><b class="neg" id="totalExpense">0 ₸</b>
-      </div>
+  <!-- ОВЕРЛЕЙ МЕНЮ -->
+  <div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+
+  <!-- БОКОВОЕ МЕНЮ -->
+  <div class="drawer" id="drawer">
+    <div class="drawer-header">
+      <div class="drawer-avatar">👤</div>
+      <div class="drawer-name" id="drawerName">—</div>
+      <div class="drawer-email" id="drawerEmail"></div>
     </div>
-    <div class="gas-wrap">
-      <div class="gas-label" id="gasText">Бензин: 0%</div>
-      <div class="gas-bar-bg"><div class="gas-bar-fill" id="gasFill"></div></div>
+    <div class="drawer-nav">
+      <div class="drawer-section">Навигация</div>
+      <button class="drawer-item home" onclick="closeDrawer()">
+        <span class="di-icon">🏠</span> Главный экран
+      </button>
+      <button class="drawer-item" onclick="openSettings()">
+        <span class="di-icon">⚙️</span> Настройки
+      </button>
+      <div class="drawer-section" style="margin-top:8px;">Аккаунт</div>
+      <button class="drawer-item danger" onclick="fbSignOut(); closeDrawer();">
+        <span class="di-icon">🚪</span> Выйти
+      </button>
     </div>
+  </div>
+
+  <!-- СТРАНИЦА НАСТРОЕК -->
+  <div class="settings-page" id="settingsPage">
+    <div class="settings-topbar">
+      <button class="back-btn" onclick="closeSettings()">‹</button>
+      <span style="font-size:16px;font-weight:600;">Настройки</span>
+    </div>
+    <div class="settings-inner">
+      <div class="card">
+        <div class="card-title">Категория</div>
+        <div class="row2">
+          <select id="setCatType"><option value="income">Приход</option><option value="expense">Расход</option></select>
+          <input id="setCatName" type="text" placeholder="Название">
+        </div>
+        <button class="btn-main" style="background:#222;color:#fff;padding:11px;" onclick="addCategory()">Добавить категорию</button>
+      </div>
+      <div class="card">
+        <div class="card-title">Подкатегория</div>
+        <div class="row2">
+          <select id="setParentCat"></select>
+          <input id="setSubName" type="text" placeholder="Название">
+        </div>
+        <button class="btn-main" style="background:#222;color:#fff;padding:11px;" onclick="addSub()">Добавить</button>
+      </div>
+      <div class="card">
+        <div class="card-title">Новый счёт</div>
+        <div class="row2">
+          <input id="setAccName" type="text" placeholder="Напр: Kaspi">
+          <button class="btn-main" style="background:#222;color:#fff;padding:11px;margin:0;" onclick="addAccount()">Добавить</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Начальный баланс счёта</div>
+        <div class="row2">
+          <select id="setBalanceAcc"></select>
+          <input id="setBalanceVal" type="number" inputmode="decimal" placeholder="Сумма сейчас">
+        </div>
+        <button class="btn-main" style="background:#222;color:#fff;padding:11px;" onclick="setInitialBalance()">Установить</button>
+      </div>
+      <div id="settingsList"></div>
+    </div>
+  </div>
+
+  <!-- ТОПБАР -->
+  <div class="topbar">
+    <button class="menu-btn" onclick="openDrawer()">☰</button>
+    <div class="topbar-title">Учёт Курьера Pro</div>
+    <div style="width:38px;"></div>
   </div>
 
   <!-- ПЕРИОД -->
@@ -162,6 +279,27 @@
 
     <!-- 1. ЗАПИСЬ -->
     <div class="tab active" id="tab-record">
+
+      <!-- БАЛАНС БЛОК -->
+      <div class="balance-block">
+        <div class="bal-top">
+          <div>
+            <div class="bal-label">Чистая прибыль</div>
+            <div class="bal-main" id="balance">0 ₸</div>
+          </div>
+          <div class="bal-side">
+            <span>Приход</span><b class="pos" id="totalIncome">0 ₸</b>
+            <span style="margin-top:6px;display:block;">Расход</span><b class="neg" id="totalExpense">0 ₸</b>
+          </div>
+        </div>
+        <div class="acc-chips" id="accountBalances"></div>
+        <div class="gas-wrap">
+          <div class="gas-label" id="gasText">Бензин: 0%</div>
+          <div class="gas-bg"><div class="gas-fill" id="gasFill"></div></div>
+        </div>
+      </div>
+
+      <!-- ФОРМА -->
       <div class="card">
         <div class="card-title">Новая запись</div>
         <form id="txForm">
@@ -192,16 +330,18 @@
           <button class="btn-main" type="submit">Записать</button>
         </form>
       </div>
+
+      <!-- ИСТОРИЯ -->
       <div class="card">
         <div class="card-title">История</div>
         <div id="list"><div class="muted">Нет записей</div></div>
       </div>
     </div>
 
-    <!-- 2. ПЕРЕВОДЫ + НАСТРОЙКИ -->
+    <!-- 2. ПЕРЕВОДЫ -->
     <div class="tab" id="tab-transfer">
       <div class="transfer-card">
-        <div class="card-title" style="color:#65d48b;">💸 Перевод</div>
+        <div class="card-title" style="color:#65d48b;">💸 Перевод между счетами</div>
         <div class="row2">
           <select id="transferFrom"></select>
           <select id="transferTo"></select>
@@ -211,46 +351,6 @@
           <input id="transferDate" type="date" />
         </div>
         <button class="btn-main" style="background:#0a1f10;color:#65d48b;border:1px solid #1a3a1a;" onclick="doTransfer()">Перевести</button>
-      </div>
-
-      <div class="card">
-        <div class="card-title">⚙️ Настройки</div>
-        <div style="margin-bottom:14px;">
-          <div class="muted" style="font-size:12px;margin-bottom:6px;">Категория</div>
-          <div class="row2">
-            <select id="setCatType"><option value="income">Приход</option><option value="expense">Расход</option></select>
-            <input id="setCatName" type="text" placeholder="Название">
-          </div>
-          <button class="btn-main" style="background:#222;color:#fff;padding:10px;" onclick="addCategory()">Добавить категорию</button>
-        </div>
-        <div style="margin-bottom:14px;border-top:1px solid #1a1a1a;padding-top:12px;">
-          <div class="muted" style="font-size:12px;margin-bottom:6px;">Подкатегория</div>
-          <div class="row2">
-            <select id="setParentCat"></select>
-            <input id="setSubName" type="text" placeholder="Название">
-          </div>
-          <button class="btn-main" style="background:#222;color:#fff;padding:10px;" onclick="addSub()">Добавить</button>
-        </div>
-        <div style="margin-bottom:14px;border-top:1px solid #1a1a1a;padding-top:12px;">
-          <div class="muted" style="font-size:12px;margin-bottom:6px;">Новый счёт</div>
-          <div class="row2">
-            <input id="setAccName" type="text" placeholder="Напр: Kaspi">
-            <button class="btn-main" style="background:#222;color:#fff;padding:10px;margin:0;" onclick="addAccount()">Добавить</button>
-          </div>
-        </div>
-        <div style="margin-bottom:14px;border-top:1px solid #1a1a1a;padding-top:12px;">
-          <div class="muted" style="font-size:12px;margin-bottom:6px;">Начальный баланс счёта</div>
-          <div class="row2">
-            <select id="setBalanceAcc"></select>
-            <input id="setBalanceVal" type="number" inputmode="decimal" placeholder="Сумма сейчас">
-          </div>
-          <button class="btn-main" style="background:#222;color:#fff;padding:10px;" onclick="setInitialBalance()">Установить</button>
-        </div>
-        <div id="settingsList"></div>
-        <div style="border-top:1px solid #1a1a1a;padding-top:12px;margin-top:6px;display:flex;justify-content:space-between;align-items:center;">
-          <span id="userInfo" style="font-size:11px;color:#333;"></span>
-          <button onclick="fbSignOut()" style="background:none;border:1px solid #222;color:#444;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;">Выйти</button>
-        </div>
       </div>
     </div>
 
@@ -280,7 +380,7 @@
 
   </div>
 
-  <!-- НИЖНЯЯ ПАНЕЛЬ -->
+  <!-- НИЖНЯЯ НАВИГАЦИЯ -->
   <nav class="nav-bar">
     <button class="nav-item active" onclick="switchTab('record')" id="nav-record">
       <span class="nav-icon">✏️</span><span class="nav-label">Запись</span>
@@ -296,16 +396,34 @@
     </button>
   </nav>
 
-</div>
+</div><!-- /appScreen -->
 
 <script>
-  window.switchTab = function(name) {
+  // DRAWER
+  window.openDrawer = () => {
+    document.getElementById('drawer').classList.add('open');
+    document.getElementById('drawerOverlay').classList.add('open');
+  };
+  window.closeDrawer = () => {
+    document.getElementById('drawer').classList.remove('open');
+    document.getElementById('drawerOverlay').classList.remove('open');
+  };
+  window.openSettings = () => {
+    closeDrawer();
+    setTimeout(() => document.getElementById('settingsPage').classList.add('open'), 50);
+  };
+  window.closeSettings = () => {
+    document.getElementById('settingsPage').classList.remove('open');
+  };
+
+  // TABS
+  window.switchTab = (name) => {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     document.getElementById('tab-' + name).classList.add('active');
     document.getElementById('nav-' + name).classList.add('active');
   };
-  window.setAmount = function(v) { document.getElementById('amount').value = v; };
+  window.setAmount = (v) => { document.getElementById('amount').value = v; };
 </script>
 
 <script>
@@ -340,13 +458,11 @@
 
     window.setRange = (mode) => {
       ['today','yesterday','all'].forEach(m => document.getElementById('btn-'+m).classList.toggle('active', m===mode));
-      const today = getToday();
-      const f = document.getElementById("fromDate"), t = document.getElementById("toDate");
+      const today = getToday(), f = document.getElementById("fromDate"), t = document.getElementById("toDate");
       if (mode==='today') { f.value=today; t.value=today; }
       else if (mode==='yesterday') {
         const now=new Date(); now.setDate(now.getDate()-1);
-        const off=now.getTimezoneOffset()*60000;
-        const ys=new Date(now-off).toISOString().split('T')[0];
+        const ys=new Date(now - now.getTimezoneOffset()*60000).toISOString().split('T')[0];
         f.value=ys; t.value=ys;
       } else { f.value=""; t.value=""; }
       render();
@@ -359,15 +475,25 @@
         const data = d.data();
         if (data.type === 'category') {
           DEFAULTS[data.catType].push({ id: d.id, ...data });
-          const subBtns = (data.sub||[]).map(s=>`<span style="display:inline-flex;align-items:center;gap:3px;background:#2a2a2a;border-radius:5px;padding:2px 7px;margin:2px;font-size:12px;">${s}<button onclick="deleteSub('${d.id}','${s}')" style="background:none;border:none;color:var(--neg);font-size:11px;padding:0;cursor:pointer;line-height:1;">✕</button></span>`).join("");
-          setHtml += `<div class="set-item"><div class="set-item-top"><span>📂 ${data.name} <span style="color:#444;font-size:11px;">${data.catType==='income'?'(+)':'(−)'}</span></span><button class="set-del" onclick="deleteSet('${d.id}')">✕</button></div><div style="margin-top:5px;display:flex;flex-wrap:wrap;">${subBtns||'<span style="color:#333;font-size:10px;">нет подкатегорий</span>'}</div></div>`;
+          const subBtns = (data.sub||[]).map(s =>
+            `<span style="display:inline-flex;align-items:center;gap:3px;background:#2a2a2a;border-radius:5px;padding:2px 7px;margin:2px;font-size:12px;">
+              ${s}<button onclick="deleteSub('${d.id}','${s}')" style="background:none;border:none;color:var(--neg);font-size:11px;padding:0;cursor:pointer;line-height:1;">✕</button>
+            </span>`).join("");
+          setHtml += `<div class="set-item">
+            <div class="set-item-top"><span>📂 ${data.name} <span style="color:#333;font-size:11px;">${data.catType==='income'?'(+)':'(−)'}</span></span>
+            <button class="set-del" onclick="deleteSet('${d.id}')">✕</button></div>
+            <div style="margin-top:5px;display:flex;flex-wrap:wrap;">${subBtns||'<span style="color:#2a2a2a;font-size:10px;">нет подкатегорий</span>'}</div>
+          </div>`;
         } else if (data.type === 'account') {
           ACCOUNTS.push({ id: d.id, ...data });
           const ib = Number(data.initialBalance)||0;
-          setHtml += `<div class="set-item"><div class="set-item-top"><span>💳 ${data.name}</span><button class="set-del" onclick="deleteSet('${d.id}')">✕</button></div><div style="font-size:10px;color:#333;margin-top:3px;">Нач. баланс: ${ib.toLocaleString()} ₸</div></div>`;
+          setHtml += `<div class="set-item">
+            <div class="set-item-top"><span>💳 ${data.name}</span><button class="set-del" onclick="deleteSet('${d.id}')">✕</button></div>
+            <div style="font-size:10px;color:#333;margin-top:3px;">Нач. баланс: ${ib.toLocaleString()} ₸</div>
+          </div>`;
         }
       });
-      document.getElementById("settingsList").innerHTML = setHtml || '<div class="muted" style="font-size:13px;">Нет настроек</div>';
+      document.getElementById("settingsList").innerHTML = setHtml || '<div class="muted" style="font-size:13px;padding:8px 0;">Нет настроек</div>';
       updateUI();
     });
 
@@ -467,7 +593,7 @@
   function render() {
     const from=document.getElementById("fromDate").value, to=document.getElementById("toDate").value;
     const filtered=allTx.filter(t=>(!from||t.date>=from)&&(!to||t.date<=to))
-      .sort((a,b)=>{ if(b.date!==a.date) return b.date>a.date?1:-1; return(b.createdAt||0)-(a.createdAt||0); });
+      .sort((a,b)=>{ if(b.date!==a.date)return b.date>a.date?1:-1; return(b.createdAt||0)-(a.createdAt||0); });
 
     const inc=filtered.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
     const exp=filtered.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
@@ -487,7 +613,7 @@
     });
     document.getElementById("accountBalances").innerHTML=Object.entries(accs)
       .filter(([n])=>n&&n!=='undefined'&&n!=='Счет не выбран')
-      .map(([n,v])=>`<span>${n}: <b style="color:${v>=0?'#65d48b':'#ff6b6b'}">${v.toLocaleString()}</b></span>`).join(" · ");
+      .map(([n,v])=>`<div class="acc-chip">${n}: <b style="color:${v>=0?'#65d48b':'#ff6b6b'}">${v.toLocaleString()} ₸</b></div>`).join("");
 
     const gasP=inc>0?((gas/inc)*100).toFixed(1):0;
     document.getElementById("gasText").textContent=`Бензин: ${gasP}% (${gas.toLocaleString()} ₸)`;
@@ -513,7 +639,7 @@
       }
     });
     const vdHtml=Object.entries(vdStats).map(([p,data])=>{
-      const rSum=statsInc[p]?statsInc[p].sum:0, diff=data.vdSum-rSum; totalGain+=diff;
+      const rSum=statsInc[p]?statsInc[p].sum:0,diff=data.vdSum-rSum;totalGain+=diff;
       return`<div class="stat-row"><div class="stat-main"><span>${p}</span><b>${data.vdSum.toLocaleString()} ₸</b></div><div style="color:#65d48b;font-size:12px;">Выгода: +${diff.toLocaleString()} ₸</div></div>`;
     }).join("");
     document.getElementById("potentialStats").innerHTML=vdHtml||'<div class="muted">Нет данных ВД</div>';
@@ -544,41 +670,33 @@
   function renderAnalytics() {
     const el=document.getElementById("analyticsContent"); if(!el)return;
     const byDay={},byMonth={};
-    allTx.forEach(t=>{ if(t.type!=='income')return; const d=t.date||'',m=d.slice(0,7); if(!byDay[d])byDay[d]=0;byDay[d]+=t.amount; if(!byMonth[m])byMonth[m]={inc:0,exp:0};byMonth[m].inc+=t.amount; });
-    allTx.forEach(t=>{ if(t.type!=='expense')return; const m=(t.date||'').slice(0,7); if(!byMonth[m])byMonth[m]={inc:0,exp:0};byMonth[m].exp+=t.amount; });
-
+    allTx.forEach(t=>{if(t.type!=='income')return;const d=t.date||'',m=d.slice(0,7);if(!byDay[d])byDay[d]=0;byDay[d]+=t.amount;if(!byMonth[m])byMonth[m]={inc:0,exp:0};byMonth[m].inc+=t.amount;});
+    allTx.forEach(t=>{if(t.type!=='expense')return;const m=(t.date||'').slice(0,7);if(!byMonth[m])byMonth[m]={inc:0,exp:0};byMonth[m].exp+=t.amount;});
     const deliveryDays=new Set();
     allTx.forEach(t=>{if(t.type==='income'&&["F1","F2","F3","Ночь"].includes(t.subcategory))deliveryDays.add(t.date);});
     const days=Object.entries(byDay).filter(([d])=>d);
     let bestDay=null,worstDay=null;
     if(days.length>0){bestDay=days.reduce((a,b)=>b[1]>a[1]?b:a);const dl=days.filter(([d])=>deliveryDays.has(d));if(dl.length>0)worstDay=dl.reduce((a,b)=>b[1]<a[1]?b:a);}
-
     const fmtD=d=>{if(!d)return'—';const[y,mo,day]=d.split('-');return`${day}.${mo}.${y}`;};
     const fmtM=m=>{if(!m)return'—';const mn=['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];const[y,mo]=m.split('-');return`${mn[parseInt(mo)-1]} ${y}`;};
-
     const from=document.getElementById("fromDate").value,to=document.getElementById("toDate").value;
     const filteredDays=Object.entries(byDay).filter(([d])=>d&&(!from||d>=from)&&(!to||d<=to)).sort((a,b)=>a[0]>b[0]?1:-1);
-
     let chartHtml='',chartData=null;
     if(filteredDays.length>1){
       const maxVal=Math.max(...filteredDays.map(([,v])=>v)),W=Math.max(filteredDays.length*50,300),H=80,pad=10;
       chartData={filteredDays,maxVal,W,H,pad};
-      chartHtml=`<div class="sec-title">График дохода по дням</div><div style="text-align:center;height:24px;display:flex;align-items:center;justify-content:center;gap:8px;"><span id="chartTipDate" style="font-size:11px;color:#555;"></span><span id="chartTipVal" style="font-size:15px;font-weight:bold;color:#a78bfa;"></span></div><div class="chart-wrap"><canvas id="incomeChart" width="${W}" height="${H+20}" style="display:block;"></canvas></div>`;
+      chartHtml=`<div class="sec-title">График дохода по дням</div><div style="text-align:center;height:24px;display:flex;align-items:center;justify-content:center;gap:8px;"><span id="chartTipDate" style="font-size:11px;color:#444;"></span><span id="chartTipVal" style="font-size:15px;font-weight:bold;color:#a78bfa;"></span></div><div class="chart-wrap"><canvas id="incomeChart" width="${W}" height="${H+20}" style="display:block;"></canvas></div>`;
     }
-
     const bwHtml=bestDay?`<div class="sec-title">Лучший и худший день</div><div class="bw-grid"><div class="bw-card best"><div class="bw-label">🏆 Лучший</div><div class="bw-val pos">${bestDay[1].toLocaleString()} ₸</div><div class="bw-date">${fmtD(bestDay[0])}</div></div><div class="bw-card worst"><div class="bw-label">📉 Худший</div><div class="bw-val neg">${worstDay?worstDay[1].toLocaleString():'—'} ₸</div><div class="bw-date">${worstDay?fmtD(worstDay[0]):'—'}</div></div></div>`:'';
-
     const wdByM={};
     allTx.forEach(t=>{if(t.type==='income'&&["F1","F2","F3","Ночь"].includes(t.subcategory)){const m=(t.date||'').slice(0,7);if(!wdByM[m])wdByM[m]=new Set();wdByM[m].add(t.date);}});
     const sortedM=Object.entries(byMonth).sort((a,b)=>b[0]>a[0]?1:-1).slice(0,6);
     const maxInc=Math.max(...sortedM.map(([,d])=>d.inc),1);
     const monthHtml=sortedM.length>0?`<div class="sec-title">Сравнение по месяцам</div>${sortedM.map(([m,d])=>{const wd=wdByM[m]?wdByM[m].size:0,avg=wd>0?Math.round(d.inc/wd):0;return`<div class="month-row"><div class="month-top"><span>${fmtM(m)}</span><span class="pos">${d.inc.toLocaleString()} ₸</span></div><div class="month-bar-bg"><div class="month-bar-fill" style="width:${(d.inc/maxInc*100).toFixed(1)}%"></div></div><div class="month-meta">📅 ${wd} дн. · ≈ ${avg.toLocaleString()} ₸/день</div></div>`;}).join('')}`:'';
-
     el.innerHTML=chartHtml+bwHtml+monthHtml||'<div class="muted">Недостаточно данных</div>';
-
     if(chartData){
       const{filteredDays,maxVal,W,H,pad}=chartData;
-      const canvas=document.getElementById('incomeChart'); if(!canvas)return;
+      const canvas=document.getElementById('incomeChart');if(!canvas)return;
       const ctx=canvas.getContext('2d');
       const getX=i=>pad+i*((W-pad*2)/(filteredDays.length-1));
       const getY=v=>H-pad-((v/maxVal)*(H-pad*2));
@@ -594,7 +712,7 @@
           if(i===ai){ctx.beginPath();ctx.strokeStyle='rgba(167,139,250,0.25)';ctx.lineWidth=1;ctx.setLineDash([4,3]);ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();ctx.setLineDash([]);ctx.beginPath();ctx.arc(x,y,7,0,Math.PI*2);ctx.fillStyle='rgba(167,139,250,0.15)';ctx.fill();ctx.beginPath();ctx.arc(x,y,4,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();ctx.beginPath();ctx.arc(x,y,2.5,0,Math.PI*2);ctx.fillStyle='#a78bfa';ctx.fill();}
           else{ctx.beginPath();ctx.arc(x,y,3,0,Math.PI*2);ctx.fillStyle='#a78bfa';ctx.fill();}
         });
-        ctx.fillStyle='#3a3a3a';ctx.font='9px sans-serif';ctx.textAlign='center';
+        ctx.fillStyle='#333';ctx.font='9px sans-serif';ctx.textAlign='center';
         filteredDays.forEach(([d,],i)=>ctx.fillText(d.slice(8),getX(i),H+14));
       }
       const getIdx=cx=>{const r=canvas.getBoundingClientRect(),mx=(cx-r.left)*(W/r.width);let cl=0,md=Infinity;filteredDays.forEach(([,],i)=>{const dist=Math.abs(getX(i)-mx);if(dist<md){md=dist;cl=i;}});return cl;};
