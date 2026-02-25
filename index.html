@@ -248,6 +248,14 @@
             <button class="btn-main" style="background:#444; color:#fff; padding:8px; margin:0;" onclick="addAccount()">ОК</button>
           </div>
         </div>
+        <div style="margin-bottom:15px; border-top:1px solid #222; padding-top:10px;">
+          <small class="muted">Начальный баланс счёта:</small>
+          <div class="row2" style="margin-top:5px;">
+            <select id="setBalanceAcc"></select>
+            <input id="setBalanceVal" type="number" inputmode="decimal" placeholder="Сумма сейчас">
+          </div>
+          <button class="btn-main" style="background:#444; color:#fff; padding:8px;" onclick="setInitialBalance()">Установить</button>
+        </div>
         <div id="settingsList" style="margin-top:15px;"></div>
       </div>
     </section>
@@ -336,7 +344,11 @@
             </div>`;
           } else if (data.type === 'account') {
             ACCOUNTS.push({ id: d.id, ...data });
-            setHtml += `<div class="set-item">💳 ${data.name} <button onclick="deleteSet('${d.id}')">✕</button></div>`;
+            const ib = Number(data.initialBalance) || 0;
+            setHtml += `<div class="set-item">💳 ${data.name}
+              <button onclick="deleteSet('${d.id}')">✕</button>
+              <div style="font-size:10px;color:#666;margin-top:3px;">Нач. баланс: ${ib.toLocaleString()} ₸</div>
+            </div>`;
           }
         });
 
@@ -353,8 +365,17 @@
 
       window.addAccount = async () => {
         const name = document.getElementById("setAccName").value.trim();
-        if (name) await fbMethods.addDoc(setRef, { type: 'account', name });
+        if (name) await fbMethods.addDoc(setRef, { type: 'account', name, initialBalance: 0 });
         document.getElementById("setAccName").value = "";
+      };
+
+      window.setInitialBalance = async () => {
+        const accId = document.getElementById("setBalanceAcc").value;
+        const val = Number(document.getElementById("setBalanceVal").value);
+        if (!accId || isNaN(val)) return;
+        await fbMethods.updateDoc(fbMethods.doc(fbDB, "settings", accId), { initialBalance: val });
+        document.getElementById("setBalanceVal").value = "";
+        alert("Начальный баланс установлен!");
       };
 
       window.addSub = async () => {
@@ -404,6 +425,12 @@
           fromSel.innerHTML = opts;
           toSel.innerHTML = opts;
           if (sortedAccounts.length > 1) toSel.selectedIndex = 1;
+        }
+
+        // Селект для начального баланса
+        const balAccSel = document.getElementById("setBalanceAcc");
+        if (balAccSel) {
+          balAccSel.innerHTML = sortedAccounts.map(a => `<option value="${a.id}">${a.name}</option>`).join("");
         }
 
         const currentCats = DEFAULTS[elT.value] || [];
@@ -543,23 +570,22 @@
       document.getElementById("totalIncome").textContent = inc.toLocaleString() + " ₸";
       document.getElementById("totalExpense").textContent = exp.toLocaleString() + " ₸";
 
-      // Баланс по счетам — считаем с 19.02.2026 (когда начали указывать счёт)
-      const ACCOUNT_START_DATE = '2026-02-19';
+      // Баланс по счетам — начальный баланс + все транзакции с указанным счётом
       const accs = {};
+      ACCOUNTS.forEach(a => {
+        accs[a.name] = Number(a.initialBalance) || 0;
+      });
       allTx.forEach(t => {
-        if ((t.date || '') < ACCOUNT_START_DATE) return;
         if (t.type === 'transfer') {
           if (t.fromAccount && t.toAccount) {
-            if (!accs[t.fromAccount]) accs[t.fromAccount] = 0;
-            if (!accs[t.toAccount]) accs[t.toAccount] = 0;
-            accs[t.fromAccount] -= t.amount;
-            accs[t.toAccount] += t.amount;
+            if (accs[t.fromAccount] !== undefined) accs[t.fromAccount] -= t.amount;
+            if (accs[t.toAccount] !== undefined) accs[t.toAccount] += t.amount;
           }
           return;
         }
         const acc = t.account && t.account !== 'undefined' && t.account !== '' && t.account !== 'Счет не выбран' ? t.account : null;
         if (!acc) return;
-        if (!accs[acc]) accs[acc] = 0;
+        if (accs[acc] === undefined) accs[acc] = 0;
         accs[acc] += (t.type === 'income' ? t.amount : -t.amount);
       });
       document.getElementById("accountBalances").innerHTML = Object.entries(accs)
