@@ -403,10 +403,8 @@
           const opts = sortedAccounts.map(a => `<option value="${a.name}">${a.name}</option>`).join("");
           fromSel.innerHTML = opts;
           toSel.innerHTML = opts;
-          // По умолчанию to — второй счёт если есть
           if (sortedAccounts.length > 1) toSel.selectedIndex = 1;
         }
-          : '<option value="">Счет не выбран</option>';
 
         const currentCats = DEFAULTS[elT.value] || [];
         elC.innerHTML = currentCats.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
