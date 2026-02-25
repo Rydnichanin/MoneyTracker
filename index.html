@@ -356,8 +356,13 @@
         const elS = document.getElementById("subcategory");
         const elAcc = document.getElementById("accountSelect");
 
-        elAcc.innerHTML = ACCOUNTS.length
-          ? ACCOUNTS.map(a => `<option value="${a.name}">${a.name}</option>`).join("")
+        const sortedAccounts = [...ACCOUNTS].sort((a, b) => {
+          if (a.name.toLowerCase().includes('налич')) return -1;
+          if (b.name.toLowerCase().includes('налич')) return 1;
+          return 0;
+        });
+        elAcc.innerHTML = sortedAccounts.length
+          ? sortedAccounts.map(a => `<option value="${a.name}">${a.name}</option>`).join("")
           : '<option value="">Счет не выбран</option>';
 
         const currentCats = DEFAULTS[elT.value] || [];
