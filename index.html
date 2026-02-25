@@ -275,8 +275,23 @@
     let ACCOUNTS = [];
     let allTx = [];
 
-    // Ждём сигнала от Firebase Auth что пользователь вошёл
-    window.addEventListener("fbReady", initApp);
+    // Ждём сигнала от Firebase Auth
+    let appInitialized = false;
+    function tryInitApp() {
+      if (appInitialized) return;
+      if (window.fbDB && window.fbMethods) {
+        appInitialized = true;
+        initApp();
+      }
+    }
+    window.addEventListener("fbReady", tryInitApp);
+    // Fallback — на случай если событие уже сработало до подписки
+    const checkFB = setInterval(() => {
+      if (window.fbDB && window.fbMethods && window.fbUser) {
+        clearInterval(checkFB);
+        tryInitApp();
+      }
+    }, 200);
 
     function initApp() {
       const { fbDB, fbMethods } = window;
