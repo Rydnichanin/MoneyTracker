@@ -645,15 +645,66 @@
     document.getElementById("potentialStats").innerHTML=vdHtml||'<div class="muted">Нет данных ВД</div>';
     if(totalGain>0)document.getElementById("potentialStats").innerHTML+=`<div class="gain-box"><span>ВЫГОДА ВД:</span><span class="pos">+${totalGain.toLocaleString()} ₸</span></div>`;
 
-    const statsExp={};
+    // Расходы — объединяем категории с одинаковым именем (регистронезависимо)
+    const statsExpRaw={};
     filtered.filter(t=>t.type==='expense').forEach(t=>{
-      if(!statsExp[t.categoryName])statsExp[t.categoryName]={sum:0,subs:{}};
-      statsExp[t.categoryName].sum+=t.amount;
-      if(t.subcategory)statsExp[t.categoryName].subs[t.subcategory]=(statsExp[t.categoryName].subs[t.subcategory]||0)+t.amount;
+      // Нормализуем название: первая буква заглавная, остальное как есть
+      const rawName = t.categoryName || 'Прочее';
+      // Ищем существующий ключ с таким же именем (без учёта регистра)
+      const existingKey = Object.keys(statsExpRaw).find(k => k.toLowerCase() === rawName.toLowerCase());
+      const key = existingKey || rawName;
+      if(!statsExpRaw[key]) statsExpRaw[key]={sum:0,subs:{}};
+      statsExpRaw[key].sum+=t.amount;
+      // Подкатегория: если categoryName совпадает с другой категорией — добавляем как подкат
+      const subKey = t.subcategory || null;
+      if(subKey) statsExpRaw[key].subs[subKey]=(statsExpRaw[key].subs[subKey]||0)+t.amount;
     });
-    document.getElementById("expenseDetails").innerHTML=Object.entries(statsExp).map(([c,d])=>`
-      <div class="stat-row"><div class="stat-main"><span>${c}</span><b class="neg">${d.sum.toLocaleString()} ₸</b></div>
-      <div class="stat-sub">${Object.entries(d.subs).map(([s,v])=>`${s}: ${v.toLocaleString()}`).join(" | ")}</div></div>`).join("")||'<div class="muted">Нет расходов</div>';
+
+    // Дополнительно: если есть категория "Напитки" и есть "Еда" — переносим Напитки в Еда как подкат
+    const mergeMap = {}; // 'откуда (lower)' -> 'куда (lower)'
+    const expKeys = Object.keys(statsExpRaw);
+    expKeys.forEach(k => {
+      // Ищем категорию которая является подкатегорией другой категории
+      expKeys.forEach(parent => {
+        if (k === parent) return;
+        const parentData = statsExpRaw[parent];
+        // Если имя k встречается как подкатегория parent — значит k надо слить с parent
+        if (Object.keys(parentData.subs).some(s => s.toLowerCase() === k.toLowerCase())) {
+          mergeMap[k.toLowerCase()] = parent;
+        }
+      });
+    });
+
+    const statsExp = {};
+    Object.entries(statsExpRaw).forEach(([k, d]) => {
+      const targetKey = mergeMap[k.toLowerCase()];
+      if (targetKey) {
+        // Переносим сумму в родительскую категорию как подкатегорию
+        if (!statsExp[targetKey]) statsExp[targetKey] = {...statsExpRaw[targetKey]};
+        statsExp[targetKey].sum += d.sum;
+        // Добавляем подкатегории
+        Object.entries(d.subs).forEach(([s,v]) => {
+          statsExp[targetKey].subs[s] = (statsExp[targetKey].subs[s]||0) + v;
+        });
+        // Если подкатегорий нет — добавляем само название как подкат
+        if (Object.keys(d.subs).length === 0) {
+          statsExp[targetKey].subs[k] = (statsExp[targetKey].subs[k]||0) + d.sum;
+        }
+      } else if (!Object.values(mergeMap).includes(k) || !statsExp[k]) {
+        if (!statsExp[k]) statsExp[k] = d;
+      }
+    });
+    // Убеждаемся что родительские категории добавлены
+    Object.values(mergeMap).forEach(parent => {
+      if (!statsExp[parent] && statsExpRaw[parent]) statsExp[parent] = {...statsExpRaw[parent]};
+    });
+
+    document.getElementById("expenseDetails").innerHTML=Object.entries(statsExp)
+      .sort((a,b)=>b[1].sum-a[1].sum)
+      .map(([c,d])=>`
+        <div class="stat-row"><div class="stat-main"><span>${c}</span><b class="neg">${d.sum.toLocaleString()} ₸</b></div>
+        <div class="stat-sub">${Object.entries(d.subs).map(([s,v])=>`${s}: ${v.toLocaleString()}`).join(" | ")}</div></div>`)
+      .join("")||'<div class="muted">Нет расходов</div>';
 
     document.getElementById("list").innerHTML=filtered.map(t=>{
       const acc=t.account&&t.account!=='undefined'&&t.account!==''&&t.account!=='Счет не выбран'?` [${t.account}]`:'';
