@@ -543,19 +543,22 @@
       document.getElementById("totalIncome").textContent = inc.toLocaleString() + " ₸";
       document.getElementById("totalExpense").textContent = exp.toLocaleString() + " ₸";
 
-      // Баланс по счетам — считаем по ВСЕМ транзакциям, не за период
+      // Баланс по счетам — считаем с 19.02.2026 (когда начали указывать счёт)
+      const ACCOUNT_START_DATE = '2026-02-19';
       const accs = {};
       allTx.forEach(t => {
-        const acc = t.account && t.account !== 'undefined' && t.account !== '' && t.account !== 'Счет не выбран' ? t.account : null;
-        if (!acc) return;
+        if ((t.date || '') < ACCOUNT_START_DATE) return;
         if (t.type === 'transfer') {
-          // переводы обрабатываем отдельно
-          if (!accs[t.fromAccount]) accs[t.fromAccount] = 0;
-          if (!accs[t.toAccount]) accs[t.toAccount] = 0;
-          accs[t.fromAccount] -= t.amount;
-          accs[t.toAccount] += t.amount;
+          if (t.fromAccount && t.toAccount) {
+            if (!accs[t.fromAccount]) accs[t.fromAccount] = 0;
+            if (!accs[t.toAccount]) accs[t.toAccount] = 0;
+            accs[t.fromAccount] -= t.amount;
+            accs[t.toAccount] += t.amount;
+          }
           return;
         }
+        const acc = t.account && t.account !== 'undefined' && t.account !== '' && t.account !== 'Счет не выбран' ? t.account : null;
+        if (!acc) return;
         if (!accs[acc]) accs[acc] = 0;
         accs[acc] += (t.type === 'income' ? t.amount : -t.amount);
       });
