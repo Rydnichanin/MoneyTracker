@@ -36,6 +36,19 @@ public class MainActivity extends Activity {
         webView.loadUrl(APP_URL);
     }
 
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        // Получаем authUrl от AuthActivity после OAuth
+        String authUrl = intent.getStringExtra("authUrl");
+        if (authUrl != null) {
+            webView.evaluateJavascript(
+                "window.handleAuthRedirect && window.handleAuthRedirect('" + authUrl + "');",
+                null
+            );
+        }
+    }
+
     private void setupWebView() {
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
@@ -44,10 +57,9 @@ public class MainActivity extends Activity {
         settings.setUseWideViewPort(true);
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
-
-        // Меняем UserAgent чтобы Google разрешил вход
-        String currentUA = settings.getUserAgentString();
-        settings.setUserAgentString(currentUA.replace("wv", ""));
+        // Убираем WebView из UserAgent чтобы Google не блокировал
+        String ua = settings.getUserAgentString().replace("wv", "");
+        settings.setUserAgentString(ua);
 
         webView.addJavascriptInterface(new WebAppInterface(), "AndroidBridge");
 
@@ -55,10 +67,9 @@ public class MainActivity extends Activity {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 String url = request.getUrl().toString();
-                // Google OAuth открываем в браузере
+                // Google Auth открываем в системном браузере
                 if (url.contains("accounts.google.com") ||
-                    url.contains("oauth") ||
-                    url.contains("auth/callback")) {
+                    url.contains("google.com/o/oauth2")) {
                     Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
                     startActivity(intent);
                     return true;
@@ -72,6 +83,12 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void showToast(String message) {
             Toast.makeText(MainActivity.this, message, Toast.LENGTH_SHORT).show();
+        }
+
+        @JavascriptInterface
+        public void openBrowser(String url) {
+            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+            startActivity(intent);
         }
 
         @JavascriptInterface
@@ -101,22 +118,28 @@ public class MainActivity extends Activity {
 
     private String escapeJson(String s) {
         if (s == null) return "null";
-        return "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n") + "\"";
+        return "\"" + s.replace("\\", "\\\\")
+                       .replace("\"", "\\\"")
+                       .replace("\n", "\\n") + "\"";
     }
 
     private boolean isNotificationListenerEnabled() {
-        String flat = Settings.Secure.getString(getContentResolver(), "enabled_notification_listeners");
+        String flat = Settings.Secure.getString(
+            getContentResolver(), "enabled_notification_listeners");
         if (flat != null && !flat.isEmpty()) {
             for (String name : flat.split(":")) {
                 ComponentName cn = ComponentName.unflattenFromString(name);
-                if (cn != null && getPackageName().equals(cn.getPackageName())) return true;
+                if (cn != null && getPackageName().equals(cn.getPackageName()))
+                    return true;
             }
         }
         return false;
     }
 
     private void requestNotificationPermission() {
-        Toast.makeText(this, "Разрешите доступ к уведомлениям", Toast.LENGTH_LONG).show();
+        Toast.makeText(this,
+            "Разрешите доступ к уведомлениям для автозаписи",
+            Toast.LENGTH_LONG).show();
         startActivity(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS));
     }
 
