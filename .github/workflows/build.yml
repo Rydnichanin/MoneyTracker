@@ -8,26 +8,28 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Java
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
           cache: gradle
 
-      - name: Wrapper
-        run: gradle wrapper --gradle-version 8.7
+      # Устанавливаем версию 8.4, она не вызывает ошибку DependencyHandler
+      - name: Generate Gradle Wrapper
+        run: gradle wrapper --gradle-version 8.4
 
-      - name: Permissions
+      - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Build
-        run: ./gradlew assembleDebug
+      - name: Build Debug APK
+        # Добавили --no-daemon для стабильности на виртуальных машинах
+        run: ./gradlew assembleDebug --no-daemon
 
-      - name: Upload
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: MoneyTracker-APK
