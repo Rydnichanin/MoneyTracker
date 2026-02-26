@@ -22,8 +22,16 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+}
+
+configurations.all {
+    resolutionStrategy {
+        force 'androidx.lifecycle:lifecycle-livedata:2.6.1'
+        force 'androidx.lifecycle:lifecycle-viewmodel:2.6.1'
+        force 'androidx.loader:loader:1.1.0'
     }
 }
 
