@@ -22,19 +22,22 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Download Gradle 8.1.1 Wrapper
-        run: |
-          mkdir -p gradle/wrapper
-          curl -L "https://services.gradle.org/distributions/gradle-8.1.1-bin.zip" -o gradle-8.1.1.zip
-          curl -L "https://github.com/gradle/gradle/raw/v8.1.1/gradle/wrapper/gradle-wrapper.jar" -o gradle/wrapper/gradle-wrapper.jar
-          cat > gradle/wrapper/gradle-wrapper.properties << 'EOF'
-          distributionBase=GRADLE_USER_HOME
-          distributionPath=wrapper/dists
-          distributionUrl=https\://services.gradle.org/distributions/gradle-8.1.1-bin.zip
-          zipStoreBase=GRADLE_USER_HOME
-          zipStorePath=wrapper/dists
-          EOF
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.1.1'
 
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Build Release APK
+        run: gradle assembleRelease --warning-mode none
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: MoneyTracker-APK
+          path: app/build/outputs/apk/release/app-release.apk
       - name: Make gradlew executable
         run: chmod +x ./gradlew
 
