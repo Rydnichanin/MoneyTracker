@@ -9,13 +9,13 @@ import android.content.IntentFilter;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.Settings;
-import android.text.TextUtils;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
+import androidx.browser.customtabs.CustomTabsIntent;
 
 public class MainActivity extends Activity {
 
@@ -39,7 +39,6 @@ public class MainActivity extends Activity {
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
-        // Получаем authUrl от AuthActivity после OAuth
         String authUrl = intent.getStringExtra("authUrl");
         if (authUrl != null) {
             webView.evaluateJavascript(
@@ -57,7 +56,8 @@ public class MainActivity extends Activity {
         settings.setUseWideViewPort(true);
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
-        // Убираем WebView из UserAgent чтобы Google не блокировал
+
+        // Убираем wv из UserAgent
         String ua = settings.getUserAgentString().replace("wv", "");
         settings.setUserAgentString(ua);
 
@@ -67,11 +67,13 @@ public class MainActivity extends Activity {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 String url = request.getUrl().toString();
-                // Google Auth открываем в системном браузере
                 if (url.contains("accounts.google.com") ||
                     url.contains("google.com/o/oauth2")) {
-                    Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-                    startActivity(intent);
+                    // Открываем в Chrome Custom Tabs
+                    CustomTabsIntent customTabsIntent = new CustomTabsIntent.Builder()
+                        .setShowTitle(false)
+                        .build();
+                    customTabsIntent.launchUrl(MainActivity.this, Uri.parse(url));
                     return true;
                 }
                 return false;
@@ -87,8 +89,8 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public void openBrowser(String url) {
-            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-            startActivity(intent);
+            CustomTabsIntent customTabsIntent = new CustomTabsIntent.Builder().build();
+            customTabsIntent.launchUrl(MainActivity.this, Uri.parse(url));
         }
 
         @JavascriptInterface
