@@ -23,6 +23,18 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".AuthActivity"
+            android:exported="true"
+            android:launchMode="singleTop">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="moneytracker" android:host="auth" />
+            </intent-filter>
+        </activity>
+
         <service
             android:name=".NotificationService"
             android:exported="true"
