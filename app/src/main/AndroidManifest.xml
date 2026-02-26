@@ -1,13 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
-        tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-
-    xmlns:tools="http://schemas.android.com/tools"
 
     <application
         android:allowBackup="true"
@@ -18,7 +14,6 @@
         android:theme="@style/AppTheme"
         android:usesCleartextTraffic="true">
 
-        <!-- Главный экран -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -30,7 +25,6 @@
             </intent-filter>
         </activity>
 
-        <!-- Сервис чтения уведомлений -->
         <service
             android:name=".NotificationService"
             android:exported="true"
