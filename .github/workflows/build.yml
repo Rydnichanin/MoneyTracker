@@ -1,5 +1,4 @@
 name: Build Android APK
-
 on:
   push:
     branches: [ "main", "master" ]
@@ -8,31 +7,28 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      - name: Java
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
           cache: gradle
 
-      # Указываем конкретную стабильную версию Gradle
-      - name: Generate Gradle Wrapper
+      - name: Wrapper
         run: gradle wrapper --gradle-version 8.7
 
-      - name: Grant execute permission for gradlew
+      - name: Permissions
         run: chmod +x gradlew
 
-      - name: Build Debug APK
-        # Добавил --stacktrace, чтобы если упадет, мы видели точную причину
-        run: ./gradlew assembleDebug --stacktrace
+      - name: Build
+        run: ./gradlew assembleDebug
 
-      - name: Upload APK
+      - name: Upload
         uses: actions/upload-artifact@v4
         with:
           name: MoneyTracker-APK
-          path: app/build/outputs/apk/debug/app-debug.apk          path: app/build/outputs/apk/debug/app-debug.apk
+          path: app/build/outputs/apk/debug/*.apk
