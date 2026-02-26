@@ -37,18 +37,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: MoneyTracker-APK
-          path: app/build/outputs/apk/release/app-release.apk        uses: actions/upload-artifact@v4
-        with:
-          name: MoneyTracker-APK
-          path: app/build/outputs/apk/release/app-release.apk
-      - name: Make gradlew executable
-        run: chmod +x ./gradlew
-
-      - name: Build Release APK
-        run: ./gradlew assembleRelease --warning-mode none
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: MoneyTracker-APK
           path: app/build/outputs/apk/release/app-release.apk
