@@ -2,7 +2,9 @@ name: Build APK
 
 on:
   push:
-    branches: [ main, master ]
+    branches:
+      - main
+      - master
   workflow_dispatch:
 
 jobs:
@@ -25,16 +27,14 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Build Release APK
-        run: ./gradlew assembleRelease
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug
 
-      - name: Upload Release APK
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: MoneyTracker-APK
-          path: app/build/outputs/apk/release/app-release.apk        uses: actions/upload-artifact@v4
-        with:
-          name: MoneyTracker-APK
+          path: app/build/outputs/apk/debug/app-debug.apk          name: MoneyTracker-APK
           path: app/build/outputs/apk/release/app-release.apk        uses: actions/upload-artifact@v3
         with:
           name: MoneyTracker-APK
