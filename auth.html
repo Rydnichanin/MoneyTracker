@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Вход — Учёт Курьера</title>
+  <style>
+    body { background: #000; color: #fff; font-family: -apple-system, sans-serif;
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; height: 100vh; margin: 0; text-align: center; padding: 20px; }
+    .btn { display: flex; align-items: center; gap: 12px; background: #fff;
+      color: #000; border: none; border-radius: 14px; padding: 15px 28px;
+      font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 24px; }
+    .msg { color: #65d48b; margin-top: 20px; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div style="font-size:52px;margin-bottom:16px;">💰</div>
+  <h2 style="margin-bottom:8px;">Учёт Курьера Pro</h2>
+  <p style="color:#444;font-size:14px;" id="subtitle">Войдите через Google</p>
+
+  <button class="btn" id="loginBtn" style="display:none" onclick="doLogin()">
+    <svg width="20" height="20" viewBox="0 0 48 48">
+      <path fill="#4285F4" d="M44.5 20H24v8.5h11.8C34.7 33.9 29.8 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 5.1 29.6 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21c10.5 0 20-7.6 20-21 0-1.4-.1-2.7-.5-4z"/>
+    </svg>
+    Войти через Google
+  </button>
+
+  <div id="msg" style="display:none" class="msg"></div>
+
+  <script>
+    const CLIENT_ID = "440589448883-e87fh2fe04qcpa4hlujtk5e86b8v6b3i.apps.googleusercontent.com";
+    const REDIRECT_URI = "https://rydnichanin.github.io/MoneyTracker/auth.html";
+
+    window.onload = () => {
+      // Проверяем если вернулись с Google с токеном в хэше
+      const hash = window.location.hash.substring(1);
+      const params = new URLSearchParams(hash);
+      const idToken = params.get('id_token');
+
+      if (idToken) {
+        document.getElementById("subtitle").textContent = "Входим в приложение...";
+        document.getElementById("msg").style.display = "block";
+        document.getElementById("msg").textContent = "✅ Вход выполнен!";
+
+        try {
+          const payload = JSON.parse(atob(idToken.split('.')[1]));
+          const name = encodeURIComponent(payload.name || '');
+          const email = encodeURIComponent(payload.email || '');
+          setTimeout(() => {
+            window.location.href = "moneytracker://auth?idToken=" + encodeURIComponent(idToken) + "&name=" + name + "&email=" + email;
+          }, 500);
+        } catch(e) {
+          setTimeout(() => {
+            window.location.href = "moneytracker://auth?idToken=" + encodeURIComponent(idToken);
+          }, 500);
+        }
+      } else {
+        // Показываем кнопку
+        document.getElementById("loginBtn").style.display = "flex";
+        document.getElementById("subtitle").textContent = "Войдите через Google";
+      }
+    };
+
+    function doLogin() {
+      const params = new URLSearchParams({
+        client_id: CLIENT_ID,
+        redirect_uri: REDIRECT_URI,
+        response_type: "id_token",
+        scope: "openid email profile",
+        nonce: Math.random().toString(36).substring(2),
+        prompt: "select_account"
+      });
+      window.location.href = "https://accounts.google.com/o/oauth2/auth?" + params.toString();
+    }
+  </script>
+</body>
+</html>
