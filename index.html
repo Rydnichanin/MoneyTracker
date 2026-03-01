@@ -297,12 +297,15 @@
   </div>
 
   <!-- ПЕРИОД -->
-  <div class="period-row">
+  <div class="period-row" style="flex-wrap:wrap;">
     <button class="period-btn active" onclick="setRange('today')" id="btn-today">Сегодня</button>
     <button class="period-btn" onclick="setRange('yesterday')" id="btn-yesterday">Вчера</button>
     <button class="period-btn" onclick="setRange('all')" id="btn-all">Всё время</button>
-    <input type="date" id="fromDate" style="display:none;" oninput="render()">
-    <input type="date" id="toDate" style="display:none;" oninput="render()">
+    <button class="period-btn" onclick="setRange('custom')" id="btn-custom">📅 Период</button>
+    <div id="dateRangeRow" style="display:none;width:100%;gap:6px;padding-top:4px;flex-direction:row;">
+      <input type="date" id="fromDate" style="flex:1;padding:7px;border-radius:8px;border:1px solid #2a2a2a;background:#1c1c1e;color:#fff;font-size:13px;" oninput="onCustomDate()">
+      <input type="date" id="toDate" style="flex:1;padding:7px;border-radius:8px;border:1px solid #2a2a2a;background:#1c1c1e;color:#fff;font-size:13px;" oninput="onCustomDate()">
+    </div>
   </div>
 
   <!-- ВКЛАДКИ -->
@@ -488,16 +491,23 @@
     document.getElementById("transferDate").value = getToday();
 
     window.setRange = (mode) => {
-      ['today','yesterday','all'].forEach(m => document.getElementById('btn-'+m).classList.toggle('active', m===mode));
+      ['today','yesterday','all','custom'].forEach(m => {
+        const b = document.getElementById('btn-'+m);
+        if (b) b.classList.toggle('active', m===mode);
+      });
       const today = getToday(), f = document.getElementById("fromDate"), t = document.getElementById("toDate");
-      if (mode==='today') { f.value=today; t.value=today; }
+      const dateRow = document.getElementById("dateRangeRow");
+      if (mode==='today') { f.value=today; t.value=today; dateRow.style.display='none'; }
       else if (mode==='yesterday') {
         const now=new Date(); now.setDate(now.getDate()-1);
         const ys=new Date(now - now.getTimezoneOffset()*60000).toISOString().split('T')[0];
-        f.value=ys; t.value=ys;
-      } else { f.value=""; t.value=""; }
+        f.value=ys; t.value=ys; dateRow.style.display='none';
+      } else if (mode==='custom') {
+        dateRow.style.display='flex';
+      } else { f.value=""; t.value=""; dateRow.style.display='none'; }
       render();
     };
+    window.onCustomDate = () => { render(); };
 
     fbMethods.onSnapshot(setRef, (snap) => {
       DEFAULTS = { income: [], expense: [] }; ACCOUNTS = [];
