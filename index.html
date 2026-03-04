@@ -174,17 +174,35 @@
 
     // Вход через APK (WebView): APK откроет auth.html через Custom Tab,
     // получит idToken и передаст его сюда через window.receiveAuthToken
-    window.receiveAuthToken = async ({ idToken, name, email }) => {
+    window.receiveAuthToken = async (data) => {
+      console.log("receiveAuthToken вызван:", data);
       try {
-        const credential = GoogleAuthProvider.credential(idToken);
-        await signInWithCredential(auth, credential);
+        // Сразу показываем интерфейс не дожидаясь Firebase — UX быстрее
+        const userName = data.name || data.email || "Пользователь";
+        const userEmail = data.email || "";
+        document.getElementById("loginScreen").style.display = "none";
+        document.getElementById("appScreen").style.display = "block";
+        document.getElementById("drawerName").textContent = userName;
+        document.getElementById("drawerEmail").textContent = userEmail;
+
+        // Авторизуемся в Firebase в фоне
+        if (data.idToken) {
+          const credential = GoogleAuthProvider.credential(data.idToken);
+          signInWithCredential(auth, credential).then(result => {
+            window.fbUser = result.user;
+            if (!window.appStarted) { window.appStarted = true; window.dispatchEvent(new Event("fbReady")); }
+          }).catch(e => {
+            console.error("Firebase signIn error:", e);
+            // Даже если Firebase не сработал — показываем приложение
+            // и пробуем запустить через onAuthStateChanged
+          });
+        }
       } catch (e) {
         console.error("receiveAuthToken error:", e);
-        alert("Ошибка входа: " + (e?.message || e));
       }
     };
 
-    // Если токен пришёл до загрузки страницы — обработаем его после инициализации
+    // Поддержка токена пришедшего до инициализации Firebase
     window._pendingToken = null;
     const _origReceive = window.receiveAuthToken;
     window.receiveAuthToken = (data) => {
