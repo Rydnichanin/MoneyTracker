@@ -139,6 +139,16 @@
     .set-del { background: none; border: none; color: var(--neg); font-size: 18px; cursor: pointer; padding: 0; }
 
     .transfer-card { background: #0a1a0a; border: 1px solid #1a2e1a; border-radius: 16px; padding: 14px; margin-bottom: 10px; }
+
+    /* ЭКРАН ВХОДА */
+    .login-logo { font-size: 80px; margin-bottom: 20px; }
+    .login-btn {
+      display: flex; align-items: center; gap: 12px;
+      background: #fff; color: #000; border: none; padding: 15px 28px;
+      border-radius: 14px; font-size: 16px; font-weight: bold; cursor: pointer;
+      box-shadow: 0 4px 15px rgba(255,255,255,0.2);
+    }
+    .login-btn:active { transform: scale(0.98); }
   </style>
 
   <script type="module">
@@ -186,6 +196,8 @@
       // Если запущено в APK (AndroidBridge доступен) — открываем auth страницу через Custom Tab
       if (window.AndroidBridge) {
         window.AndroidBridge.openBrowser("https://rydnichanin.github.io/MoneyTracker/auth.html");
+        // После возврата из браузера — страница станет видимой снова.
+        // visibilitychange перезапросит состояние Firebase (токен уже мог быть установлен через receiveAuthToken)
         return;
       }
       // Иначе обычный popup (браузер)
@@ -206,7 +218,8 @@
       window.receiveAuthToken(window._pendingToken);
       window._pendingToken = null;
     }
-    // Запасной вариант: читаем токен из sessionStorage (Custom Tab и WebView иногда делят хранилище)
+
+    // Запасной вариант 1: читаем токен из sessionStorage
     try {
       const savedToken = sessionStorage.getItem("pendingIdToken");
       if (savedToken) {
@@ -215,14 +228,42 @@
         signInWithCredential(auth, credential).catch(e => console.error("sessionStorage auth:", e));
       }
     } catch(e) {}
+
+    // Запасной вариант 2: когда пользователь возвращается из Custom Tab в WebView —
+    // страница становится видимой (visibilitychange). Принудительно обновляем токен,
+    // потому что Firebase мог уже авторизоваться через receiveAuthToken пока был браузер.
+    document.addEventListener("visibilitychange", async () => {
+      if (document.visibilityState === "visible") {
+        const user = auth.currentUser;
+        if (user) {
+          showApp(user);
+        } else {
+          // Пробуем прочитать токен из sessionStorage или localStorage
+          try {
+            const t = sessionStorage.getItem("pendingIdToken") || localStorage.getItem("pendingIdToken");
+            if (t) {
+              sessionStorage.removeItem("pendingIdToken");
+              localStorage.removeItem("pendingIdToken");
+              const credential = GoogleAuthProvider.credential(t);
+              await signInWithCredential(auth, credential);
+            }
+          } catch(e) { console.error("visibility auth:", e); }
+        }
+      }
+    });
+
+    function showApp(user) {
+      document.getElementById("loginScreen").style.display = "none";
+      document.getElementById("appScreen").style.display = "block";
+      document.getElementById("drawerName").textContent = user.displayName || user.email;
+      document.getElementById("drawerEmail").textContent = user.email;
+      window.fbUser = user;
+      if (!window.appStarted) { window.appStarted = true; window.dispatchEvent(new Event("fbReady")); }
+    }
+
     onAuthStateChanged(auth, user => {
       if (user) {
-        document.getElementById("loginScreen").style.display = "none";
-        document.getElementById("appScreen").style.display = "block";
-        document.getElementById("drawerName").textContent = user.displayName || user.email;
-        document.getElementById("drawerEmail").textContent = user.email;
-        window.fbUser = user;
-        if (!window.appStarted) { window.appStarted = true; window.dispatchEvent(new Event("fbReady")); }
+        showApp(user);
       } else {
         document.getElementById("loginScreen").style.display = "flex";
         document.getElementById("appScreen").style.display = "none";
@@ -845,6 +886,12 @@
 
   window.deleteTx = async (id) => {
     if(confirm("Удалить?")) await window.fbMethods.deleteDoc(window.fbMethods.doc(window.fbDB,"transactions",id));
+  };
+
+  // Обработка уведомлений от банков (вызывается из NotificationService -> MainActivity)
+  window.onNotificationReceived = function(title, text, app) {
+    console.log("Уведомление перехвачено:", title, text, app);
+    // Здесь логика парсинга SMS/уведомлений от банков
   };
 </script>
 </body>
