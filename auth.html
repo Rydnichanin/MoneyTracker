@@ -62,9 +62,25 @@
         const name = encodeURIComponent(result.user.displayName || "");
         const email = encodeURIComponent(result.user.email || "");
         status.textContent = "Успешно! Возврат в приложение...";
-        // Передаём токен обратно в APK через deep link
-        // Сохраняем токен в sessionStorage как запасной вариант
+
+        // Сохраняем в sessionStorage и localStorage как запасной вариант
         try { sessionStorage.setItem("pendingIdToken", idToken); } catch(e) {}
+        try {
+          localStorage.setItem("pendingIdToken", idToken);
+          localStorage.setItem("pendingName", result.user.displayName || "");
+          localStorage.setItem("pendingEmail", result.user.email || "");
+        } catch(e) {}
+
+        // Пробуем передать напрямую в opener (если открыто как popup)
+        try {
+          if (window.opener && window.opener.receiveAuthToken) {
+            window.opener.receiveAuthToken({ idToken, name: result.user.displayName, email: result.user.email });
+            window.close();
+            return;
+          }
+        } catch(e) {}
+
+        // Передаём токен обратно в APK через deep link
         window.location.href = `moneytracker://auth?idToken=${encodeURIComponent(idToken)}&name=${name}&email=${email}`;
       } catch (e) {
         console.error(e);
