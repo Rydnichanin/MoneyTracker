@@ -195,9 +195,30 @@
     window.fbSignIn = async () => {
       // Если запущено в APK (AndroidBridge доступен) — открываем auth страницу через Custom Tab
       if (window.AndroidBridge) {
+        // Очищаем старый токен перед входом
+        try { localStorage.removeItem("pendingIdToken"); sessionStorage.removeItem("pendingIdToken"); } catch(e) {}
+
         window.AndroidBridge.openBrowser("https://rydnichanin.github.io/MoneyTracker/auth.html");
-        // После возврата из браузера — страница станет видимой снова.
-        // visibilitychange перезапросит состояние Firebase (токен уже мог быть установлен через receiveAuthToken)
+
+        // Запускаем polling — каждые 500мс проверяем появился ли токен
+        const pollInterval = setInterval(async () => {
+          try {
+            // Проверяем уже залогинен ли пользователь
+            if (auth.currentUser) { clearInterval(pollInterval); return; }
+
+            const token = localStorage.getItem("pendingIdToken") || sessionStorage.getItem("pendingIdToken");
+            if (token) {
+              clearInterval(pollInterval);
+              localStorage.removeItem("pendingIdToken");
+              sessionStorage.removeItem("pendingIdToken");
+              const credential = GoogleAuthProvider.credential(token);
+              await signInWithCredential(auth, credential);
+            }
+          } catch(e) { console.error("poll auth error:", e); }
+        }, 500);
+
+        // Останавливаем polling через 5 минут (защита от утечки)
+        setTimeout(() => clearInterval(pollInterval), 5 * 60 * 1000);
         return;
       }
       // Иначе обычный popup (браузер)
