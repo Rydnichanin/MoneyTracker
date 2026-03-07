@@ -885,12 +885,18 @@
       chartHtml=`<div class="sec-title">График дохода по дням</div><div style="text-align:center;height:24px;display:flex;align-items:center;justify-content:center;gap:8px;"><span id="chartTipDate" style="font-size:11px;color:#444;"></span><span id="chartTipVal" style="font-size:15px;font-weight:bold;color:#a78bfa;"></span></div><div class="chart-wrap"><canvas id="incomeChart" width="${W}" height="${H+20}" style="display:block;"></canvas></div>`;
     }
     const bwHtml=bestDay?`<div class="sec-title">Лучший и худший день</div><div class="bw-grid"><div class="bw-card best"><div class="bw-label">🏆 Лучший</div><div class="bw-val pos">${bestDay[1].toLocaleString()} ₸</div><div class="bw-date">${fmtD(bestDay[0])}</div></div><div class="bw-card worst"><div class="bw-label">📉 Худший</div><div class="bw-val neg">${worstDay?worstDay[1].toLocaleString():'—'} ₸</div><div class="bw-date">${worstDay?fmtD(worstDay[0]):'—'}</div></div></div>`:'';
+    const DELIVERY_POINTS=["F1","F2","F3","ALLEY PUB","Ночь"];
     const wdByM={};
-    allTx.forEach(t=>{if(t.type==='income'&&["F1","F2","F3","Ночь"].includes(t.subcategory)){const m=(t.date||'').slice(0,7);if(!wdByM[m])wdByM[m]=new Set();wdByM[m].add(t.date);}});
+    allTx.forEach(t=>{if(t.type==='income'&&DELIVERY_POINTS.includes(t.subcategory)){const m=(t.date||'').slice(0,7);if(!wdByM[m])wdByM[m]=new Set();wdByM[m].add(t.date);}});
     const sortedM=Object.entries(byMonth).sort((a,b)=>b[0]>a[0]?1:-1).slice(0,6);
     const maxInc=Math.max(...sortedM.map(([,d])=>d.inc),1);
     const monthHtml=sortedM.length>0?`<div class="sec-title">Сравнение по месяцам</div>${sortedM.map(([m,d])=>{const wd=wdByM[m]?wdByM[m].size:0,avg=wd>0?Math.round(d.inc/wd):0;return`<div class="month-row"><div class="month-top"><span>${fmtM(m)}</span><span class="pos">${d.inc.toLocaleString()} ₸</span></div><div class="month-bar-bg"><div class="month-bar-fill" style="width:${(d.inc/maxInc*100).toFixed(1)}%"></div></div><div class="month-meta">📅 ${wd} дн. · ≈ ${avg.toLocaleString()} ₸/день</div></div>`;}).join('')}`:'';
-    el.innerHTML=chartHtml+bwHtml+monthHtml||'<div class="muted">Недостаточно данных</div>';
+    const delivByMonth={};
+    allTx.forEach(t=>{if(t.type==='income'&&DELIVERY_POINTS.includes(t.subcategory)){const m=(t.date||'').slice(0,7);if(!delivByMonth[m])delivByMonth[m]={sum:0,days:new Set()};delivByMonth[m].sum+=t.amount;delivByMonth[m].days.add(t.date);}});
+    const sortedDeliv=Object.entries(delivByMonth).sort((a,b)=>b[0]>a[0]?1:-1).slice(0,6);
+    const maxDeliv=Math.max(...sortedDeliv.map(([,d])=>d.sum),1);
+    const delivHtml=sortedDeliv.length>0?`<div class="sec-title" style="margin-top:18px;color:#ffd166;">🚴 По точкам (F1·F2·F3·ALLEY·Ночь)</div>${sortedDeliv.map(([m,d])=>{const days=d.days.size,avg=days>0?Math.round(d.sum/days):0;return`<div class="month-row"><div class="month-top"><span>${fmtM(m)}</span><span style="color:#ffd166;font-weight:bold;">${d.sum.toLocaleString()} ₸</span></div><div class="month-bar-bg"><div class="month-bar-fill" style="width:${(d.sum/maxDeliv*100).toFixed(1)}%;background:#ffd166;"></div></div><div class="month-meta">📅 ${days} дн. · ≈ ${avg.toLocaleString()} ₸/день</div></div>`;}).join('')}`:'';
+    el.innerHTML=chartHtml+bwHtml+monthHtml+delivHtml||'<div class="muted">Недостаточно данных</div>';
     if(chartData){
       const{filteredDays,maxVal,W,H,pad}=chartData;
       const canvas=document.getElementById('incomeChart');if(!canvas)return;
