@@ -679,6 +679,8 @@
     const byDay = {};
     (window.allTx || []).forEach(t => {
       if (t.type !== 'income') return;
+      // Исключаем возвраты с депозитов — чтобы не начислять % повторно
+      if (t.subcategory && t.subcategory.startsWith('← ')) return;
       const d = t.date || '';
       if (d < DEP_START) return;
       if (!byDay[d]) byDay[d] = 0;
@@ -985,7 +987,13 @@
     // Вычитаем депозиты (50% от дохода) из наличных — только с 19 марта 2026
     const DEP_START_DATE = '2026-03-19';
     const byDayAll={};
-    allTx.forEach(t=>{if(t.type==='income'&&t.date&&t.date>=DEP_START_DATE){if(!byDayAll[t.date])byDayAll[t.date]=0;byDayAll[t.date]+=t.amount;}});
+    allTx.forEach(t=>{
+      if(t.type!=='income'||!t.date||t.date<DEP_START_DATE)return;
+      // Исключаем возвраты с депозитов
+      if(t.subcategory&&t.subcategory.startsWith('← '))return;
+      if(!byDayAll[t.date])byDayAll[t.date]=0;
+      byDayAll[t.date]+=t.amount;
+    });
     const totalDeposit=Object.values(byDayAll).reduce((s,v)=>s+Math.round(v*0.5),0);
     const nalichKey=Object.keys(accs).find(k=>k.toLowerCase().includes('налич'));
     if(nalichKey) accs[nalichKey]-=totalDeposit;
