@@ -572,7 +572,7 @@
   <div style="padding:12px;max-width:500px;margin:0 auto;">
 
     <div style="background:#111;border-radius:12px;padding:12px;margin-bottom:14px;font-size:12px;color:#444;text-align:center;">
-      Автоматически откладывается от дневного дохода.<br>Вычитается из баланса наличных.
+      Автоматически откладывается от дневного дохода.<br>Снятие возвращается на наличные.
     </div>
 
     <!-- Будущее 10% -->
@@ -580,6 +580,10 @@
       <div class="dep-label future">🌅 Будущее · 10%</div>
       <div class="dep-total" id="dep1Total" style="color:#4a7aff;">0 ₸</div>
       <div class="dep-today" id="dep1Today"></div>
+      <div style="display:flex;gap:8px;margin:10px 0 6px;">
+        <button onclick="depAction(0,'withdraw')" style="flex:1;padding:9px;border-radius:10px;background:#1a1a2a;border:1px solid #2a2a4a;color:#4a7aff;font-size:13px;font-weight:600;cursor:pointer;">− Снять</button>
+        <button onclick="depAction(0,'topup')" style="flex:1;padding:9px;border-radius:10px;background:#0a0f1f;border:1px solid #1a2a4a;color:#7aaaff;font-size:13px;font-weight:600;cursor:pointer;">+ Пополнить</button>
+      </div>
       <div class="dep-log" id="dep1Log"></div>
     </div>
 
@@ -588,6 +592,10 @@
       <div class="dep-label bday">🎂 День рождения · 20%</div>
       <div class="dep-total" id="dep2Total" style="color:#c77aff;">0 ₸</div>
       <div class="dep-today" id="dep2Today"></div>
+      <div style="display:flex;gap:8px;margin:10px 0 6px;">
+        <button onclick="depAction(1,'withdraw')" style="flex:1;padding:9px;border-radius:10px;background:#1a0a1a;border:1px solid #3a1a3a;color:#c77aff;font-size:13px;font-weight:600;cursor:pointer;">− Снять</button>
+        <button onclick="depAction(1,'topup')" style="flex:1;padding:9px;border-radius:10px;background:#120a12;border:1px solid #2a1a2a;color:#d799ff;font-size:13px;font-weight:600;cursor:pointer;">+ Пополнить</button>
+      </div>
       <div class="dep-log" id="dep2Log"></div>
     </div>
 
@@ -596,6 +604,10 @@
       <div class="dep-label car">🚗 Авто · 20%</div>
       <div class="dep-total" id="dep3Total" style="color:#65d48b;">0 ₸</div>
       <div class="dep-today" id="dep3Today"></div>
+      <div style="display:flex;gap:8px;margin:10px 0 6px;">
+        <button onclick="depAction(2,'withdraw')" style="flex:1;padding:9px;border-radius:10px;background:#0a1a0a;border:1px solid #1a3a1a;color:#65d48b;font-size:13px;font-weight:600;cursor:pointer;">− Снять</button>
+        <button onclick="depAction(2,'topup')" style="flex:1;padding:9px;border-radius:10px;background:#081508;border:1px solid #153015;color:#85f4ab;font-size:13px;font-weight:600;cursor:pointer;">+ Пополнить</button>
+      </div>
       <div class="dep-log" id="dep3Log"></div>
     </div>
 
@@ -658,8 +670,11 @@
     document.getElementById('depositScreen').classList.remove('open');
   };
 
+  const DEP_NAMES = ['Будущее', 'День рождения', 'Авто'];
+  const DEP_RATES = [0.10, 0.20, 0.20];
+  const DEP_IDS   = ['dep1', 'dep2', 'dep3'];
+
   function renderDeposits() {
-    // Считаем доход по дням из allTx — только с 19 марта 2026
     const DEP_START = '2026-03-19';
     const byDay = {};
     (window.allTx || []).forEach(t => {
@@ -670,30 +685,46 @@
       byDay[d] += t.amount;
     });
 
-    const RATES = [0.10, 0.20, 0.20];
-    const IDS   = ['dep1', 'dep2', 'dep3'];
-    const today = Object.keys(byDay).sort().slice(-1)[0] || '';
-
-    // Сортируем дни по возрастанию для лога
+    const today = new Date().toISOString().slice(0,10);
     const sortedDays = Object.entries(byDay).filter(([d]) => d).sort((a,b) => a[0] > b[0] ? 1 : -1);
 
+    // Читаем ручные операции из Firestore
+    const manualOps = (window.allTx || []).filter(t => t.type === 'dep_manual');
+
     let grand = 0;
-    RATES.forEach((rate, i) => {
-      const id = IDS[i];
-      let total = 0;
-      let logHtml = '';
+    DEP_RATES.forEach((rate, i) => {
+      const id = DEP_IDS[i];
+      let autoTotal = 0;
+      let logItems = [];
+
+      // Авто-начисления
       sortedDays.forEach(([d, sum]) => {
         const amt = Math.round(sum * rate);
-        total += amt;
+        autoTotal += amt;
         const dd = d.slice(8) + '.' + d.slice(5,7);
-        logHtml = `<div class="dep-log-item"><span>${dd}</span><span>+${amt.toLocaleString()} ₸</span></div>` + logHtml;
+        logItems.push({ d, html: `<div class="dep-log-item"><span>${dd}</span><span style="color:#65d48b;">+${amt.toLocaleString()} ₸</span></div>` });
       });
+
+      // Ручные операции для этого депозита
+      let manualTotal = 0;
+      manualOps.filter(t => t.depIndex === i).forEach(t => {
+        manualTotal += t.amount; // отрицательное для снятия
+        const dd = (t.date||'').slice(8) + '.' + (t.date||'').slice(5,7);
+        const isW = t.amount < 0;
+        logItems.push({ d: t.date||'', html: `<div class="dep-log-item"><span>${dd} ${t.comment||''}</span><span style="color:${isW?'#ff6b6b':'#ffd166'};">${isW?'':'+'}${t.amount.toLocaleString()} ₸</span></div>` });
+      });
+
+      const total = autoTotal + manualTotal;
       grand += total;
+
+      // Сортируем лог — новые сверху
+      logItems.sort((a,b) => b.d > a.d ? 1 : -1);
+      const logHtml = logItems.map(l => l.html).join('');
 
       document.getElementById(id + 'Total').textContent = total.toLocaleString() + ' ₸';
 
       const todayAmt = byDay[today] ? Math.round(byDay[today] * rate) : 0;
-      document.getElementById(id + 'Today').textContent = today
+      document.getElementById(id + 'Today').textContent = todayAmt > 0
         ? `Сегодня +${todayAmt.toLocaleString()} ₸`
         : '';
       document.getElementById(id + 'Log').innerHTML = logHtml || '<span style="color:#222;">Нет данных</span>';
@@ -701,11 +732,66 @@
 
     document.getElementById('depGrandTotal').textContent = grand.toLocaleString() + ' ₸';
   }
+
+  // Снятие / пополнение депозита
+  window.depAction = async (depIndex, action) => {
+    const name = DEP_NAMES[depIndex];
+    const label = action === 'withdraw' ? 'Снять из «' + name + '»' : 'Пополнить «' + name + '»';
+    const amtStr = prompt(label + ' (сумма в ₸):');
+    if (!amtStr) return;
+    const amt = Number(amtStr.replace(/\s/g,''));
+    if (!amt || amt <= 0) return alert('Введите корректную сумму');
+
+    const comment = prompt('Примечание (необязательно):') || '';
+    const today = new Date().toISOString().slice(0,10);
+    const time = new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
+    const finalAmt = action === 'withdraw' ? -amt : amt;
+
+    // Находим счёт Наличные
+    const nalichAcc = (window.ACCOUNTS||[]).find(a => a.name.toLowerCase().includes('налич'));
+
+    try {
+      const { fbDB, fbMethods } = window;
+      const txRef = fbMethods.collection(fbDB, 'transactions');
+
+      // Запись в депозит
+      await fbMethods.addDoc(txRef, {
+        type: 'dep_manual',
+        depIndex,
+        amount: finalAmt,
+        date: today,
+        time,
+        comment: comment || (action === 'withdraw' ? 'Снятие' : 'Пополнение'),
+        createdAt: Date.now()
+      });
+
+      // Если снятие — возвращаем на наличные как доход
+      // Если пополнение — снимаем с наличных как расход
+      if (nalichAcc) {
+        await fbMethods.addDoc(txRef, {
+          type: action === 'withdraw' ? 'income' : 'expense',
+          amount: amt,
+          categoryName: action === 'withdraw' ? 'Депозит' : 'Депозит',
+          subcategory: (action === 'withdraw' ? '← ' : '→ ') + name,
+          account: nalichAcc.name,
+          date: today,
+          time,
+          comment: comment || (action === 'withdraw' ? 'Снятие с депозита' : 'Пополнение депозита'),
+          createdAt: Date.now() + 1
+        });
+      }
+
+      renderDeposits();
+    } catch(e) {
+      console.error('depAction error:', e);
+      alert('Ошибка: ' + e.message);
+    }
+  };
 </script>
 
 <script>
   let DEFAULTS = { income: [], expense: [] };
-  let ACCOUNTS = [];
+  let ACCOUNTS = []; window.ACCOUNTS = ACCOUNTS;
   let allTx = []; window.allTx = allTx;
 
   let appInitialized = false;
@@ -769,7 +855,7 @@
             <div style="margin-top:5px;display:flex;flex-wrap:wrap;">${subBtns||'<span style="color:#2a2a2a;font-size:10px;">нет подкатегорий</span>'}</div>
           </div>`;
         } else if (data.type === 'account') {
-          ACCOUNTS.push({ id: d.id, ...data });
+          ACCOUNTS.push({ id: d.id, ...data }); window.ACCOUNTS = ACCOUNTS;
           const ib = Number(data.initialBalance)||0;
           setHtml += `<div class="set-item">
             <div class="set-item-top"><span>💳 ${data.name}</span><button class="set-del" onclick="deleteSet('${d.id}')">✕</button></div>
