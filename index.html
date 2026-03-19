@@ -659,11 +659,13 @@
   };
 
   function renderDeposits() {
-    // Считаем доход по дням из allTx
+    // Считаем доход по дням из allTx — только с 19 марта 2026
+    const DEP_START = '2026-03-19';
     const byDay = {};
     (window.allTx || []).forEach(t => {
       if (t.type !== 'income') return;
       const d = t.date || '';
+      if (d < DEP_START) return;
       if (!byDay[d]) byDay[d] = 0;
       byDay[d] += t.amount;
     });
@@ -704,7 +706,7 @@
 <script>
   let DEFAULTS = { income: [], expense: [] };
   let ACCOUNTS = [];
-  let allTx = [];
+  let allTx = []; window.allTx = allTx;
 
   let appInitialized = false;
   function tryInitApp() {
@@ -834,7 +836,7 @@
     }
 
     fbMethods.onSnapshot(fbMethods.query(txRef, fbMethods.orderBy("date","desc")), (snap) => {
-      allTx = []; snap.forEach(d=>allTx.push({id:d.id,...d.data()}));
+      allTx = []; snap.forEach(d=>allTx.push({id:d.id,...d.data()})); window.allTx = allTx;
       if (!document.getElementById("fromDate").value) setRange('today'); else render();
     });
 
@@ -894,9 +896,10 @@
       accs[acc]+=(t.type==='income'?t.amount:-t.amount);
     });
 
-    // Вычитаем депозиты (50% от дохода) из наличных
+    // Вычитаем депозиты (50% от дохода) из наличных — только с 19 марта 2026
+    const DEP_START_DATE = '2026-03-19';
     const byDayAll={};
-    allTx.forEach(t=>{if(t.type==='income'&&t.date){if(!byDayAll[t.date])byDayAll[t.date]=0;byDayAll[t.date]+=t.amount;}});
+    allTx.forEach(t=>{if(t.type==='income'&&t.date&&t.date>=DEP_START_DATE){if(!byDayAll[t.date])byDayAll[t.date]=0;byDayAll[t.date]+=t.amount;}});
     const totalDeposit=Object.values(byDayAll).reduce((s,v)=>s+Math.round(v*0.5),0);
     const nalichKey=Object.keys(accs).find(k=>k.toLowerCase().includes('налич'));
     if(nalichKey) accs[nalichKey]-=totalDeposit;
