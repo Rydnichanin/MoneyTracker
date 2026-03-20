@@ -964,8 +964,13 @@
 
   function render() {
     const from=document.getElementById("fromDate").value, to=document.getElementById("toDate").value;
-    const filtered=allTx.filter(t=>(!from||t.date>=from)&&(!to||t.date<=to))
-      .sort((a,b)=>{ if(b.date!==a.date)return b.date>a.date?1:-1; return(b.createdAt||0)-(a.createdAt||0); });
+    const filtered=allTx.filter(t=>{
+      if(!(!from||t.date>=from)||!(!to||t.date<=to)) return false;
+      // Исключаем депозитные операции из основной истории
+      if(t.type==='dep_manual') return false;
+      if(t.subcategory&&(t.subcategory.startsWith('← ')||t.subcategory.startsWith('→ '))) return false;
+      return true;
+    }).sort((a,b)=>{ if(b.date!==a.date)return b.date>a.date?1:-1; return(b.createdAt||0)-(a.createdAt||0); });
 
     const inc=filtered.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
     const exp=filtered.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
@@ -981,6 +986,8 @@
       if(t.type==='transfer'){if(accs[t.fromAccount]!==undefined)accs[t.fromAccount]-=t.amount;if(accs[t.toAccount]!==undefined)accs[t.toAccount]+=t.amount;return;}
       const acc=t.account&&t.account!=='undefined'&&t.account!==''&&t.account!=='Счет не выбран'?t.account:null;
       if(!acc)return; if(accs[acc]===undefined)accs[acc]=0;
+      // Исключаем депозитные операции — баланс наличных уже учитывает депозиты отдельно
+      if(t.subcategory&&(t.subcategory.startsWith('← ')||t.subcategory.startsWith('→ '))) return;
       accs[acc]+=(t.type==='income'?t.amount:-t.amount);
     });
 
