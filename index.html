@@ -986,8 +986,9 @@
       if(t.type==='transfer'){if(accs[t.fromAccount]!==undefined)accs[t.fromAccount]-=t.amount;if(accs[t.toAccount]!==undefined)accs[t.toAccount]+=t.amount;return;}
       const acc=t.account&&t.account!=='undefined'&&t.account!==''&&t.account!=='Счет не выбран'?t.account:null;
       if(!acc)return; if(accs[acc]===undefined)accs[acc]=0;
-      // Исключаем депозитные операции — баланс наличных уже учитывает депозиты отдельно
-      if(t.subcategory&&(t.subcategory.startsWith('← ')||t.subcategory.startsWith('→ '))) return;
+      // → пополнение депозита исключаем (наличные уже вычитаются через totalDeposit)
+      // ← снятие с депозита оставляем — деньги реально вернулись на наличные
+      if(t.subcategory&&t.subcategory.startsWith('→ ')) return;
       accs[acc]+=(t.type==='income'?t.amount:-t.amount);
     });
 
