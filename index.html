@@ -315,8 +315,6 @@
 </head>
 <body>
 
-<!-- ЛОГИН -->
-<!-- PULL TO REFRESH -->
 <div id="ptr-indicator">
   <div id="ptr-spinner"></div>
   <span id="ptr-text">Потяните вниз для обновления</span>
@@ -357,13 +355,10 @@
   </div>
 </div>
 
-<!-- ПРИЛОЖЕНИЕ -->
 <div id="appScreen" style="display:none;">
 
-  <!-- ОВЕРЛЕЙ МЕНЮ -->
   <div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
 
-  <!-- БОКОВОЕ МЕНЮ -->
   <div class="drawer" id="drawer">
     <div class="drawer-header">
       <div class="drawer-avatar">👤</div>
@@ -385,7 +380,6 @@
     </div>
   </div>
 
-  <!-- СТРАНИЦА НАСТРОЕК -->
   <div class="settings-page" id="settingsPage">
     <div class="settings-topbar">
       <button class="back-btn" onclick="closeSettings()">‹</button>
@@ -427,14 +421,12 @@
     </div>
   </div>
 
-  <!-- ТОПБАР -->
   <div class="topbar">
     <button class="menu-btn" onclick="openDrawer()">☰</button>
     <div class="topbar-title" id="mainTitle" onclick="handleTitleTap()" style="cursor:default;">Учёт Курьера Pro</div>
     <div style="width:38px;"></div>
   </div>
 
-  <!-- ПЕРИОД -->
   <div class="period-row" style="flex-wrap:wrap;">
     <button class="period-btn active" onclick="setRange('today')" id="btn-today">Сегодня</button>
     <button class="period-btn" onclick="setRange('yesterday')" id="btn-yesterday">Вчера</button>
@@ -446,13 +438,10 @@
     </div>
   </div>
 
-  <!-- ВКЛАДКИ -->
   <div class="page-wrap">
 
-    <!-- 1. ЗАПИСЬ -->
     <div class="tab active" id="tab-record">
 
-      <!-- БАЛАНС БЛОК -->
       <div class="balance-block">
         <div class="bal-top">
           <div>
@@ -471,7 +460,6 @@
         </div>
       </div>
 
-      <!-- ФОРМА -->
       <div class="card">
         <div class="card-title">Новая запись</div>
         <form id="txForm">
@@ -503,14 +491,12 @@
         </form>
       </div>
 
-      <!-- ИСТОРИЯ -->
       <div class="card">
         <div class="card-title">История</div>
         <div id="list"><div class="muted">Нет записей</div></div>
       </div>
     </div>
 
-    <!-- 2. ПЕРЕВОДЫ -->
     <div class="tab" id="tab-transfer">
       <div class="transfer-card">
         <div class="card-title" style="color:#65d48b;">💸 Перевод между счетами</div>
@@ -526,7 +512,6 @@
       </div>
     </div>
 
-    <!-- 3. ДОХОДЫ -->
     <div class="tab" id="tab-income">
       <div class="card">
         <div class="card-title">📈 Доход по точкам</div>
@@ -542,7 +527,6 @@
       </div>
     </div>
 
-    <!-- 4. РАСХОДЫ -->
     <div class="tab" id="tab-expense">
       <div class="card">
         <div class="card-title">📉 Расходы по категориям</div>
@@ -552,7 +536,6 @@
 
   </div>
 
-  <!-- НИЖНЯЯ НАВИГАЦИЯ -->
   <nav class="nav-bar">
     <button class="nav-item active" onclick="switchTab('record')" id="nav-record">
       <span class="nav-icon">✏️</span><span class="nav-label">Запись</span>
@@ -568,7 +551,6 @@
     </button>
   </nav>
 
-<!-- ЭКРАН ДЕПОЗИТОВ -->
 <div class="deposit-screen" id="depositScreen">
   <div class="deposit-topbar">
     <button class="back-btn" onclick="closeDeposits()">‹</button>
@@ -580,7 +562,6 @@
       Автоматически откладывается от дневного дохода.<br>Снятие возвращается на наличные.
     </div>
 
-    <!-- Будущее 10% -->
     <div class="dep-card future">
       <div class="dep-label future">🌅 Будущее · 10%</div>
       <div class="dep-total" id="dep1Total" style="color:#4a7aff;">0 ₸</div>
@@ -592,7 +573,6 @@
       <div class="dep-log" id="dep1Log"></div>
     </div>
 
-    <!-- День рождения 20% -->
     <div class="dep-card bday">
       <div class="dep-label bday">🎂 День рождения · 20%</div>
       <div class="dep-total" id="dep2Total" style="color:#c77aff;">0 ₸</div>
@@ -604,7 +584,6 @@
       <div class="dep-log" id="dep2Log"></div>
     </div>
 
-    <!-- Авто 20% -->
     <div class="dep-card car">
       <div class="dep-label car">🚗 Авто · 20%</div>
       <div class="dep-total" id="dep3Total" style="color:#65d48b;">0 ₸</div>
@@ -625,9 +604,7 @@
   </div>
 </div>
 
-</div><!-- /appScreen -->
-
-<script>
+</div><script>
   // DRAWER
   window.openDrawer = () => {
     document.getElementById('drawer').classList.add('open');
@@ -1253,17 +1230,12 @@
     const dist = e.changedTouches[0].clientY - ptrStartY;
     const ind = document.getElementById('ptr-indicator');
     const spinner = document.getElementById('ptr-spinner');
+    
     if (dist > PTR_THRESHOLD) {
       document.getElementById('ptr-text').textContent = 'Обновление...';
       setTimeout(() => {
-        ind.classList.remove('visible');
-        spinner.classList.remove('spin');
-        // Перезапускаем данные без перезагрузки страницы
-        if (window.render) window.render();
-        if (window.fbUser && !window.appStarted) {
-          window.appStarted = true;
-          window.dispatchEvent(new Event("fbReady"));
-        }
+        // Жесткая перезагрузка страницы для сброса кэша и полного обновления
+        window.location.reload(); 
       }, 500);
     } else {
       ind.classList.remove('visible');
