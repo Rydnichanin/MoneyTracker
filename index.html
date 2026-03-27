@@ -168,6 +168,21 @@
     .dep-log { font-size: 11px; color: #333; border-top: 1px solid #111; padding-top: 8px; max-height: 120px; overflow-y: auto; }
     .dep-log-item { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid #0a0a0a; }
 
+    /* PULL TO REFRESH */
+    #ptr-indicator {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 999;
+      display: flex; align-items: center; justify-content: center;
+      height: 0; overflow: hidden; background: #000;
+      transition: height 0.2s; color: #65d48b; font-size: 13px; gap: 8px;
+    }
+    #ptr-indicator.visible { height: 50px; }
+    #ptr-spinner {
+      width: 18px; height: 18px; border: 2px solid #1a1a1a;
+      border-top-color: #65d48b; border-radius: 50%;
+    }
+    #ptr-spinner.spin { animation: spin 0.7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
     /* ЭКРАН ВХОДА */
     .login-logo { font-size: 80px; margin-bottom: 20px; }
     .login-btn {
@@ -256,6 +271,12 @@
 <body>
 
 <!-- ЛОГИН -->
+<!-- PULL TO REFRESH -->
+<div id="ptr-indicator">
+  <div id="ptr-spinner"></div>
+  <span id="ptr-text">Потяните вниз для обновления</span>
+</div>
+
 <div id="loginScreen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:#000;text-align:center;padding:20px;">
   <div style="font-size:52px;margin-bottom:16px;">💰</div>
   <h2 style="margin-bottom:8px;">Учёт Курьера Pro</h2>
@@ -1125,6 +1146,51 @@
     console.log("Уведомление перехвачено:", title, text, app);
     // Здесь логика парсинга SMS/уведомлений от банков
   };
+</script>
+<script>
+  // PULL TO REFRESH
+  let ptrStartY = 0, ptrActive = false;
+  const PTR_THRESHOLD = 80;
+
+  document.addEventListener('touchstart', e => {
+    if (window.scrollY === 0) {
+      ptrStartY = e.touches[0].clientY;
+      ptrActive = true;
+    }
+  }, { passive: true });
+
+  document.addEventListener('touchmove', e => {
+    if (!ptrActive) return;
+    const dist = e.touches[0].clientY - ptrStartY;
+    if (dist > 10) {
+      const ind = document.getElementById('ptr-indicator');
+      const spinner = document.getElementById('ptr-spinner');
+      const txt = document.getElementById('ptr-text');
+      ind.classList.add('visible');
+      if (dist > PTR_THRESHOLD) {
+        spinner.classList.add('spin');
+        txt.textContent = 'Отпустите для обновления';
+      } else {
+        spinner.classList.remove('spin');
+        txt.textContent = 'Потяните вниз для обновления';
+      }
+    }
+  }, { passive: true });
+
+  document.addEventListener('touchend', e => {
+    if (!ptrActive) return;
+    ptrActive = false;
+    const dist = e.changedTouches[0].clientY - ptrStartY;
+    const ind = document.getElementById('ptr-indicator');
+    const spinner = document.getElementById('ptr-spinner');
+    if (dist > PTR_THRESHOLD) {
+      document.getElementById('ptr-text').textContent = 'Обновление...';
+      setTimeout(() => { location.reload(); }, 300);
+    } else {
+      ind.classList.remove('visible');
+      spinner.classList.remove('spin');
+    }
+  });
 </script>
 </body>
 </html>
