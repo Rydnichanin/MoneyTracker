@@ -196,62 +196,64 @@
     window.fbMethods = { collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc, arrayUnion };
     const auth = getAuth(app);
 
+    // Делаем Firebase функции глобально доступными для receiveAuthToken
+    window._auth = auth;
+    window._GoogleAuthProvider = GoogleAuthProvider;
+    window._signInWithCredential = signInWithCredential;
+    window._firebaseReady = true;
+
+    // Если receiveAuthToken уже был вызван до загрузки модуля — обрабатываем сейчас
+    if (window._pendingToken) {
+      console.log("Обрабатываем отложенный токен...");
+      window.receiveAuthToken(window._pendingToken);
+    }
+
     // Вход: popup часто НЕ работает во встроенных браузерах приложений (WebView).
     // Поэтому: в приложениях/на телефоне используем redirect, на ПК можно popup.
     const provider = new GoogleAuthProvider();
 
     // Вход через APK (WebView): APK откроет auth.html через Custom Tab,
     // получит idToken и передаст его сюда через window.receiveAuthToken
-    window.receiveAuthToken = async (data) => {
-      console.log("receiveAuthToken вызван:", data);
-      try {
-        // Сразу показываем интерфейс не дожидаясь Firebase — UX быстрее
-        const userName = data.name || data.email || "Пользователь";
-        const userEmail = data.email || "";
-        document.getElementById("loginScreen").style.display = "none";
-        document.getElementById("appScreen").style.display = "block";
-        document.getElementById("drawerName").textContent = userName;
-        document.getElementById("drawerEmail").textContent = userEmail;
-
-        // Авторизуемся в Firebase в фоне
-        if (data.idToken) {
-          const credential = GoogleAuthProvider.credential(data.idToken);
-          signInWithCredential(auth, credential).then(result => {
-            window.fbUser = result.user;
-            // Запускаем приложение — с небольшой задержкой чтобы fbDB и fbMethods точно были готовы
-            const tryStart = () => {
-              if (window.fbDB && window.fbMethods) {
-                if (!window.appStarted) { window.appStarted = true; window.dispatchEvent(new Event("fbReady")); }
-              } else {
-                setTimeout(tryStart, 100);
-              }
-            };
-            tryStart();
-          }).catch(e => {
-            console.error("Firebase signIn error:", e);
-          });
-        } else {
-          // Нет токена — пробуем запустить если уже авторизованы
-          const tryStart = () => {
-            if (window.fbDB && window.fbMethods && window.fbUser) {
-              if (!window.appStarted) { window.appStarted = true; window.dispatchEvent(new Event("fbReady")); }
-            } else {
-              setTimeout(tryStart, 150);
-            }
-          };
-          tryStart();
-        }
-      } catch (e) {
-        console.error("receiveAuthToken error:", e);
-      }
-    };
-
-    // Поддержка токена пришедшего до инициализации Firebase
+    // receiveAuthToken вызывается APK-ом после входа через Google
+    // Проблема: APK может вызвать его ДО загрузки Firebase модуля
+    // Поэтому сначала сохраняем токен, потом обрабатываем когда Firebase готов
     window._pendingToken = null;
-    const _origReceive = window.receiveAuthToken;
+
     window.receiveAuthToken = (data) => {
+      console.log("receiveAuthToken получен, idToken есть:", !!(data && data.idToken));
       window._pendingToken = data;
-      _origReceive(data);
+
+      // Сразу показываем UI
+      const userName = (data && data.name) || (data && data.email) || "Пользователь";
+      const userEmail = (data && data.email) || "";
+      document.getElementById("loginScreen").style.display = "none";
+      document.getElementById("appScreen").style.display = "block";
+      document.getElementById("drawerName").textContent = userName;
+      document.getElementById("drawerEmail").textContent = userEmail;
+
+      // Ждём пока Firebase модуль загрузится (auth, GoogleAuthProvider, signInWithCredential)
+      const tryAuth = () => {
+        if (window._firebaseReady) {
+          // Firebase готов — авторизуемся
+          if (data && data.idToken) {
+            const credential = window._GoogleAuthProvider.credential(data.idToken);
+            window._signInWithCredential(window._auth, credential)
+              .then(result => {
+                window.fbUser = result.user;
+                const tryStart = () => {
+                  if (window.fbDB && window.fbMethods) {
+                    if (!window.appStarted) { window.appStarted = true; window.dispatchEvent(new Event("fbReady")); }
+                  } else { setTimeout(tryStart, 100); }
+                };
+                tryStart();
+              })
+              .catch(e => console.error("signInWithCredential error:", e));
+          }
+        } else {
+          setTimeout(tryAuth, 100);
+        }
+      };
+      tryAuth();
     };
 
     window.fbSignIn = async () => {
