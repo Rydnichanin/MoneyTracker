@@ -192,177 +192,65 @@
       messagingSenderId: "440589448883",
       appId: "1:440589448883:web:5ad507b270fa414731a2c6"
     });
+
     window.fbDB = getFirestore(app);
     window.fbMethods = { collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc, arrayUnion };
     const auth = getAuth(app);
-
-    // Делаем Firebase функции глобально доступными для receiveAuthToken
-    window._auth = auth;
-    window._GoogleAuthProvider = GoogleAuthProvider;
-    window._signInWithCredential = signInWithCredential;
-    window._firebaseReady = true;
-
-    // Если receiveAuthToken уже был вызван до загрузки модуля — обрабатываем сейчас
-    if (window._pendingToken) {
-      console.log("Обрабатываем отложенный токен...");
-      window.receiveAuthToken(window._pendingToken);
-    }
-
-    // Вход: popup часто НЕ работает во встроенных браузерах приложений (WebView).
-    // Поэтому: в приложениях/на телефоне используем redirect, на ПК можно popup.
     const provider = new GoogleAuthProvider();
 
-    // Вход через APK (WebView): APK откроет auth.html через Custom Tab,
-    // получит idToken и передаст его сюда через window.receiveAuthToken
-    // receiveAuthToken вызывается APK-ом после входа через Google
-    // Проблема: APK может вызвать его ДО загрузки Firebase модуля
-    // Поэтому сначала сохраняем токен, потом обрабатываем когда Firebase готов
-    window._pendingToken = null;
-
-    window.receiveAuthToken = (data) => {
-      console.log("receiveAuthToken получен, idToken есть:", !!(data && data.idToken));
-      window._pendingToken = data;
-
-      // Сразу показываем UI
-      const userName = (data && data.name) || (data && data.email) || "Пользователь";
-      const userEmail = (data && data.email) || "";
+    // ── Запуск приложения ──────────────────────────────────────────
+    function startApp(user) {
       document.getElementById("loginScreen").style.display = "none";
       document.getElementById("appScreen").style.display = "block";
-      document.getElementById("drawerName").textContent = userName;
-      document.getElementById("drawerEmail").textContent = userEmail;
+      document.getElementById("drawerName").textContent = user.displayName || user.email || "Пользователь";
+      document.getElementById("drawerEmail").textContent = user.email || "";
+      window.fbUser = user;
+      if (!window.appStarted) {
+        window.appStarted = true;
+        window.dispatchEvent(new Event("fbReady"));
+      }
+    }
 
-      // Ждём пока Firebase модуль загрузится (auth, GoogleAuthProvider, signInWithCredential)
-      const tryAuth = () => {
-        if (window._firebaseReady) {
-          // Firebase готов — авторизуемся
-          if (data && data.idToken) {
-            const credential = window._GoogleAuthProvider.credential(data.idToken);
-            window._signInWithCredential(window._auth, credential)
-              .then(result => {
-                window.fbUser = result.user;
-                const tryStart = () => {
-                  if (window.fbDB && window.fbMethods) {
-                    if (!window.appStarted) { window.appStarted = true; window.dispatchEvent(new Event("fbReady")); }
-                  } else { setTimeout(tryStart, 100); }
-                };
-                tryStart();
-              })
-              .catch(e => console.error("signInWithCredential error:", e));
-          }
-        } else {
-          setTimeout(tryAuth, 100);
-        }
-      };
-      tryAuth();
+    // ── onAuthStateChanged — главный триггер ───────────────────────
+    onAuthStateChanged(auth, user => {
+      if (user) {
+        startApp(user);
+      } else {
+        document.getElementById("loginScreen").style.display = "flex";
+        document.getElementById("appScreen").style.display = "none";
+        window.fbUser = null;
+        window.appStarted = false;
+      }
+    });
+
+    // ── receiveAuthToken — вызывается APK после входа ──────────────
+    // APK вызывает: window.receiveAuthToken({idToken, name, email})
+    window.receiveAuthToken = async (data) => {
+      console.log("receiveAuthToken:", data && data.idToken ? "токен есть" : "нет токена");
+      if (!data || !data.idToken) return;
+      try {
+        const credential = GoogleAuthProvider.credential(data.idToken);
+        await signInWithCredential(auth, credential);
+        // onAuthStateChanged автоматически вызовет startApp
+      } catch(e) {
+        console.error("receiveAuthToken error:", e);
+      }
     };
 
+    // ── Кнопка входа ───────────────────────────────────────────────
     window.fbSignIn = async () => {
-      // Если запущено в APK (AndroidBridge доступен) — открываем auth страницу через Custom Tab
       if (window.AndroidBridge) {
-        // Очищаем старый токен перед входом
-        try { localStorage.removeItem("pendingIdToken"); sessionStorage.removeItem("pendingIdToken"); } catch(e) {}
-
         window.AndroidBridge.openBrowser("https://rydnichanin.github.io/MoneyTracker/auth.html");
-
-        // Запускаем polling — каждые 500мс проверяем появился ли токен
-        const pollInterval = setInterval(async () => {
-          try {
-            // Проверяем уже залогинен ли пользователь
-            if (auth.currentUser) { clearInterval(pollInterval); return; }
-
-            const token = localStorage.getItem("pendingIdToken") || sessionStorage.getItem("pendingIdToken");
-            if (token) {
-              clearInterval(pollInterval);
-              localStorage.removeItem("pendingIdToken");
-              sessionStorage.removeItem("pendingIdToken");
-              const credential = GoogleAuthProvider.credential(token);
-              await signInWithCredential(auth, credential);
-            }
-          } catch(e) { console.error("poll auth error:", e); }
-        }, 500);
-
-        // Останавливаем polling через 5 минут (защита от утечки)
-        setTimeout(() => clearInterval(pollInterval), 5 * 60 * 1000);
         return;
       }
-      // Иначе обычный popup (браузер)
       try {
         await signInWithPopup(auth, provider);
-      } catch (e) {
-        if (e?.code !== "auth/popup-closed-by-user") {
-          console.error("Auth error:", e);
-          alert("Ошибка входа: " + (e?.message || e));
-        }
+      } catch(e) {
+        if (e?.code !== "auth/popup-closed-by-user") alert("Ошибка входа: " + (e?.message || e));
       }
     };
 
     window.fbSignOut = () => signOut(auth);
-
-    // Если APK передал токен пока Firebase ещё не был готов — обрабатываем сейчас
-    if (window._pendingToken) {
-      window.receiveAuthToken(window._pendingToken);
-      window._pendingToken = null;
-    }
-
-    // Запасной вариант 1: читаем токен из sessionStorage
-    try {
-      const savedToken = sessionStorage.getItem("pendingIdToken");
-      if (savedToken) {
-        sessionStorage.removeItem("pendingIdToken");
-        const credential = GoogleAuthProvider.credential(savedToken);
-        signInWithCredential(auth, credential).catch(e => console.error("sessionStorage auth:", e));
-      }
-    } catch(e) {}
-
-    // Запасной вариант 2: когда пользователь возвращается из Custom Tab в WebView —
-    // страница становится видимой (visibilitychange). Принудительно обновляем токен,
-    // потому что Firebase мог уже авторизоваться через receiveAuthToken пока был браузер.
-    document.addEventListener("visibilitychange", async () => {
-      if (document.visibilityState === "visible") {
-        const user = auth.currentUser;
-        if (user) {
-          showApp(user);
-        } else {
-          // Пробуем прочитать токен из sessionStorage или localStorage
-          try {
-            const t = sessionStorage.getItem("pendingIdToken") || localStorage.getItem("pendingIdToken");
-            if (t) {
-              sessionStorage.removeItem("pendingIdToken");
-              localStorage.removeItem("pendingIdToken");
-              const credential = GoogleAuthProvider.credential(t);
-              await signInWithCredential(auth, credential);
-            }
-          } catch(e) { console.error("visibility auth:", e); }
-        }
-      }
-    });
-
-    function showApp(user) {
-      document.getElementById("loginScreen").style.display = "none";
-      document.getElementById("appScreen").style.display = "block";
-      document.getElementById("drawerName").textContent = user.displayName || user.email;
-      document.getElementById("drawerEmail").textContent = user.email;
-      window.fbUser = user;
-      // Ждём fbDB и fbMethods перед запуском
-      const tryStart = () => {
-        if (window.fbDB && window.fbMethods) {
-          if (!window.appStarted) { window.appStarted = true; window.dispatchEvent(new Event("fbReady")); }
-        } else {
-          setTimeout(tryStart, 100);
-        }
-      };
-      tryStart();
-    }
-
-    onAuthStateChanged(auth, user => {
-      if (user) {
-        showApp(user);
-      } else {
-        document.getElementById("loginScreen").style.display = "flex";
-        document.getElementById("appScreen").style.display = "none";
-        window.fbUser = null; window.appStarted = false;
-      }
-    });
   </script>
 </head>
 <body>
