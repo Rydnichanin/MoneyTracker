@@ -197,7 +197,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-    import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithCredential, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithCredential, signOut, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
     const app = initializeApp({
       apiKey: "AIzaSyBYvSsrzjgkrBwhaBAt0KlCGrAtzgOPYx8",
@@ -266,6 +266,51 @@
     };
 
     window.fbSignOut = () => signOut(auth);
+
+    // ── Email / пароль ─────────────────────────────────────────────
+    const showError = (msg) => {
+      const el = document.getElementById('loginError');
+      if (el) el.textContent = msg;
+    };
+    const getEmailPass = () => ({
+      email: (document.getElementById('loginEmail')?.value || '').trim(),
+      pass:  (document.getElementById('loginPassword')?.value || '').trim()
+    });
+
+    window.emailSignIn = async () => {
+      const { email, pass } = getEmailPass();
+      if (!email || !pass) return showError('Введите email и пароль');
+      showError('');
+      try {
+        await signInWithEmailAndPassword(auth, email, pass);
+      } catch(e) {
+        const msgs = {
+          'auth/user-not-found': 'Пользователь не найден',
+          'auth/wrong-password': 'Неверный пароль',
+          'auth/invalid-email': 'Неверный формат email',
+          'auth/invalid-credential': 'Неверный email или пароль',
+          'auth/too-many-requests': 'Слишком много попыток, подождите'
+        };
+        showError(msgs[e.code] || 'Ошибка: ' + e.message);
+      }
+    };
+
+    window.emailRegister = async () => {
+      const { email, pass } = getEmailPass();
+      if (!email || !pass) return showError('Введите email и пароль');
+      if (pass.length < 6) return showError('Пароль минимум 6 символов');
+      showError('');
+      try {
+        await createUserWithEmailAndPassword(auth, email, pass);
+      } catch(e) {
+        const msgs = {
+          'auth/email-already-in-use': 'Этот email уже используется',
+          'auth/invalid-email': 'Неверный формат email',
+          'auth/weak-password': 'Пароль слишком простой'
+        };
+        showError(msgs[e.code] || 'Ошибка: ' + e.message);
+      }
+    };
   </script>
 </head>
 <body>
@@ -277,14 +322,39 @@
   <span id="ptr-text">Потяните вниз для обновления</span>
 </div>
 
-<div id="loginScreen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:#000;text-align:center;padding:20px;">
-  <div style="font-size:52px;margin-bottom:16px;">💰</div>
-  <h2 style="margin-bottom:8px;">Учёт Курьера Pro</h2>
-  <p style="color:#444;margin-bottom:36px;font-size:14px;">Войдите чтобы продолжить</p>
-  <button onclick="fbSignIn()" style="display:flex;align-items:center;gap:12px;background:#fff;color:#000;border:none;border-radius:14px;padding:15px 28px;font-size:16px;font-weight:bold;cursor:pointer;">
-    <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#4285F4" d="M44.5 20H24v8.5h11.8C34.7 33.9 29.8 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 5.1 29.6 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21c10.5 0 20-7.6 20-21 0-1.4-.1-2.7-.5-4z"/></svg>
-    Войти через Google
-  </button>
+<div id="loginScreen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;background:#000;text-align:center;padding:24px;box-sizing:border-box;">
+  <div style="font-size:52px;margin-bottom:12px;">💰</div>
+  <h2 style="margin-bottom:4px;">Учёт Курьера Pro</h2>
+  <p style="color:#444;margin-bottom:24px;font-size:13px;">Войдите чтобы продолжить</p>
+
+  <div style="width:100%;max-width:320px;">
+    <input id="loginEmail" type="email" placeholder="Email" autocomplete="email"
+      style="width:100%;padding:14px;border-radius:12px;border:1px solid #222;background:#111;color:#fff;font-size:16px;margin-bottom:10px;outline:none;box-sizing:border-box;" />
+    <input id="loginPassword" type="password" placeholder="Пароль"
+      style="width:100%;padding:14px;border-radius:12px;border:1px solid #222;background:#111;color:#fff;font-size:16px;margin-bottom:6px;outline:none;box-sizing:border-box;" />
+    <div id="loginError" style="color:#ff6b6b;font-size:12px;min-height:16px;margin-bottom:10px;text-align:left;padding:0 2px;"></div>
+
+    <button onclick="emailSignIn()"
+      style="width:100%;padding:15px;border-radius:12px;border:none;background:#65d48b;color:#000;font-size:16px;font-weight:bold;cursor:pointer;margin-bottom:10px;">
+      Войти
+    </button>
+    <button onclick="emailRegister()"
+      style="width:100%;padding:14px;border-radius:12px;border:1px solid #222;background:none;color:#888;font-size:14px;cursor:pointer;margin-bottom:22px;">
+      Зарегистрироваться
+    </button>
+
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
+      <div style="flex:1;height:1px;background:#1a1a1a;"></div>
+      <span style="color:#333;font-size:12px;">или</span>
+      <div style="flex:1;height:1px;background:#1a1a1a;"></div>
+    </div>
+
+    <button onclick="fbSignIn()"
+      style="width:100%;padding:14px;border-radius:12px;border:1px solid #222;background:#111;color:#fff;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;box-sizing:border-box;">
+      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#4285F4" d="M44.5 20H24v8.5h11.8C34.7 33.9 29.8 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 5.1 29.6 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21c10.5 0 20-7.6 20-21 0-1.4-.1-2.7-.5-4z"/></svg>
+      Войти через Google
+    </button>
+  </div>
 </div>
 
 <!-- ПРИЛОЖЕНИЕ -->
