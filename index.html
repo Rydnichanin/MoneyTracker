@@ -218,12 +218,28 @@
           const credential = GoogleAuthProvider.credential(data.idToken);
           signInWithCredential(auth, credential).then(result => {
             window.fbUser = result.user;
-            if (!window.appStarted) { window.appStarted = true; window.dispatchEvent(new Event("fbReady")); }
+            // Запускаем приложение — с небольшой задержкой чтобы fbDB и fbMethods точно были готовы
+            const tryStart = () => {
+              if (window.fbDB && window.fbMethods) {
+                if (!window.appStarted) { window.appStarted = true; window.dispatchEvent(new Event("fbReady")); }
+              } else {
+                setTimeout(tryStart, 100);
+              }
+            };
+            tryStart();
           }).catch(e => {
             console.error("Firebase signIn error:", e);
-            // Даже если Firebase не сработал — показываем приложение
-            // и пробуем запустить через onAuthStateChanged
           });
+        } else {
+          // Нет токена — пробуем запустить если уже авторизованы
+          const tryStart = () => {
+            if (window.fbDB && window.fbMethods && window.fbUser) {
+              if (!window.appStarted) { window.appStarted = true; window.dispatchEvent(new Event("fbReady")); }
+            } else {
+              setTimeout(tryStart, 150);
+            }
+          };
+          tryStart();
         }
       } catch (e) {
         console.error("receiveAuthToken error:", e);
@@ -325,7 +341,15 @@
       document.getElementById("drawerName").textContent = user.displayName || user.email;
       document.getElementById("drawerEmail").textContent = user.email;
       window.fbUser = user;
-      if (!window.appStarted) { window.appStarted = true; window.dispatchEvent(new Event("fbReady")); }
+      // Ждём fbDB и fbMethods перед запуском
+      const tryStart = () => {
+        if (window.fbDB && window.fbMethods) {
+          if (!window.appStarted) { window.appStarted = true; window.dispatchEvent(new Event("fbReady")); }
+        } else {
+          setTimeout(tryStart, 100);
+        }
+      };
+      tryStart();
     }
 
     onAuthStateChanged(auth, user => {
