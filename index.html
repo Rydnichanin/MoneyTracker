@@ -1185,7 +1185,16 @@
     const spinner = document.getElementById('ptr-spinner');
     if (dist > PTR_THRESHOLD) {
       document.getElementById('ptr-text').textContent = 'Обновление...';
-      setTimeout(() => { location.reload(); }, 300);
+      setTimeout(() => {
+        ind.classList.remove('visible');
+        spinner.classList.remove('spin');
+        // Перезапускаем данные без перезагрузки страницы
+        if (window.render) window.render();
+        if (window.fbUser && !window.appStarted) {
+          window.appStarted = true;
+          window.dispatchEvent(new Event("fbReady"));
+        }
+      }, 500);
     } else {
       ind.classList.remove('visible');
       spinner.classList.remove('spin');
