@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <title>Учёт Курьера Pro</title>
+  <title>РЈС‡С‘С‚ РљСѓСЂСЊРµСЂР° Pro</title>
   <style>
     :root { --bg: #000; --card: #1c1c1e; --pos: #65d48b; --neg: #ff6b6b; --accent: #ffd166; --nav-h: 65px; }
     * { box-sizing: border-box; font-family: -apple-system, sans-serif; -webkit-tap-highlight-color: transparent; }
     body { background: var(--bg); color: #fff; margin: 0; padding: 0; overflow-x: hidden; }
 
-    /* ТОПБАР */
+    /* РўРћРџР‘РђР  */
     .topbar {
       position: fixed; top: 0; left: 0; right: 0; z-index: 200;
       height: 52px; background: #000; display: flex; align-items: center;
@@ -25,21 +25,21 @@
     .period-btn { flex: 1; padding: 7px 0; border: 1px solid #1a1a1a; border-radius: 8px; background: #111; color: #444; font-size: 12px; cursor: pointer; font-weight: 600; }
     .period-btn.active { background: #1c1c1e; color: #fff; border-color: #333; }
 
-    /* СТРАНИЦА */
+    /* РЎРўР РђРќРР¦Рђ */
     .page-wrap { max-width: 500px; margin: 0 auto; padding-top: 106px; padding-bottom: calc(var(--nav-h) + 8px); padding-left: 10px; padding-right: 10px; }
 
-    /* НАВ */
+    /* РќРђР’ */
     .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; z-index: 200; display: flex; background: #0a0a0a; border-top: 1px solid #1a1a1a; height: var(--nav-h); max-width: 500px; margin: 0 auto; }
     .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; cursor: pointer; color: #2a2a2a; border: none; background: none; padding-bottom: 6px; transition: color 0.15s; }
     .nav-item.active { color: var(--pos); }
     .nav-icon { font-size: 22px; line-height: 1; }
     .nav-label { font-size: 10px; font-weight: 600; }
 
-    /* ВКЛАДКИ */
+    /* Р’РљР›РђР”РљР */
     .tab { display: none; }
     .tab.active { display: block; }
 
-    /* БАЛАНС БЛОК (внутри вкладки) */
+    /* Р‘РђР›РђРќРЎ Р‘Р›РћРљ (РІРЅСѓС‚СЂРё РІРєР»Р°РґРєРё) */
     .balance-block { background: #1c1c1e; border-radius: 16px; padding: 16px; margin-bottom: 10px; border: 1px solid #222; }
     .bal-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
     .bal-main { font-size: 28px; font-weight: bold; }
@@ -53,7 +53,7 @@
     .gas-bg { height: 3px; background: #1a1a1a; border-radius: 2px; overflow: hidden; }
     .gas-fill { height: 100%; background: var(--accent); width: 0%; transition: 0.4s; }
 
-    /* КАРТОЧКИ */
+    /* РљРђР РўРћР§РљР */
     .card { background: var(--card); border-radius: 16px; padding: 14px; margin-bottom: 10px; border: 1px solid #1a1a1a; }
     .card-title { font-size: 11px; color: #444; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
     .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
@@ -91,7 +91,7 @@
     .pos { color: var(--pos); } .neg { color: var(--neg); } .muted { color: #444; }
     .hidden { display: none; }
 
-    /* БОКОВОЕ МЕНЮ */
+    /* Р‘РћРљРћР’РћР• РњР•РќР® */
     .drawer-overlay {
       position: fixed; inset: 0; z-index: 300;
       background: rgba(0,0,0,0.6); opacity: 0; pointer-events: none; transition: opacity 0.25s;
@@ -120,7 +120,7 @@
     .drawer-item.danger { color: var(--neg); }
     .drawer-section { padding: 6px 20px 2px; font-size: 10px; color: #333; text-transform: uppercase; letter-spacing: 1px; }
 
-    /* СТРАНИЦА НАСТРОЕК (внутри drawer) */
+    /* РЎРўР РђРќРР¦Рђ РќРђРЎРўР РћР•Рљ (РІРЅСѓС‚СЂРё drawer) */
     .settings-page {
       position: fixed; inset: 0; z-index: 302; background: #000;
       transform: translateX(100%); transition: transform 0.25s ease;
@@ -140,7 +140,7 @@
 
     .transfer-card { background: #0a1a0a; border: 1px solid #1a2e1a; border-radius: 16px; padding: 14px; margin-bottom: 10px; }
 
-    /* ЭКРАН ДЕПОЗИТОВ */
+    /* Р­РљР РђРќ Р”Р•РџРћР—РРўРћР’ */
     .deposit-screen {
       position: fixed; inset: 0; z-index: 400; background: #000;
       transform: translateY(100%); transition: transform 0.3s ease;
@@ -183,7 +183,7 @@
     #ptr-spinner.spin { animation: spin 0.7s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* ЭКРАН ВХОДА */
+    /* Р­РљР РђРќ Р’РҐРћР”Рђ */
     .login-logo { font-size: 80px; margin-bottom: 20px; }
     .login-btn {
       display: flex; align-items: center; gap: 12px;
@@ -196,7 +196,7 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, where, deleteDoc, doc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
     import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithCredential, signOut, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
     const app = initializeApp({
@@ -209,15 +209,15 @@
     });
 
     window.fbDB = getFirestore(app);
-    window.fbMethods = { collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc, arrayUnion };
+    window.fbMethods = { collection, addDoc, onSnapshot, query, orderBy, where, deleteDoc, doc, updateDoc, arrayUnion };
     const auth = getAuth(app);
     const provider = new GoogleAuthProvider();
 
-    // ── Запуск приложения ──────────────────────────────────────────
+    // в”Ђв”Ђ Р—Р°РїСѓСЃРє РїСЂРёР»РѕР¶РµРЅРёСЏ в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
     function startApp(user) {
       document.getElementById("loginScreen").style.display = "none";
       document.getElementById("appScreen").style.display = "block";
-      document.getElementById("drawerName").textContent = user.displayName || user.email || "Пользователь";
+      document.getElementById("drawerName").textContent = user.displayName || user.email || "РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ";
       document.getElementById("drawerEmail").textContent = user.email || "";
       window.fbUser = user;
       if (!window.appStarted) {
@@ -226,7 +226,7 @@
       }
     }
 
-    // ── onAuthStateChanged — главный триггер ───────────────────────
+    // в”Ђв”Ђ onAuthStateChanged вЂ” РіР»Р°РІРЅС‹Р№ С‚СЂРёРіРіРµСЂ в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
     onAuthStateChanged(auth, user => {
       if (user) {
         startApp(user);
@@ -238,21 +238,21 @@
       }
     });
 
-    // ── receiveAuthToken — вызывается APK после входа ──────────────
-    // APK вызывает: window.receiveAuthToken({idToken, name, email})
+    // в”Ђв”Ђ receiveAuthToken вЂ” РІС‹Р·С‹РІР°РµС‚СЃСЏ APK РїРѕСЃР»Рµ РІС…РѕРґР° в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+    // APK РІС‹Р·С‹РІР°РµС‚: window.receiveAuthToken({idToken, name, email})
     window.receiveAuthToken = async (data) => {
-      console.log("receiveAuthToken:", data && data.idToken ? "токен есть" : "нет токена");
+      console.log("receiveAuthToken:", data && data.idToken ? "С‚РѕРєРµРЅ РµСЃС‚СЊ" : "РЅРµС‚ С‚РѕРєРµРЅР°");
       if (!data || !data.idToken) return;
       try {
         const credential = GoogleAuthProvider.credential(data.idToken);
         await signInWithCredential(auth, credential);
-        // onAuthStateChanged автоматически вызовет startApp
+        // onAuthStateChanged Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРё РІС‹Р·РѕРІРµС‚ startApp
       } catch(e) {
         console.error("receiveAuthToken error:", e);
       }
     };
 
-    // ── Кнопка входа ───────────────────────────────────────────────
+    // в”Ђв”Ђ РљРЅРѕРїРєР° РІС…РѕРґР° в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
     window.fbSignIn = async () => {
       if (window.AndroidBridge) {
         window.AndroidBridge.openBrowser("https://rydnichanin.github.io/MoneyTracker/auth.html");
@@ -261,13 +261,13 @@
       try {
         await signInWithPopup(auth, provider);
       } catch(e) {
-        if (e?.code !== "auth/popup-closed-by-user") alert("Ошибка входа: " + (e?.message || e));
+        if (e?.code !== "auth/popup-closed-by-user") alert("РћС€РёР±РєР° РІС…РѕРґР°: " + (e?.message || e));
       }
     };
 
     window.fbSignOut = () => signOut(auth);
 
-    // ── Email / пароль ─────────────────────────────────────────────
+    // в”Ђв”Ђ Email / РїР°СЂРѕР»СЊ в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
     const showError = (msg) => {
       const el = document.getElementById('loginError');
       if (el) el.textContent = msg;
@@ -279,36 +279,36 @@
 
     window.emailSignIn = async () => {
       const { email, pass } = getEmailPass();
-      if (!email || !pass) return showError('Введите email и пароль');
+      if (!email || !pass) return showError('Р’РІРµРґРёС‚Рµ email Рё РїР°СЂРѕР»СЊ');
       showError('');
       try {
         await signInWithEmailAndPassword(auth, email, pass);
       } catch(e) {
         const msgs = {
-          'auth/user-not-found': 'Пользователь не найден',
-          'auth/wrong-password': 'Неверный пароль',
-          'auth/invalid-email': 'Неверный формат email',
-          'auth/invalid-credential': 'Неверный email или пароль',
-          'auth/too-many-requests': 'Слишком много попыток, подождите'
+          'auth/user-not-found': 'РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ РЅРµ РЅР°Р№РґРµРЅ',
+          'auth/wrong-password': 'РќРµРІРµСЂРЅС‹Р№ РїР°СЂРѕР»СЊ',
+          'auth/invalid-email': 'РќРµРІРµСЂРЅС‹Р№ С„РѕСЂРјР°С‚ email',
+          'auth/invalid-credential': 'РќРµРІРµСЂРЅС‹Р№ email РёР»Рё РїР°СЂРѕР»СЊ',
+          'auth/too-many-requests': 'РЎР»РёС€РєРѕРј РјРЅРѕРіРѕ РїРѕРїС‹С‚РѕРє, РїРѕРґРѕР¶РґРёС‚Рµ'
         };
-        showError(msgs[e.code] || 'Ошибка: ' + e.message);
+        showError(msgs[e.code] || 'РћС€РёР±РєР°: ' + e.message);
       }
     };
 
     window.emailRegister = async () => {
       const { email, pass } = getEmailPass();
-      if (!email || !pass) return showError('Введите email и пароль');
-      if (pass.length < 6) return showError('Пароль минимум 6 символов');
+      if (!email || !pass) return showError('Р’РІРµРґРёС‚Рµ email Рё РїР°СЂРѕР»СЊ');
+      if (pass.length < 6) return showError('РџР°СЂРѕР»СЊ РјРёРЅРёРјСѓРј 6 СЃРёРјРІРѕР»РѕРІ');
       showError('');
       try {
         await createUserWithEmailAndPassword(auth, email, pass);
       } catch(e) {
         const msgs = {
-          'auth/email-already-in-use': 'Этот email уже используется',
-          'auth/invalid-email': 'Неверный формат email',
-          'auth/weak-password': 'Пароль слишком простой'
+          'auth/email-already-in-use': 'Р­С‚РѕС‚ email СѓР¶Рµ РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ',
+          'auth/invalid-email': 'РќРµРІРµСЂРЅС‹Р№ С„РѕСЂРјР°С‚ email',
+          'auth/weak-password': 'РџР°СЂРѕР»СЊ СЃР»РёС€РєРѕРј РїСЂРѕСЃС‚РѕР№'
         };
-        showError(msgs[e.code] || 'Ошибка: ' + e.message);
+        showError(msgs[e.code] || 'РћС€РёР±РєР°: ' + e.message);
       }
     };
   </script>
@@ -317,40 +317,40 @@
 
 <div id="ptr-indicator">
   <div id="ptr-spinner"></div>
-  <span id="ptr-text">Потяните вниз для обновления</span>
+  <span id="ptr-text">РџРѕС‚СЏРЅРёС‚Рµ РІРЅРёР· РґР»СЏ РѕР±РЅРѕРІР»РµРЅРёСЏ</span>
 </div>
 
 <div id="loginScreen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;background:#000;text-align:center;padding:24px;box-sizing:border-box;">
-  <div style="font-size:52px;margin-bottom:12px;">💰</div>
-  <h2 style="margin-bottom:4px;">Учёт Курьера Pro</h2>
-  <p style="color:#444;margin-bottom:24px;font-size:13px;">Войдите чтобы продолжить</p>
+  <div style="font-size:52px;margin-bottom:12px;">рџ’°</div>
+  <h2 style="margin-bottom:4px;">РЈС‡С‘С‚ РљСѓСЂСЊРµСЂР° Pro</h2>
+  <p style="color:#444;margin-bottom:24px;font-size:13px;">Р’РѕР№РґРёС‚Рµ С‡С‚РѕР±С‹ РїСЂРѕРґРѕР»Р¶РёС‚СЊ</p>
 
   <div style="width:100%;max-width:320px;">
     <input id="loginEmail" type="email" placeholder="Email" autocomplete="email"
       style="width:100%;padding:14px;border-radius:12px;border:1px solid #222;background:#111;color:#fff;font-size:16px;margin-bottom:10px;outline:none;box-sizing:border-box;" />
-    <input id="loginPassword" type="password" placeholder="Пароль"
+    <input id="loginPassword" type="password" placeholder="РџР°СЂРѕР»СЊ"
       style="width:100%;padding:14px;border-radius:12px;border:1px solid #222;background:#111;color:#fff;font-size:16px;margin-bottom:6px;outline:none;box-sizing:border-box;" />
     <div id="loginError" style="color:#ff6b6b;font-size:12px;min-height:16px;margin-bottom:10px;text-align:left;padding:0 2px;"></div>
 
     <button onclick="emailSignIn()"
       style="width:100%;padding:15px;border-radius:12px;border:none;background:#65d48b;color:#000;font-size:16px;font-weight:bold;cursor:pointer;margin-bottom:10px;">
-      Войти
+      Р’РѕР№С‚Рё
     </button>
     <button onclick="emailRegister()"
       style="width:100%;padding:14px;border-radius:12px;border:1px solid #222;background:none;color:#888;font-size:14px;cursor:pointer;margin-bottom:22px;">
-      Зарегистрироваться
+      Р—Р°СЂРµРіРёСЃС‚СЂРёСЂРѕРІР°С‚СЊСЃСЏ
     </button>
 
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
       <div style="flex:1;height:1px;background:#1a1a1a;"></div>
-      <span style="color:#333;font-size:12px;">или</span>
+      <span style="color:#333;font-size:12px;">РёР»Рё</span>
       <div style="flex:1;height:1px;background:#1a1a1a;"></div>
     </div>
 
     <button onclick="fbSignIn()"
       style="width:100%;padding:14px;border-radius:12px;border:1px solid #222;background:#111;color:#fff;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;box-sizing:border-box;">
       <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#4285F4" d="M44.5 20H24v8.5h11.8C34.7 33.9 29.8 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 5.1 29.6 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21c10.5 0 20-7.6 20-21 0-1.4-.1-2.7-.5-4z"/></svg>
-      Войти через Google
+      Р’РѕР№С‚Рё С‡РµСЂРµР· Google
     </button>
   </div>
 </div>
@@ -361,77 +361,77 @@
 
   <div class="drawer" id="drawer">
     <div class="drawer-header">
-      <div class="drawer-avatar">👤</div>
-      <div class="drawer-name" id="drawerName">—</div>
+      <div class="drawer-avatar">рџ‘¤</div>
+      <div class="drawer-name" id="drawerName">вЂ”</div>
       <div class="drawer-email" id="drawerEmail"></div>
     </div>
     <div class="drawer-nav">
-      <div class="drawer-section">Навигация</div>
+      <div class="drawer-section">РќР°РІРёРіР°С†РёСЏ</div>
       <button class="drawer-item home" onclick="closeDrawer()">
-        <span class="di-icon">🏠</span> Главный экран
+        <span class="di-icon">рџЏ </span> Р“Р»Р°РІРЅС‹Р№ СЌРєСЂР°РЅ
       </button>
       <button class="drawer-item" onclick="openSettings()">
-        <span class="di-icon">⚙️</span> Настройки
+        <span class="di-icon">вљ™пёЏ</span> РќР°СЃС‚СЂРѕР№РєРё
       </button>
-      <div class="drawer-section" style="margin-top:8px;">Аккаунт</div>
+      <div class="drawer-section" style="margin-top:8px;">РђРєРєР°СѓРЅС‚</div>
       <button class="drawer-item danger" onclick="fbSignOut(); closeDrawer();">
-        <span class="di-icon">🚪</span> Выйти
+        <span class="di-icon">рџљЄ</span> Р’С‹Р№С‚Рё
       </button>
     </div>
   </div>
 
   <div class="settings-page" id="settingsPage">
     <div class="settings-topbar">
-      <button class="back-btn" onclick="closeSettings()">‹</button>
-      <span style="font-size:16px;font-weight:600;">Настройки</span>
+      <button class="back-btn" onclick="closeSettings()">вЂ№</button>
+      <span style="font-size:16px;font-weight:600;">РќР°СЃС‚СЂРѕР№РєРё</span>
     </div>
     <div class="settings-inner">
       <div class="card">
-        <div class="card-title">Категория</div>
+        <div class="card-title">РљР°С‚РµРіРѕСЂРёСЏ</div>
         <div class="row2">
-          <select id="setCatType"><option value="income">Приход</option><option value="expense">Расход</option></select>
-          <input id="setCatName" type="text" placeholder="Название">
+          <select id="setCatType"><option value="income">РџСЂРёС…РѕРґ</option><option value="expense">Р Р°СЃС…РѕРґ</option></select>
+          <input id="setCatName" type="text" placeholder="РќР°Р·РІР°РЅРёРµ">
         </div>
-        <button class="btn-main" style="background:#222;color:#fff;padding:11px;" onclick="addCategory()">Добавить категорию</button>
+        <button class="btn-main" style="background:#222;color:#fff;padding:11px;" onclick="addCategory()">Р”РѕР±Р°РІРёС‚СЊ РєР°С‚РµРіРѕСЂРёСЋ</button>
       </div>
       <div class="card">
-        <div class="card-title">Подкатегория</div>
+        <div class="card-title">РџРѕРґРєР°С‚РµРіРѕСЂРёСЏ</div>
         <div class="row2">
           <select id="setParentCat"></select>
-          <input id="setSubName" type="text" placeholder="Название">
+          <input id="setSubName" type="text" placeholder="РќР°Р·РІР°РЅРёРµ">
         </div>
-        <button class="btn-main" style="background:#222;color:#fff;padding:11px;" onclick="addSub()">Добавить</button>
+        <button class="btn-main" style="background:#222;color:#fff;padding:11px;" onclick="addSub()">Р”РѕР±Р°РІРёС‚СЊ</button>
       </div>
       <div class="card">
-        <div class="card-title">Новый счёт</div>
+        <div class="card-title">РќРѕРІС‹Р№ СЃС‡С‘С‚</div>
         <div class="row2">
-          <input id="setAccName" type="text" placeholder="Напр: Kaspi">
-          <button class="btn-main" style="background:#222;color:#fff;padding:11px;margin:0;" onclick="addAccount()">Добавить</button>
+          <input id="setAccName" type="text" placeholder="РќР°РїСЂ: Kaspi">
+          <button class="btn-main" style="background:#222;color:#fff;padding:11px;margin:0;" onclick="addAccount()">Р”РѕР±Р°РІРёС‚СЊ</button>
         </div>
       </div>
       <div class="card">
-        <div class="card-title">Начальный баланс счёта</div>
+        <div class="card-title">РќР°С‡Р°Р»СЊРЅС‹Р№ Р±Р°Р»Р°РЅСЃ СЃС‡С‘С‚Р°</div>
         <div class="row2">
           <select id="setBalanceAcc"></select>
-          <input id="setBalanceVal" type="number" inputmode="decimal" placeholder="Сумма сейчас">
+          <input id="setBalanceVal" type="number" inputmode="decimal" placeholder="РЎСѓРјРјР° СЃРµР№С‡Р°СЃ">
         </div>
-        <button class="btn-main" style="background:#222;color:#fff;padding:11px;" onclick="setInitialBalance()">Установить</button>
+        <button class="btn-main" style="background:#222;color:#fff;padding:11px;" onclick="setInitialBalance()">РЈСЃС‚Р°РЅРѕРІРёС‚СЊ</button>
       </div>
       <div id="settingsList"></div>
     </div>
   </div>
 
   <div class="topbar">
-    <button class="menu-btn" onclick="openDrawer()">☰</button>
-    <div class="topbar-title" id="mainTitle" onclick="handleTitleTap()" style="cursor:default;">Учёт Курьера Pro</div>
+    <button class="menu-btn" onclick="openDrawer()">в°</button>
+    <div class="topbar-title" id="mainTitle" onclick="handleTitleTap()" style="cursor:default;">РЈС‡С‘С‚ РљСѓСЂСЊРµСЂР° Pro</div>
     <div style="width:38px;"></div>
   </div>
 
   <div class="period-row" style="flex-wrap:wrap;">
-    <button class="period-btn active" onclick="setRange('today')" id="btn-today">Сегодня</button>
-    <button class="period-btn" onclick="setRange('yesterday')" id="btn-yesterday">Вчера</button>
-    <button class="period-btn" onclick="setRange('all')" id="btn-all">Всё время</button>
-    <button class="period-btn" onclick="setRange('custom')" id="btn-custom">📅 Период</button>
+    <button class="period-btn active" onclick="setRange('today')" id="btn-today">РЎРµРіРѕРґРЅСЏ</button>
+    <button class="period-btn" onclick="setRange('yesterday')" id="btn-yesterday">Р’С‡РµСЂР°</button>
+    <button class="period-btn" onclick="setRange('all')" id="btn-all">Р’СЃС‘ РІСЂРµРјСЏ</button>
+    <button class="period-btn" onclick="setRange('custom')" id="btn-custom">рџ“… РџРµСЂРёРѕРґ</button>
     <div id="dateRangeRow" style="display:none;width:100%;gap:6px;padding-top:4px;flex-direction:row;">
       <input type="date" id="fromDate" style="flex:1;padding:7px;border-radius:8px;border:1px solid #2a2a2a;background:#1c1c1e;color:#fff;font-size:13px;" oninput="onCustomDate()">
       <input type="date" id="toDate" style="flex:1;padding:7px;border-radius:8px;border:1px solid #2a2a2a;background:#1c1c1e;color:#fff;font-size:13px;" oninput="onCustomDate()">
@@ -445,26 +445,26 @@
       <div class="balance-block">
         <div class="bal-top">
           <div>
-            <div class="bal-label">Чистая прибыль</div>
-            <div class="bal-main" id="balance">0 ₸</div>
+            <div class="bal-label">Р§РёСЃС‚Р°СЏ РїСЂРёР±С‹Р»СЊ</div>
+            <div class="bal-main" id="balance">0 в‚ё</div>
           </div>
           <div class="bal-side">
-            <span>Приход</span><b class="pos" id="totalIncome">0 ₸</b>
-            <span style="margin-top:6px;display:block;">Расход</span><b class="neg" id="totalExpense">0 ₸</b>
+            <span>РџСЂРёС…РѕРґ</span><b class="pos" id="totalIncome">0 в‚ё</b>
+            <span style="margin-top:6px;display:block;">Р Р°СЃС…РѕРґ</span><b class="neg" id="totalExpense">0 в‚ё</b>
           </div>
         </div>
         <div class="acc-chips" id="accountBalances"></div>
         <div class="gas-wrap">
-          <div class="gas-label" id="gasText">Бензин: 0%</div>
+          <div class="gas-label" id="gasText">Р‘РµРЅР·РёРЅ: 0%</div>
           <div class="gas-bg"><div class="gas-fill" id="gasFill"></div></div>
         </div>
       </div>
 
       <div class="card">
-        <div class="card-title">Новая запись</div>
+        <div class="card-title">РќРѕРІР°СЏ Р·Р°РїРёСЃСЊ</div>
         <form id="txForm">
           <div class="row2">
-            <select id="type"><option value="income">Приход</option><option value="expense">Расход</option></select>
+            <select id="type"><option value="income">РџСЂРёС…РѕРґ</option><option value="expense">Р Р°СЃС…РѕРґ</option></select>
             <select id="accountSelect"></select>
           </div>
           <div class="row2">
@@ -472,10 +472,10 @@
             <div id="subcatWrap" class="hidden"><select id="subcategory"></select></div>
           </div>
           <div class="row2">
-            <input id="amount" type="number" inputmode="decimal" placeholder="Сумма" required />
+            <input id="amount" type="number" inputmode="decimal" placeholder="РЎСѓРјРјР°" required />
             <input id="date" type="date" required />
           </div>
-          <input id="comment" type="text" placeholder="Примечание" style="margin-bottom:8px;" />
+          <input id="comment" type="text" placeholder="РџСЂРёРјРµС‡Р°РЅРёРµ" style="margin-bottom:8px;" />
           <div class="chips">
             <button type="button" class="chip" onclick="setAmount(150)">150</button>
             <button type="button" class="chip" onclick="setAmount(300)">300</button>
@@ -487,50 +487,50 @@
             <button type="button" class="chip" onclick="setAmount(4500)">4.5k</button>
             <button type="button" class="chip" onclick="setAmount(5000)">5k</button>
           </div>
-          <button class="btn-main" type="submit">Записать</button>
+          <button class="btn-main" type="submit">Р—Р°РїРёСЃР°С‚СЊ</button>
         </form>
       </div>
 
       <div class="card">
-        <div class="card-title">История</div>
-        <div id="list"><div class="muted">Нет записей</div></div>
+        <div class="card-title">РСЃС‚РѕСЂРёСЏ</div>
+        <div id="list"><div class="muted">РќРµС‚ Р·Р°РїРёСЃРµР№</div></div>
       </div>
     </div>
 
     <div class="tab" id="tab-transfer">
       <div class="transfer-card">
-        <div class="card-title" style="color:#65d48b;">💸 Перевод между счетами</div>
+        <div class="card-title" style="color:#65d48b;">рџ’ё РџРµСЂРµРІРѕРґ РјРµР¶РґСѓ СЃС‡РµС‚Р°РјРё</div>
         <div class="row2">
           <select id="transferFrom"></select>
           <select id="transferTo"></select>
         </div>
         <div class="row2">
-          <input id="transferAmount" type="number" inputmode="decimal" placeholder="Сумма" />
+          <input id="transferAmount" type="number" inputmode="decimal" placeholder="РЎСѓРјРјР°" />
           <input id="transferDate" type="date" />
         </div>
-        <button class="btn-main" style="background:#0a1f10;color:#65d48b;border:1px solid #1a3a1a;" onclick="doTransfer()">Перевести</button>
+        <button class="btn-main" style="background:#0a1f10;color:#65d48b;border:1px solid #1a3a1a;" onclick="doTransfer()">РџРµСЂРµРІРµСЃС‚Рё</button>
       </div>
     </div>
 
     <div class="tab" id="tab-income">
       <div class="card">
-        <div class="card-title">📈 Доход по точкам</div>
-        <div id="earningsDetails"><div class="muted">Нет данных</div></div>
+        <div class="card-title">рџ“€ Р”РѕС…РѕРґ РїРѕ С‚РѕС‡РєР°Рј</div>
+        <div id="earningsDetails"><div class="muted">РќРµС‚ РґР°РЅРЅС‹С…</div></div>
       </div>
       <div class="card" style="border-color:#2a2a1a;">
-        <div class="card-title" style="color:var(--accent);">🔮 Возможный доход (ВД)</div>
-        <div id="potentialStats"><div class="muted">Нет данных</div></div>
+        <div class="card-title" style="color:var(--accent);">рџ”® Р’РѕР·РјРѕР¶РЅС‹Р№ РґРѕС…РѕРґ (Р’Р”)</div>
+        <div id="potentialStats"><div class="muted">РќРµС‚ РґР°РЅРЅС‹С…</div></div>
       </div>
       <div class="card" style="border-color:#1a1a2a;">
-        <div class="card-title" style="color:#a78bfa;">📊 Аналитика</div>
+        <div class="card-title" style="color:#a78bfa;">рџ“Љ РђРЅР°Р»РёС‚РёРєР°</div>
         <div id="analyticsContent"></div>
       </div>
     </div>
 
     <div class="tab" id="tab-expense">
       <div class="card">
-        <div class="card-title">📉 Расходы по категориям</div>
-        <div id="expenseDetails"><div class="muted">Нет расходов</div></div>
+        <div class="card-title">рџ“‰ Р Р°СЃС…РѕРґС‹ РїРѕ РєР°С‚РµРіРѕСЂРёСЏРј</div>
+        <div id="expenseDetails"><div class="muted">РќРµС‚ СЂР°СЃС…РѕРґРѕРІ</div></div>
       </div>
     </div>
 
@@ -538,67 +538,67 @@
 
   <nav class="nav-bar">
     <button class="nav-item active" onclick="switchTab('record')" id="nav-record">
-      <span class="nav-icon">✏️</span><span class="nav-label">Запись</span>
+      <span class="nav-icon">вњЏпёЏ</span><span class="nav-label">Р—Р°РїРёСЃСЊ</span>
     </button>
     <button class="nav-item" onclick="switchTab('transfer')" id="nav-transfer">
-      <span class="nav-icon">💸</span><span class="nav-label">Переводы</span>
+      <span class="nav-icon">рџ’ё</span><span class="nav-label">РџРµСЂРµРІРѕРґС‹</span>
     </button>
     <button class="nav-item" onclick="switchTab('income')" id="nav-income">
-      <span class="nav-icon">📈</span><span class="nav-label">Доходы</span>
+      <span class="nav-icon">рџ“€</span><span class="nav-label">Р”РѕС…РѕРґС‹</span>
     </button>
     <button class="nav-item" onclick="switchTab('expense')" id="nav-expense">
-      <span class="nav-icon">📉</span><span class="nav-label">Расходы</span>
+      <span class="nav-icon">рџ“‰</span><span class="nav-label">Р Р°СЃС…РѕРґС‹</span>
     </button>
   </nav>
 
 <div class="deposit-screen" id="depositScreen">
   <div class="deposit-topbar">
-    <button class="back-btn" onclick="closeDeposits()">‹</button>
-    <span style="font-size:16px;font-weight:600;">Накопления</span>
+    <button class="back-btn" onclick="closeDeposits()">вЂ№</button>
+    <span style="font-size:16px;font-weight:600;">РќР°РєРѕРїР»РµРЅРёСЏ</span>
   </div>
   <div style="padding:12px;max-width:500px;margin:0 auto;">
 
     <div style="background:#111;border-radius:12px;padding:12px;margin-bottom:14px;font-size:12px;color:#444;text-align:center;">
-      Автоматически откладывается от дневного дохода.<br>Снятие возвращается на наличные.
+      РђРІС‚РѕРјР°С‚РёС‡РµСЃРєРё РѕС‚РєР»Р°РґС‹РІР°РµС‚СЃСЏ РѕС‚ РґРЅРµРІРЅРѕРіРѕ РґРѕС…РѕРґР°.<br>РЎРЅСЏС‚РёРµ РІРѕР·РІСЂР°С‰Р°РµС‚СЃСЏ РЅР° РЅР°Р»РёС‡РЅС‹Рµ.
     </div>
 
     <div class="dep-card future">
-      <div class="dep-label future">🌅 Будущее · 10%</div>
-      <div class="dep-total" id="dep1Total" style="color:#4a7aff;">0 ₸</div>
+      <div class="dep-label future">рџЊ… Р‘СѓРґСѓС‰РµРµ В· 10%</div>
+      <div class="dep-total" id="dep1Total" style="color:#4a7aff;">0 в‚ё</div>
       <div class="dep-today" id="dep1Today"></div>
       <div style="display:flex;gap:8px;margin:10px 0 6px;">
-        <button onclick="depAction(0,'withdraw')" style="flex:1;padding:9px;border-radius:10px;background:#1a1a2a;border:1px solid #2a2a4a;color:#4a7aff;font-size:13px;font-weight:600;cursor:pointer;">− Снять</button>
-        <button onclick="depAction(0,'topup')" style="flex:1;padding:9px;border-radius:10px;background:#0a0f1f;border:1px solid #1a2a4a;color:#7aaaff;font-size:13px;font-weight:600;cursor:pointer;">+ Пополнить</button>
+        <button onclick="depAction(0,'withdraw')" style="flex:1;padding:9px;border-radius:10px;background:#1a1a2a;border:1px solid #2a2a4a;color:#4a7aff;font-size:13px;font-weight:600;cursor:pointer;">в€’ РЎРЅСЏС‚СЊ</button>
+        <button onclick="depAction(0,'topup')" style="flex:1;padding:9px;border-radius:10px;background:#0a0f1f;border:1px solid #1a2a4a;color:#7aaaff;font-size:13px;font-weight:600;cursor:pointer;">+ РџРѕРїРѕР»РЅРёС‚СЊ</button>
       </div>
       <div class="dep-log" id="dep1Log"></div>
     </div>
 
     <div class="dep-card bday">
-      <div class="dep-label bday">🎂 День рождения · 20%</div>
-      <div class="dep-total" id="dep2Total" style="color:#c77aff;">0 ₸</div>
+      <div class="dep-label bday">рџЋ‚ Р”РµРЅСЊ СЂРѕР¶РґРµРЅРёСЏ В· 20%</div>
+      <div class="dep-total" id="dep2Total" style="color:#c77aff;">0 в‚ё</div>
       <div class="dep-today" id="dep2Today"></div>
       <div style="display:flex;gap:8px;margin:10px 0 6px;">
-        <button onclick="depAction(1,'withdraw')" style="flex:1;padding:9px;border-radius:10px;background:#1a0a1a;border:1px solid #3a1a3a;color:#c77aff;font-size:13px;font-weight:600;cursor:pointer;">− Снять</button>
-        <button onclick="depAction(1,'topup')" style="flex:1;padding:9px;border-radius:10px;background:#120a12;border:1px solid #2a1a2a;color:#d799ff;font-size:13px;font-weight:600;cursor:pointer;">+ Пополнить</button>
+        <button onclick="depAction(1,'withdraw')" style="flex:1;padding:9px;border-radius:10px;background:#1a0a1a;border:1px solid #3a1a3a;color:#c77aff;font-size:13px;font-weight:600;cursor:pointer;">в€’ РЎРЅСЏС‚СЊ</button>
+        <button onclick="depAction(1,'topup')" style="flex:1;padding:9px;border-radius:10px;background:#120a12;border:1px solid #2a1a2a;color:#d799ff;font-size:13px;font-weight:600;cursor:pointer;">+ РџРѕРїРѕР»РЅРёС‚СЊ</button>
       </div>
       <div class="dep-log" id="dep2Log"></div>
     </div>
 
     <div class="dep-card car">
-      <div class="dep-label car">🚗 Авто · 20%</div>
-      <div class="dep-total" id="dep3Total" style="color:#65d48b;">0 ₸</div>
+      <div class="dep-label car">рџљ— РђРІС‚Рѕ В· 20%</div>
+      <div class="dep-total" id="dep3Total" style="color:#65d48b;">0 в‚ё</div>
       <div class="dep-today" id="dep3Today"></div>
       <div style="display:flex;gap:8px;margin:10px 0 6px;">
-        <button onclick="depAction(2,'withdraw')" style="flex:1;padding:9px;border-radius:10px;background:#0a1a0a;border:1px solid #1a3a1a;color:#65d48b;font-size:13px;font-weight:600;cursor:pointer;">− Снять</button>
-        <button onclick="depAction(2,'topup')" style="flex:1;padding:9px;border-radius:10px;background:#081508;border:1px solid #153015;color:#85f4ab;font-size:13px;font-weight:600;cursor:pointer;">+ Пополнить</button>
+        <button onclick="depAction(2,'withdraw')" style="flex:1;padding:9px;border-radius:10px;background:#0a1a0a;border:1px solid #1a3a1a;color:#65d48b;font-size:13px;font-weight:600;cursor:pointer;">в€’ РЎРЅСЏС‚СЊ</button>
+        <button onclick="depAction(2,'topup')" style="flex:1;padding:9px;border-radius:10px;background:#081508;border:1px solid #153015;color:#85f4ab;font-size:13px;font-weight:600;cursor:pointer;">+ РџРѕРїРѕР»РЅРёС‚СЊ</button>
       </div>
       <div class="dep-log" id="dep3Log"></div>
     </div>
 
     <div style="background:#0a0a0a;border-radius:12px;padding:14px;text-align:center;border:1px solid #1a1a1a;">
-      <div style="font-size:10px;color:#333;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Всего отложено</div>
-      <div id="depGrandTotal" style="font-size:24px;font-weight:bold;color:#ffd166;">0 ₸</div>
-      <div style="font-size:11px;color:#333;margin-top:4px;">50% от всех доходов</div>
+      <div style="font-size:10px;color:#333;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Р’СЃРµРіРѕ РѕС‚Р»РѕР¶РµРЅРѕ</div>
+      <div id="depGrandTotal" style="font-size:24px;font-weight:bold;color:#ffd166;">0 в‚ё</div>
+      <div style="font-size:11px;color:#333;margin-top:4px;">50% РѕС‚ РІСЃРµС… РґРѕС…РѕРґРѕРІ</div>
     </div>
 
   </div>
@@ -631,7 +631,7 @@
   };
   window.setAmount = (v) => { document.getElementById('amount').value = v; };
 
-  // ТРОЙНОЙ ТАП НА ЗАГОЛОВОК
+  // РўР РћР™РќРћР™ РўРђРџ РќРђ Р—РђР“РћР›РћР’РћРљ
   let _tapCount = 0, _tapTimer = null;
   window.handleTitleTap = () => {
     _tapCount++;
@@ -652,7 +652,7 @@
     document.getElementById('depositScreen').classList.remove('open');
   };
 
-  const DEP_NAMES = ['Будущее', 'День рождения', 'Авто'];
+  const DEP_NAMES = ['Р‘СѓРґСѓС‰РµРµ', 'Р”РµРЅСЊ СЂРѕР¶РґРµРЅРёСЏ', 'РђРІС‚Рѕ'];
   const DEP_RATES = [0.10, 0.20, 0.20];
   const DEP_IDS   = ['dep1', 'dep2', 'dep3'];
 
@@ -661,8 +661,8 @@
     const byDay = {};
     (window.allTx || []).forEach(t => {
       if (t.type !== 'income') return;
-      // Исключаем возвраты с депозитов — чтобы не начислять % повторно
-      if (t.subcategory && t.subcategory.startsWith('← ')) return;
+      // РСЃРєР»СЋС‡Р°РµРј РІРѕР·РІСЂР°С‚С‹ СЃ РґРµРїРѕР·РёС‚РѕРІ вЂ” С‡С‚РѕР±С‹ РЅРµ РЅР°С‡РёСЃР»СЏС‚СЊ % РїРѕРІС‚РѕСЂРЅРѕ
+      if (t.subcategory && t.subcategory.startsWith('в†ђ ')) return;
       const d = t.date || '';
       if (d < DEP_START) return;
       if (!byDay[d]) byDay[d] = 0;
@@ -672,7 +672,7 @@
     const today = new Date().toISOString().slice(0,10);
     const sortedDays = Object.entries(byDay).filter(([d]) => d).sort((a,b) => a[0] > b[0] ? 1 : -1);
 
-    // Читаем ручные операции из Firestore
+    // Р§РёС‚Р°РµРј СЂСѓС‡РЅС‹Рµ РѕРїРµСЂР°С†РёРё РёР· Firestore
     const manualOps = (window.allTx || []).filter(t => t.type === 'dep_manual');
 
     let grand = 0;
@@ -681,86 +681,88 @@
       let autoTotal = 0;
       let logItems = [];
 
-      // Авто-начисления
+      // РђРІС‚Рѕ-РЅР°С‡РёСЃР»РµРЅРёСЏ
       sortedDays.forEach(([d, sum]) => {
         const amt = Math.round(sum * rate);
         autoTotal += amt;
         const dd = d.slice(8) + '.' + d.slice(5,7);
-        logItems.push({ d, html: `<div class="dep-log-item"><span>${dd}</span><span style="color:#65d48b;">+${amt.toLocaleString()} ₸</span></div>` });
+        logItems.push({ d, html: `<div class="dep-log-item"><span>${dd}</span><span style="color:#65d48b;">+${amt.toLocaleString()} в‚ё</span></div>` });
       });
 
-      // Ручные операции для этого депозита
+      // Р СѓС‡РЅС‹Рµ РѕРїРµСЂР°С†РёРё РґР»СЏ СЌС‚РѕРіРѕ РґРµРїРѕР·РёС‚Р°
       let manualTotal = 0;
       manualOps.filter(t => t.depIndex === i).forEach(t => {
-        manualTotal += t.amount; // отрицательное для снятия
+        manualTotal += t.amount; // РѕС‚СЂРёС†Р°С‚РµР»СЊРЅРѕРµ РґР»СЏ СЃРЅСЏС‚РёСЏ
         const dd = (t.date||'').slice(8) + '.' + (t.date||'').slice(5,7);
         const isW = t.amount < 0;
-        logItems.push({ d: t.date||'', html: `<div class="dep-log-item"><span>${dd} ${t.comment||''}</span><span style="color:${isW?'#ff6b6b':'#ffd166'};">${isW?'':'+'}${t.amount.toLocaleString()} ₸</span></div>` });
+        logItems.push({ d: t.date||'', html: `<div class="dep-log-item"><span>${dd} ${t.comment||''}</span><span style="color:${isW?'#ff6b6b':'#ffd166'};">${isW?'':'+'}${t.amount.toLocaleString()} в‚ё</span></div>` });
       });
 
       const total = autoTotal + manualTotal;
       grand += total;
 
-      // Сортируем лог — новые сверху
+      // РЎРѕСЂС‚РёСЂСѓРµРј Р»РѕРі вЂ” РЅРѕРІС‹Рµ СЃРІРµСЂС…Сѓ
       logItems.sort((a,b) => b.d > a.d ? 1 : -1);
       const logHtml = logItems.map(l => l.html).join('');
 
-      document.getElementById(id + 'Total').textContent = total.toLocaleString() + ' ₸';
+      document.getElementById(id + 'Total').textContent = total.toLocaleString() + ' в‚ё';
 
       const todayAmt = byDay[today] ? Math.round(byDay[today] * rate) : 0;
       document.getElementById(id + 'Today').textContent = todayAmt > 0
-        ? `Сегодня +${todayAmt.toLocaleString()} ₸`
+        ? `РЎРµРіРѕРґРЅСЏ +${todayAmt.toLocaleString()} в‚ё`
         : '';
-      document.getElementById(id + 'Log').innerHTML = logHtml || '<span style="color:#222;">Нет данных</span>';
+      document.getElementById(id + 'Log').innerHTML = logHtml || '<span style="color:#222;">РќРµС‚ РґР°РЅРЅС‹С…</span>';
     });
 
-    document.getElementById('depGrandTotal').textContent = grand.toLocaleString() + ' ₸';
+    document.getElementById('depGrandTotal').textContent = grand.toLocaleString() + ' в‚ё';
   }
 
-  // Снятие / пополнение депозита
+  // РЎРЅСЏС‚РёРµ / РїРѕРїРѕР»РЅРµРЅРёРµ РґРµРїРѕР·РёС‚Р°
   window.depAction = async (depIndex, action) => {
     const name = DEP_NAMES[depIndex];
-    const label = action === 'withdraw' ? 'Снять из «' + name + '»' : 'Пополнить «' + name + '»';
-    const amtStr = prompt(label + ' (сумма в ₸):');
+    const label = action === 'withdraw' ? 'РЎРЅСЏС‚СЊ РёР· В«' + name + 'В»' : 'РџРѕРїРѕР»РЅРёС‚СЊ В«' + name + 'В»';
+    const amtStr = prompt(label + ' (СЃСѓРјРјР° РІ в‚ё):');
     if (!amtStr) return;
     const amt = Number(amtStr.replace(/\s/g,''));
-    if (!amt || amt <= 0) return alert('Введите корректную сумму');
+    if (!amt || amt <= 0) return alert('Р’РІРµРґРёС‚Рµ РєРѕСЂСЂРµРєС‚РЅСѓСЋ СЃСѓРјРјСѓ');
 
-    const comment = prompt('Примечание (необязательно):') || '';
+    const comment = prompt('РџСЂРёРјРµС‡Р°РЅРёРµ (РЅРµРѕР±СЏР·Р°С‚РµР»СЊРЅРѕ):') || '';
     const today = new Date().toISOString().slice(0,10);
     const time = new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
     const finalAmt = action === 'withdraw' ? -amt : amt;
 
-    // Находим счёт Наличные
-    const nalichAcc = (window.ACCOUNTS||[]).find(a => a.name.toLowerCase().includes('налич'));
+    // РќР°С…РѕРґРёРј СЃС‡С‘С‚ РќР°Р»РёС‡РЅС‹Рµ
+    const nalichAcc = (window.ACCOUNTS||[]).find(a => a.name.toLowerCase().includes('РЅР°Р»РёС‡'));
 
     try {
       const { fbDB, fbMethods } = window;
       const txRef = fbMethods.collection(fbDB, 'transactions');
 
-      // Запись в депозит
+      // Р—Р°РїРёСЃСЊ РІ РґРµРїРѕР·РёС‚
       await fbMethods.addDoc(txRef, {
+        userId: window.fbUser.uid,
         type: 'dep_manual',
         depIndex,
         amount: finalAmt,
         date: today,
         time,
-        comment: comment || (action === 'withdraw' ? 'Снятие' : 'Пополнение'),
+        comment: comment || (action === 'withdraw' ? 'РЎРЅСЏС‚РёРµ' : 'РџРѕРїРѕР»РЅРµРЅРёРµ'),
         createdAt: Date.now()
       });
 
-      // Если снятие — возвращаем на наличные как доход
-      // Если пополнение — снимаем с наличных как расход
+      // Р•СЃР»Рё СЃРЅСЏС‚РёРµ вЂ” РІРѕР·РІСЂР°С‰Р°РµРј РЅР° РЅР°Р»РёС‡РЅС‹Рµ РєР°Рє РґРѕС…РѕРґ
+      // Р•СЃР»Рё РїРѕРїРѕР»РЅРµРЅРёРµ вЂ” СЃРЅРёРјР°РµРј СЃ РЅР°Р»РёС‡РЅС‹С… РєР°Рє СЂР°СЃС…РѕРґ
       if (nalichAcc) {
         await fbMethods.addDoc(txRef, {
+          userId: window.fbUser.uid,
           type: action === 'withdraw' ? 'income' : 'expense',
           amount: amt,
-          categoryName: action === 'withdraw' ? 'Депозит' : 'Депозит',
-          subcategory: (action === 'withdraw' ? '← ' : '→ ') + name,
+          categoryName: action === 'withdraw' ? 'Р”РµРїРѕР·РёС‚' : 'Р”РµРїРѕР·РёС‚',
+          subcategory: (action === 'withdraw' ? 'в†ђ ' : 'в†’ ') + name,
           account: nalichAcc.name,
           date: today,
           time,
-          comment: comment || (action === 'withdraw' ? 'Снятие с депозита' : 'Пополнение депозита'),
+          comment: comment || (action === 'withdraw' ? 'РЎРЅСЏС‚РёРµ СЃ РґРµРїРѕР·РёС‚Р°' : 'РџРѕРїРѕР»РЅРµРЅРёРµ РґРµРїРѕР·РёС‚Р°'),
           createdAt: Date.now() + 1
         });
       }
@@ -768,7 +770,7 @@
       renderDeposits();
     } catch(e) {
       console.error('depAction error:', e);
-      alert('Ошибка: ' + e.message);
+      alert('РћС€РёР±РєР°: ' + e.message);
     }
   };
 </script>
@@ -822,7 +824,7 @@
     };
     window.onCustomDate = () => { render(); };
 
-    fbMethods.onSnapshot(setRef, (snap) => {
+    fbMethods.onSnapshot(fbMethods.query(setRef, fbMethods.where("userId","==",window.fbUser.uid)), (snap) => {
       DEFAULTS = { income: [], expense: [] }; ACCOUNTS = [];
       let setHtml = "";
       snap.forEach(d => {
@@ -831,35 +833,35 @@
           DEFAULTS[data.catType].push({ id: d.id, ...data });
           const subBtns = (data.sub||[]).map(s =>
             `<span style="display:inline-flex;align-items:center;gap:3px;background:#2a2a2a;border-radius:5px;padding:2px 7px;margin:2px;font-size:12px;">
-              ${s}<button onclick="deleteSub('${d.id}','${s}')" style="background:none;border:none;color:var(--neg);font-size:11px;padding:0;cursor:pointer;line-height:1;">✕</button>
+              ${s}<button onclick="deleteSub('${d.id}','${s}')" style="background:none;border:none;color:var(--neg);font-size:11px;padding:0;cursor:pointer;line-height:1;">вњ•</button>
             </span>`).join("");
           setHtml += `<div class="set-item">
-            <div class="set-item-top"><span>📂 ${data.name} <span style="color:#333;font-size:11px;">${data.catType==='income'?'(+)':'(−)'}</span></span>
-            <button class="set-del" onclick="deleteSet('${d.id}')">✕</button></div>
-            <div style="margin-top:5px;display:flex;flex-wrap:wrap;">${subBtns||'<span style="color:#2a2a2a;font-size:10px;">нет подкатегорий</span>'}</div>
+            <div class="set-item-top"><span>рџ“‚ ${data.name} <span style="color:#333;font-size:11px;">${data.catType==='income'?'(+)':'(в€’)'}</span></span>
+            <button class="set-del" onclick="deleteSet('${d.id}')">вњ•</button></div>
+            <div style="margin-top:5px;display:flex;flex-wrap:wrap;">${subBtns||'<span style="color:#2a2a2a;font-size:10px;">РЅРµС‚ РїРѕРґРєР°С‚РµРіРѕСЂРёР№</span>'}</div>
           </div>`;
         } else if (data.type === 'account') {
           ACCOUNTS.push({ id: d.id, ...data }); window.ACCOUNTS = ACCOUNTS;
           const ib = Number(data.initialBalance)||0;
           setHtml += `<div class="set-item">
-            <div class="set-item-top"><span>💳 ${data.name}</span><button class="set-del" onclick="deleteSet('${d.id}')">✕</button></div>
-            <div style="font-size:10px;color:#333;margin-top:3px;">Нач. баланс: ${ib.toLocaleString()} ₸</div>
+            <div class="set-item-top"><span>рџ’і ${data.name}</span><button class="set-del" onclick="deleteSet('${d.id}')">вњ•</button></div>
+            <div style="font-size:10px;color:#333;margin-top:3px;">РќР°С‡. Р±Р°Р»Р°РЅСЃ: ${ib.toLocaleString()} в‚ё</div>
           </div>`;
         }
       });
-      document.getElementById("settingsList").innerHTML = setHtml || '<div class="muted" style="font-size:13px;padding:8px 0;">Нет настроек</div>';
+      document.getElementById("settingsList").innerHTML = setHtml || '<div class="muted" style="font-size:13px;padding:8px 0;">РќРµС‚ РЅР°СЃС‚СЂРѕРµРє</div>';
       updateUI();
     });
 
     window.addCategory = async () => {
       const name = document.getElementById("setCatName").value.trim();
       const catType = document.getElementById("setCatType").value;
-      if (name) await fbMethods.addDoc(setRef, { type:'category', name, catType, sub:[] });
+      if (name) await fbMethods.addDoc(setRef, { userId: window.fbUser.uid, type:'category', name, catType, sub:[] });
       document.getElementById("setCatName").value = "";
     };
     window.addAccount = async () => {
       const name = document.getElementById("setAccName").value.trim();
-      if (name) await fbMethods.addDoc(setRef, { type:'account', name, initialBalance:0 });
+      if (name) await fbMethods.addDoc(setRef, { userId: window.fbUser.uid, type:'account', name, initialBalance:0 });
       document.getElementById("setAccName").value = "";
     };
     window.setInitialBalance = async () => {
@@ -868,7 +870,7 @@
       if (!accId || isNaN(val)) return;
       await fbMethods.updateDoc(fbMethods.doc(fbDB,"settings",accId), { initialBalance: val });
       document.getElementById("setBalanceVal").value = "";
-      alert("Начальный баланс установлен!");
+      alert("РќР°С‡Р°Р»СЊРЅС‹Р№ Р±Р°Р»Р°РЅСЃ СѓСЃС‚Р°РЅРѕРІР»РµРЅ!");
     };
     window.addSub = async () => {
       const parentId = document.getElementById("setParentCat").value;
@@ -876,9 +878,9 @@
       if (parentId && subName) await fbMethods.updateDoc(fbMethods.doc(fbDB,"settings",parentId), { sub: fbMethods.arrayUnion(subName) });
       document.getElementById("setSubName").value = "";
     };
-    window.deleteSet = async (id) => { if (confirm("Удалить?")) await fbMethods.deleteDoc(fbMethods.doc(fbDB,"settings",id)); };
+    window.deleteSet = async (id) => { if (confirm("РЈРґР°Р»РёС‚СЊ?")) await fbMethods.deleteDoc(fbMethods.doc(fbDB,"settings",id)); };
     window.deleteSub = async (catId, subName) => {
-      if (confirm(`Удалить "${subName}"?`)) {
+      if (confirm(`РЈРґР°Р»РёС‚СЊ "${subName}"?`)) {
         const cat = [...DEFAULTS.income,...DEFAULTS.expense].find(c=>c.id===catId);
         if (!cat) return;
         await fbMethods.updateDoc(fbMethods.doc(fbDB,"settings",catId), { sub:(cat.sub||[]).filter(s=>s!==subName) });
@@ -888,8 +890,8 @@
     function updateUI() {
       const elT=document.getElementById("type"), elC=document.getElementById("category");
       const elS=document.getElementById("subcategory"), elAcc=document.getElementById("accountSelect");
-      const sorted=[...ACCOUNTS].sort((a,b)=>a.name.toLowerCase().includes('налич')?-1:b.name.toLowerCase().includes('налич')?1:0);
-      elAcc.innerHTML = sorted.length ? sorted.map(a=>`<option value="${a.name}">${a.name}</option>`).join("") : '<option value="">Счет не выбран</option>';
+      const sorted=[...ACCOUNTS].sort((a,b)=>a.name.toLowerCase().includes('РЅР°Р»РёС‡')?-1:b.name.toLowerCase().includes('РЅР°Р»РёС‡')?1:0);
+      elAcc.innerHTML = sorted.length ? sorted.map(a=>`<option value="${a.name}">${a.name}</option>`).join("") : '<option value="">РЎС‡РµС‚ РЅРµ РІС‹Р±СЂР°РЅ</option>';
       const fromSel=document.getElementById("transferFrom"), toSel=document.getElementById("transferTo");
       if (fromSel&&toSel) { const opts=sorted.map(a=>`<option value="${a.name}">${a.name}</option>`).join(""); fromSel.innerHTML=opts; toSel.innerHTML=opts; if(sorted.length>1)toSel.selectedIndex=1; }
       const balSel=document.getElementById("setBalanceAcc");
@@ -905,7 +907,7 @@
       elT.onchange=updateUI; elC.onchange=fillSubs; fillSubs();
     }
 
-    fbMethods.onSnapshot(fbMethods.query(txRef, fbMethods.orderBy("date","desc")), (snap) => {
+    fbMethods.onSnapshot(fbMethods.query(txRef, fbMethods.where("userId","==",window.fbUser.uid), fbMethods.orderBy("date","desc")), (snap) => {
       allTx = []; snap.forEach(d=>allTx.push({id:d.id,...d.data()})); window.allTx = allTx;
       if (!document.getElementById("fromDate").value) setRange('today'); else render();
     });
@@ -916,8 +918,9 @@
       const catId=document.getElementById("category").value;
       const catObj=[...DEFAULTS.income,...DEFAULTS.expense].find(c=>c.id===catId);
       await fbMethods.addDoc(txRef, {
+        userId: window.fbUser.uid,
         type:document.getElementById("type").value, amount:amt,
-        categoryName:catObj?catObj.name:"Без категории",
+        categoryName:catObj?catObj.name:"Р‘РµР· РєР°С‚РµРіРѕСЂРёРё",
         subcategory:document.getElementById("subcategory").value||"",
         account:document.getElementById("accountSelect").value,
         date:document.getElementById("date").value,
@@ -931,69 +934,70 @@
   window.doTransfer = async () => {
     const from=document.getElementById("transferFrom").value, to=document.getElementById("transferTo").value;
     const amt=Number(document.getElementById("transferAmount").value), date=document.getElementById("transferDate").value;
-    if(!amt||amt<=0) return alert("Введите сумму");
-    if(from===to) return alert("Счета должны быть разными");
-    if(!date) return alert("Выберите дату");
+    if(!amt||amt<=0) return alert("Р’РІРµРґРёС‚Рµ СЃСѓРјРјСѓ");
+    if(from===to) return alert("РЎС‡РµС‚Р° РґРѕР»Р¶РЅС‹ Р±С‹С‚СЊ СЂР°Р·РЅС‹РјРё");
+    if(!date) return alert("Р’С‹Р±РµСЂРёС‚Рµ РґР°С‚Сѓ");
     await window.fbMethods.addDoc(window.fbMethods.collection(window.fbDB,"transactions"),{
+      userId: window.fbUser.uid,
       type:'transfer',amount:amt,fromAccount:from,toAccount:to,account:from,
-      categoryName:`Перевод → ${to}`,subcategory:'',date,
+      categoryName:`РџРµСЂРµРІРѕРґ в†’ ${to}`,subcategory:'',date,
       time:new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}),
-      createdAt:Date.now(),comment:`${from} → ${to}`
+      createdAt:Date.now(),comment:`${from} в†’ ${to}`
     });
     document.getElementById("transferAmount").value="";
-    alert(`Переведено ${amt.toLocaleString()} ₸`);
+    alert(`РџРµСЂРµРІРµРґРµРЅРѕ ${amt.toLocaleString()} в‚ё`);
   };
 
   function render() {
     const from=document.getElementById("fromDate").value, to=document.getElementById("toDate").value;
     const filtered=allTx.filter(t=>{
       if(!(!from||t.date>=from)||!(!to||t.date<=to)) return false;
-      // Исключаем депозитные операции из основной истории
+      // РСЃРєР»СЋС‡Р°РµРј РґРµРїРѕР·РёС‚РЅС‹Рµ РѕРїРµСЂР°С†РёРё РёР· РѕСЃРЅРѕРІРЅРѕР№ РёСЃС‚РѕСЂРёРё
       if(t.type==='dep_manual') return false;
-      if(t.subcategory&&(t.subcategory.startsWith('← ')||t.subcategory.startsWith('→ '))) return false;
+      if(t.subcategory&&(t.subcategory.startsWith('в†ђ ')||t.subcategory.startsWith('в†’ '))) return false;
       return true;
     }).sort((a,b)=>{ if(b.date!==a.date)return b.date>a.date?1:-1; return(b.createdAt||0)-(a.createdAt||0); });
 
     const inc=filtered.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
     const exp=filtered.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
-    const gas=filtered.filter(t=>t.type==='expense'&&(String(t.subcategory||'').toLowerCase().includes('бенз')||String(t.categoryName||'').toLowerCase().includes('бенз'))).reduce((s,t)=>s+t.amount,0);
+    const gas=filtered.filter(t=>t.type==='expense'&&(String(t.subcategory||'').toLowerCase().includes('Р±РµРЅР·')||String(t.categoryName||'').toLowerCase().includes('Р±РµРЅР·'))).reduce((s,t)=>s+t.amount,0);
 
-    document.getElementById("balance").textContent=(inc-exp).toLocaleString()+" ₸";
-    document.getElementById("totalIncome").textContent=inc.toLocaleString()+" ₸";
-    document.getElementById("totalExpense").textContent=exp.toLocaleString()+" ₸";
+    document.getElementById("balance").textContent=(inc-exp).toLocaleString()+" в‚ё";
+    document.getElementById("totalIncome").textContent=inc.toLocaleString()+" в‚ё";
+    document.getElementById("totalExpense").textContent=exp.toLocaleString()+" в‚ё";
 
     const accs={};
     ACCOUNTS.forEach(a=>{accs[a.name]=Number(a.initialBalance)||0;});
     allTx.forEach(t=>{
       if(t.type==='transfer'){if(accs[t.fromAccount]!==undefined)accs[t.fromAccount]-=t.amount;if(accs[t.toAccount]!==undefined)accs[t.toAccount]+=t.amount;return;}
-      const acc=t.account&&t.account!=='undefined'&&t.account!==''&&t.account!=='Счет не выбран'?t.account:null;
+      const acc=t.account&&t.account!=='undefined'&&t.account!==''&&t.account!=='РЎС‡РµС‚ РЅРµ РІС‹Р±СЂР°РЅ'?t.account:null;
       if(!acc)return; if(accs[acc]===undefined)accs[acc]=0;
-      // → пополнение депозита исключаем (наличные уже вычитаются через totalDeposit)
-      // ← снятие с депозита оставляем — деньги реально вернулись на наличные
-      if(t.subcategory&&t.subcategory.startsWith('→ ')) return;
+      // в†’ РїРѕРїРѕР»РЅРµРЅРёРµ РґРµРїРѕР·РёС‚Р° РёСЃРєР»СЋС‡Р°РµРј (РЅР°Р»РёС‡РЅС‹Рµ СѓР¶Рµ РІС‹С‡РёС‚Р°СЋС‚СЃСЏ С‡РµСЂРµР· totalDeposit)
+      // в†ђ СЃРЅСЏС‚РёРµ СЃ РґРµРїРѕР·РёС‚Р° РѕСЃС‚Р°РІР»СЏРµРј вЂ” РґРµРЅСЊРіРё СЂРµР°Р»СЊРЅРѕ РІРµСЂРЅСѓР»РёСЃСЊ РЅР° РЅР°Р»РёС‡РЅС‹Рµ
+      if(t.subcategory&&t.subcategory.startsWith('в†’ ')) return;
       accs[acc]+=(t.type==='income'?t.amount:-t.amount);
     });
 
-    // Вычитаем депозиты (50% от дохода) из наличных — только с 19 марта 2026
+    // Р’С‹С‡РёС‚Р°РµРј РґРµРїРѕР·РёС‚С‹ (50% РѕС‚ РґРѕС…РѕРґР°) РёР· РЅР°Р»РёС‡РЅС‹С… вЂ” С‚РѕР»СЊРєРѕ СЃ 19 РјР°СЂС‚Р° 2026
     const DEP_START_DATE = '2026-03-19';
     const byDayAll={};
     allTx.forEach(t=>{
       if(t.type!=='income'||!t.date||t.date<DEP_START_DATE)return;
-      // Исключаем возвраты с депозитов
-      if(t.subcategory&&t.subcategory.startsWith('← '))return;
+      // РСЃРєР»СЋС‡Р°РµРј РІРѕР·РІСЂР°С‚С‹ СЃ РґРµРїРѕР·РёС‚РѕРІ
+      if(t.subcategory&&t.subcategory.startsWith('в†ђ '))return;
       if(!byDayAll[t.date])byDayAll[t.date]=0;
       byDayAll[t.date]+=t.amount;
     });
     const totalDeposit=Object.values(byDayAll).reduce((s,v)=>s+Math.round(v*0.5),0);
-    const nalichKey=Object.keys(accs).find(k=>k.toLowerCase().includes('налич'));
+    const nalichKey=Object.keys(accs).find(k=>k.toLowerCase().includes('РЅР°Р»РёС‡'));
     if(nalichKey) accs[nalichKey]-=totalDeposit;
 
     document.getElementById("accountBalances").innerHTML=Object.entries(accs)
-      .filter(([n])=>n&&n!=='undefined'&&n!=='Счет не выбран')
-      .map(([n,v])=>`<div class="acc-chip">${n}: <b style="color:${v>=0?'#65d48b':'#ff6b6b'}">${v.toLocaleString()} ₸</b></div>`).join("");
+      .filter(([n])=>n&&n!=='undefined'&&n!=='РЎС‡РµС‚ РЅРµ РІС‹Р±СЂР°РЅ')
+      .map(([n,v])=>`<div class="acc-chip">${n}: <b style="color:${v>=0?'#65d48b':'#ff6b6b'}">${v.toLocaleString()} в‚ё</b></div>`).join("");
 
     const gasP=inc>0?((gas/inc)*100).toFixed(1):0;
-    document.getElementById("gasText").textContent=`Бензин: ${gasP}% (${gas.toLocaleString()} ₸)`;
+    document.getElementById("gasText").textContent=`Р‘РµРЅР·РёРЅ: ${gasP}% (${gas.toLocaleString()} в‚ё)`;
     document.getElementById("gasFill").style.width=Math.min(Number(gasP)*3,100)+"%";
 
     const statsInc={};
@@ -1003,49 +1007,49 @@
       statsInc[key].sum+=t.amount;statsInc[key].cnt++;statsInc[key].br[t.amount]=(statsInc[key].br[t.amount]||0)+1;
     });
     document.getElementById("earningsDetails").innerHTML=Object.entries(statsInc).map(([k,d])=>`
-      <div class="stat-row"><div class="stat-main"><span>${k} (${d.cnt})</span><b>${d.sum.toLocaleString()} ₸</b></div>
-      <div class="stat-sub">${Object.entries(d.br).map(([p,c])=>`${p}₸×${c}`).join(" | ")}</div></div>`).join("")||'<div class="muted">Нет данных</div>';
+      <div class="stat-row"><div class="stat-main"><span>${k} (${d.cnt})</span><b>${d.sum.toLocaleString()} в‚ё</b></div>
+      <div class="stat-sub">${Object.entries(d.br).map(([p,c])=>`${p}в‚ёГ—${c}`).join(" | ")}</div></div>`).join("")||'<div class="muted">РќРµС‚ РґР°РЅРЅС‹С…</div>';
 
-    let totalGain=0; const vdStats={}, vds=["F1","F2","F3","Ночь"];
+    let totalGain=0; const vdStats={}, vds=["F1","F2","F3","РќРѕС‡СЊ"];
     filtered.forEach(t=>{
       if(t.type==='income'&&vds.includes(t.subcategory)&&t.amount<3000){
         if(!vdStats[t.subcategory])vdStats[t.subcategory]={vdSum:0};
         let p=t.amount;
-        if(t.amount===150)p=600;else if(t.amount===300)p=900;else if(t.subcategory==="Ночь"&&t.amount===500)p=1000;
+        if(t.amount===150)p=600;else if(t.amount===300)p=900;else if(t.subcategory==="РќРѕС‡СЊ"&&t.amount===500)p=1000;
         vdStats[t.subcategory].vdSum+=p;
       }
     });
     const vdHtml=Object.entries(vdStats).map(([p,data])=>{
       const rSum=statsInc[p]?statsInc[p].sum:0,diff=data.vdSum-rSum;totalGain+=diff;
-      return`<div class="stat-row"><div class="stat-main"><span>${p}</span><b>${data.vdSum.toLocaleString()} ₸</b></div><div style="color:#65d48b;font-size:12px;">Выгода: +${diff.toLocaleString()} ₸</div></div>`;
+      return`<div class="stat-row"><div class="stat-main"><span>${p}</span><b>${data.vdSum.toLocaleString()} в‚ё</b></div><div style="color:#65d48b;font-size:12px;">Р’С‹РіРѕРґР°: +${diff.toLocaleString()} в‚ё</div></div>`;
     }).join("");
-    document.getElementById("potentialStats").innerHTML=vdHtml||'<div class="muted">Нет данных ВД</div>';
-    if(totalGain>0)document.getElementById("potentialStats").innerHTML+=`<div class="gain-box"><span>ВЫГОДА ВД:</span><span class="pos">+${totalGain.toLocaleString()} ₸</span></div>`;
+    document.getElementById("potentialStats").innerHTML=vdHtml||'<div class="muted">РќРµС‚ РґР°РЅРЅС‹С… Р’Р”</div>';
+    if(totalGain>0)document.getElementById("potentialStats").innerHTML+=`<div class="gain-box"><span>Р’Р«Р“РћР”Рђ Р’Р”:</span><span class="pos">+${totalGain.toLocaleString()} в‚ё</span></div>`;
 
-    // Расходы — объединяем категории с одинаковым именем (регистронезависимо)
+    // Р Р°СЃС…РѕРґС‹ вЂ” РѕР±СЉРµРґРёРЅСЏРµРј РєР°С‚РµРіРѕСЂРёРё СЃ РѕРґРёРЅР°РєРѕРІС‹Рј РёРјРµРЅРµРј (СЂРµРіРёСЃС‚СЂРѕРЅРµР·Р°РІРёСЃРёРјРѕ)
     const statsExpRaw={};
     filtered.filter(t=>t.type==='expense').forEach(t=>{
-      // Нормализуем название: первая буква заглавная, остальное как есть
-      const rawName = t.categoryName || 'Прочее';
-      // Ищем существующий ключ с таким же именем (без учёта регистра)
+      // РќРѕСЂРјР°Р»РёР·СѓРµРј РЅР°Р·РІР°РЅРёРµ: РїРµСЂРІР°СЏ Р±СѓРєРІР° Р·Р°РіР»Р°РІРЅР°СЏ, РѕСЃС‚Р°Р»СЊРЅРѕРµ РєР°Рє РµСЃС‚СЊ
+      const rawName = t.categoryName || 'РџСЂРѕС‡РµРµ';
+      // РС‰РµРј СЃСѓС‰РµСЃС‚РІСѓСЋС‰РёР№ РєР»СЋС‡ СЃ С‚Р°РєРёРј Р¶Рµ РёРјРµРЅРµРј (Р±РµР· СѓС‡С‘С‚Р° СЂРµРіРёСЃС‚СЂР°)
       const existingKey = Object.keys(statsExpRaw).find(k => k.toLowerCase() === rawName.toLowerCase());
       const key = existingKey || rawName;
       if(!statsExpRaw[key]) statsExpRaw[key]={sum:0,subs:{}};
       statsExpRaw[key].sum+=t.amount;
-      // Подкатегория: если categoryName совпадает с другой категорией — добавляем как подкат
+      // РџРѕРґРєР°С‚РµРіРѕСЂРёСЏ: РµСЃР»Рё categoryName СЃРѕРІРїР°РґР°РµС‚ СЃ РґСЂСѓРіРѕР№ РєР°С‚РµРіРѕСЂРёРµР№ вЂ” РґРѕР±Р°РІР»СЏРµРј РєР°Рє РїРѕРґРєР°С‚
       const subKey = t.subcategory || null;
       if(subKey) statsExpRaw[key].subs[subKey]=(statsExpRaw[key].subs[subKey]||0)+t.amount;
     });
 
-    // Дополнительно: если есть категория "Напитки" и есть "Еда" — переносим Напитки в Еда как подкат
-    const mergeMap = {}; // 'откуда (lower)' -> 'куда (lower)'
+    // Р”РѕРїРѕР»РЅРёС‚РµР»СЊРЅРѕ: РµСЃР»Рё РµСЃС‚СЊ РєР°С‚РµРіРѕСЂРёСЏ "РќР°РїРёС‚РєРё" Рё РµСЃС‚СЊ "Р•РґР°" вЂ” РїРµСЂРµРЅРѕСЃРёРј РќР°РїРёС‚РєРё РІ Р•РґР° РєР°Рє РїРѕРґРєР°С‚
+    const mergeMap = {}; // 'РѕС‚РєСѓРґР° (lower)' -> 'РєСѓРґР° (lower)'
     const expKeys = Object.keys(statsExpRaw);
     expKeys.forEach(k => {
-      // Ищем категорию которая является подкатегорией другой категории
+      // РС‰РµРј РєР°С‚РµРіРѕСЂРёСЋ РєРѕС‚РѕСЂР°СЏ СЏРІР»СЏРµС‚СЃСЏ РїРѕРґРєР°С‚РµРіРѕСЂРёРµР№ РґСЂСѓРіРѕР№ РєР°С‚РµРіРѕСЂРёРё
       expKeys.forEach(parent => {
         if (k === parent) return;
         const parentData = statsExpRaw[parent];
-        // Если имя k встречается как подкатегория parent — значит k надо слить с parent
+        // Р•СЃР»Рё РёРјСЏ k РІСЃС‚СЂРµС‡Р°РµС‚СЃСЏ РєР°Рє РїРѕРґРєР°С‚РµРіРѕСЂРёСЏ parent вЂ” Р·РЅР°С‡РёС‚ k РЅР°РґРѕ СЃР»РёС‚СЊ СЃ parent
         if (Object.keys(parentData.subs).some(s => s.toLowerCase() === k.toLowerCase())) {
           mergeMap[k.toLowerCase()] = parent;
         }
@@ -1056,14 +1060,14 @@
     Object.entries(statsExpRaw).forEach(([k, d]) => {
       const targetKey = mergeMap[k.toLowerCase()];
       if (targetKey) {
-        // Переносим сумму в родительскую категорию как подкатегорию
+        // РџРµСЂРµРЅРѕСЃРёРј СЃСѓРјРјСѓ РІ СЂРѕРґРёС‚РµР»СЊСЃРєСѓСЋ РєР°С‚РµРіРѕСЂРёСЋ РєР°Рє РїРѕРґРєР°С‚РµРіРѕСЂРёСЋ
         if (!statsExp[targetKey]) statsExp[targetKey] = {...statsExpRaw[targetKey]};
         statsExp[targetKey].sum += d.sum;
-        // Добавляем подкатегории
+        // Р”РѕР±Р°РІР»СЏРµРј РїРѕРґРєР°С‚РµРіРѕСЂРёРё
         Object.entries(d.subs).forEach(([s,v]) => {
           statsExp[targetKey].subs[s] = (statsExp[targetKey].subs[s]||0) + v;
         });
-        // Если подкатегорий нет — добавляем само название как подкат
+        // Р•СЃР»Рё РїРѕРґРєР°С‚РµРіРѕСЂРёР№ РЅРµС‚ вЂ” РґРѕР±Р°РІР»СЏРµРј СЃР°РјРѕ РЅР°Р·РІР°РЅРёРµ РєР°Рє РїРѕРґРєР°С‚
         if (Object.keys(d.subs).length === 0) {
           statsExp[targetKey].subs[k] = (statsExp[targetKey].subs[k]||0) + d.sum;
         }
@@ -1071,7 +1075,7 @@
         if (!statsExp[k]) statsExp[k] = d;
       }
     });
-    // Убеждаемся что родительские категории добавлены
+    // РЈР±РµР¶РґР°РµРјСЃСЏ С‡С‚Рѕ СЂРѕРґРёС‚РµР»СЊСЃРєРёРµ РєР°С‚РµРіРѕСЂРёРё РґРѕР±Р°РІР»РµРЅС‹
     Object.values(mergeMap).forEach(parent => {
       if (!statsExp[parent] && statsExpRaw[parent]) statsExp[parent] = {...statsExpRaw[parent]};
     });
@@ -1079,16 +1083,16 @@
     document.getElementById("expenseDetails").innerHTML=Object.entries(statsExp)
       .sort((a,b)=>b[1].sum-a[1].sum)
       .map(([c,d])=>`
-        <div class="stat-row"><div class="stat-main"><span>${c}</span><b class="neg">${d.sum.toLocaleString()} ₸</b></div>
+        <div class="stat-row"><div class="stat-main"><span>${c}</span><b class="neg">${d.sum.toLocaleString()} в‚ё</b></div>
         <div class="stat-sub">${Object.entries(d.subs).map(([s,v])=>`${s}: ${v.toLocaleString()}`).join(" | ")}</div></div>`)
-      .join("")||'<div class="muted">Нет расходов</div>';
+      .join("")||'<div class="muted">РќРµС‚ СЂР°СЃС…РѕРґРѕРІ</div>';
 
     document.getElementById("list").innerHTML=filtered.map(t=>{
-      const acc=t.account&&t.account!=='undefined'&&t.account!==''&&t.account!=='Счет не выбран'?` [${t.account}]`:'';
+      const acc=t.account&&t.account!=='undefined'&&t.account!==''&&t.account!=='РЎС‡РµС‚ РЅРµ РІС‹Р±СЂР°РЅ'?` [${t.account}]`:'';
       const ts=t.time?`${t.date} ${t.time}`:t.date;
-      if(t.type==='transfer')return`<div class="hist-item"><div><b style="color:#ffd166;">↔ ${t.amount.toLocaleString()} ₸</b><br><small class="muted">${ts} | ${t.fromAccount} → ${t.toAccount}</small></div><button class="hist-del" onclick="deleteTx('${t.id}')">✕</button></div>`;
-      return`<div class="hist-item"><div><b class="${t.type==='income'?'pos':'neg'}">${t.amount.toLocaleString()} ₸</b><br><small class="muted">${ts} | ${t.subcategory||t.categoryName}${acc}</small>${t.comment?`<div style="color:#65d48b;font-size:11px;margin-top:2px;">📝 ${t.comment}</div>`:''}</div><button class="hist-del" onclick="deleteTx('${t.id}')">✕</button></div>`;
-    }).join("")||'<div class="muted">Нет записей</div>';
+      if(t.type==='transfer')return`<div class="hist-item"><div><b style="color:#ffd166;">в†” ${t.amount.toLocaleString()} в‚ё</b><br><small class="muted">${ts} | ${t.fromAccount} в†’ ${t.toAccount}</small></div><button class="hist-del" onclick="deleteTx('${t.id}')">вњ•</button></div>`;
+      return`<div class="hist-item"><div><b class="${t.type==='income'?'pos':'neg'}">${t.amount.toLocaleString()} в‚ё</b><br><small class="muted">${ts} | ${t.subcategory||t.categoryName}${acc}</small>${t.comment?`<div style="color:#65d48b;font-size:11px;margin-top:2px;">рџ“ќ ${t.comment}</div>`:''}</div><button class="hist-del" onclick="deleteTx('${t.id}')">вњ•</button></div>`;
+    }).join("")||'<div class="muted">РќРµС‚ Р·Р°РїРёСЃРµР№</div>';
 
     renderAnalytics();
   }
@@ -1100,9 +1104,9 @@
     const byDay={},byMonth={};
     allTx.forEach(t=>{if(t.type!=='income')return;const d=t.date||'',m=d.slice(0,7);if(!byDay[d])byDay[d]=0;byDay[d]+=t.amount;if(!byMonth[m])byMonth[m]={inc:0,exp:0};byMonth[m].inc+=t.amount;});
     allTx.forEach(t=>{if(t.type!=='expense')return;const m=(t.date||'').slice(0,7);if(!byMonth[m])byMonth[m]={inc:0,exp:0};byMonth[m].exp+=t.amount;});
-    const DELIVERY_POINTS_BW=["F1","F2","F3","ALLEY PUB","Ночь"];
+    const DELIVERY_POINTS_BW=["F1","F2","F3","ALLEY PUB","РќРѕС‡СЊ"];
     const deliveryDays=new Set();
-    // Сумма по точкам за каждый день
+    // РЎСѓРјРјР° РїРѕ С‚РѕС‡РєР°Рј Р·Р° РєР°Р¶РґС‹Р№ РґРµРЅСЊ
     const byDayDeliv={};
     allTx.forEach(t=>{
       if(t.type==='income'&&DELIVERY_POINTS_BW.includes(t.subcategory)){
@@ -1114,44 +1118,44 @@
     const days=Object.entries(byDay).filter(([d])=>d);
     let bestDay=null,worstDay=null;
     if(days.length>0){bestDay=days.reduce((a,b)=>b[1]>a[1]?b:a);const dl=days.filter(([d])=>deliveryDays.has(d));if(dl.length>0)worstDay=dl.reduce((a,b)=>b[1]<a[1]?b:a);}
-    const fmtD=d=>{if(!d)return'—';const[y,mo,day]=d.split('-');return`${day}.${mo}.${y}`;};
-    const fmtM=m=>{if(!m)return'—';const mn=['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];const[y,mo]=m.split('-');return`${mn[parseInt(mo)-1]} ${y}`;};
+    const fmtD=d=>{if(!d)return'вЂ”';const[y,mo,day]=d.split('-');return`${day}.${mo}.${y}`;};
+    const fmtM=m=>{if(!m)return'вЂ”';const mn=['РЇРЅРІ','Р¤РµРІ','РњР°СЂ','РђРїСЂ','РњР°Р№','РСЋРЅ','РСЋР»','РђРІРі','РЎРµРЅ','РћРєС‚','РќРѕСЏ','Р”РµРє'];const[y,mo]=m.split('-');return`${mn[parseInt(mo)-1]} ${y}`;};
     const from=document.getElementById("fromDate").value,to=document.getElementById("toDate").value;
     const filteredDays=Object.entries(byDay).filter(([d])=>d&&(!from||d>=from)&&(!to||d<=to)).sort((a,b)=>a[0]>b[0]?1:-1);
     let chartHtml='',chartData=null;
     if(filteredDays.length>1){
       const maxVal=Math.max(...filteredDays.map(([,v])=>v)),W=Math.max(filteredDays.length*50,300),H=80,pad=10;
       chartData={filteredDays,maxVal,W,H,pad};
-      chartHtml=`<div class="sec-title">График дохода по дням</div><div style="text-align:center;height:24px;display:flex;align-items:center;justify-content:center;gap:8px;"><span id="chartTipDate" style="font-size:11px;color:#444;"></span><span id="chartTipVal" style="font-size:15px;font-weight:bold;color:#a78bfa;"></span></div><div class="chart-wrap"><canvas id="incomeChart" width="${W}" height="${H+20}" style="display:block;"></canvas></div>`;
+      chartHtml=`<div class="sec-title">Р“СЂР°С„РёРє РґРѕС…РѕРґР° РїРѕ РґРЅСЏРј</div><div style="text-align:center;height:24px;display:flex;align-items:center;justify-content:center;gap:8px;"><span id="chartTipDate" style="font-size:11px;color:#444;"></span><span id="chartTipVal" style="font-size:15px;font-weight:bold;color:#a78bfa;"></span></div><div class="chart-wrap"><canvas id="incomeChart" width="${W}" height="${H+20}" style="display:block;"></canvas></div>`;
     }
     const bestDeliv=bestDay?byDayDeliv[bestDay[0]]||0:0;
     const worstDeliv=worstDay?byDayDeliv[worstDay[0]]||0:0;
-    const bwHtml=bestDay?`<div class="sec-title">Лучший и худший день</div><div class="bw-grid">
+    const bwHtml=bestDay?`<div class="sec-title">Р›СѓС‡С€РёР№ Рё С…СѓРґС€РёР№ РґРµРЅСЊ</div><div class="bw-grid">
       <div class="bw-card best">
-        <div class="bw-label">🏆 Лучший</div>
-        <div class="bw-val pos">${bestDay[1].toLocaleString()} ₸</div>
+        <div class="bw-label">рџЏ† Р›СѓС‡С€РёР№</div>
+        <div class="bw-val pos">${bestDay[1].toLocaleString()} в‚ё</div>
         <div class="bw-date">${fmtD(bestDay[0])}</div>
-        ${bestDeliv>0?`<div style="margin-top:6px;padding-top:6px;border-top:1px solid #1a3a1a;font-size:10px;color:#555;">🚴 по точкам</div><div style="font-size:13px;font-weight:bold;color:#ffd166;">${bestDeliv.toLocaleString()} ₸</div>`:''}
+        ${bestDeliv>0?`<div style="margin-top:6px;padding-top:6px;border-top:1px solid #1a3a1a;font-size:10px;color:#555;">рџљґ РїРѕ С‚РѕС‡РєР°Рј</div><div style="font-size:13px;font-weight:bold;color:#ffd166;">${bestDeliv.toLocaleString()} в‚ё</div>`:''}
       </div>
       <div class="bw-card worst">
-        <div class="bw-label">📉 Худший</div>
-        <div class="bw-val neg">${worstDay?worstDay[1].toLocaleString():'—'} ₸</div>
-        <div class="bw-date">${worstDay?fmtD(worstDay[0]):'—'}</div>
-        ${worstDeliv>0?`<div style="margin-top:6px;padding-top:6px;border-top:1px solid #3a1a1a;font-size:10px;color:#555;">🚴 по точкам</div><div style="font-size:13px;font-weight:bold;color:#ffd166;">${worstDeliv.toLocaleString()} ₸</div>`:''}
+        <div class="bw-label">рџ“‰ РҐСѓРґС€РёР№</div>
+        <div class="bw-val neg">${worstDay?worstDay[1].toLocaleString():'вЂ”'} в‚ё</div>
+        <div class="bw-date">${worstDay?fmtD(worstDay[0]):'вЂ”'}</div>
+        ${worstDeliv>0?`<div style="margin-top:6px;padding-top:6px;border-top:1px solid #3a1a1a;font-size:10px;color:#555;">рџљґ РїРѕ С‚РѕС‡РєР°Рј</div><div style="font-size:13px;font-weight:bold;color:#ffd166;">${worstDeliv.toLocaleString()} в‚ё</div>`:''}
       </div>
     </div>`:'';
-    const DELIVERY_POINTS=["F1","F2","F3","ALLEY PUB","Ночь"];
+    const DELIVERY_POINTS=["F1","F2","F3","ALLEY PUB","РќРѕС‡СЊ"];
     const wdByM={};
     allTx.forEach(t=>{if(t.type==='income'&&DELIVERY_POINTS.includes(t.subcategory)){const m=(t.date||'').slice(0,7);if(!wdByM[m])wdByM[m]=new Set();wdByM[m].add(t.date);}});
     const sortedM=Object.entries(byMonth).sort((a,b)=>b[0]>a[0]?1:-1).slice(0,6);
     const maxInc=Math.max(...sortedM.map(([,d])=>d.inc),1);
-    const monthHtml=sortedM.length>0?`<div class="sec-title">Сравнение по месяцам</div>${sortedM.map(([m,d])=>{const wd=wdByM[m]?wdByM[m].size:0,avg=wd>0?Math.round(d.inc/wd):0;return`<div class="month-row"><div class="month-top"><span>${fmtM(m)}</span><span class="pos">${d.inc.toLocaleString()} ₸</span></div><div class="month-bar-bg"><div class="month-bar-fill" style="width:${(d.inc/maxInc*100).toFixed(1)}%"></div></div><div class="month-meta">📅 ${wd} дн. · ≈ ${avg.toLocaleString()} ₸/день</div></div>`;}).join('')}`:'';
+    const monthHtml=sortedM.length>0?`<div class="sec-title">РЎСЂР°РІРЅРµРЅРёРµ РїРѕ РјРµСЃСЏС†Р°Рј</div>${sortedM.map(([m,d])=>{const wd=wdByM[m]?wdByM[m].size:0,avg=wd>0?Math.round(d.inc/wd):0;return`<div class="month-row"><div class="month-top"><span>${fmtM(m)}</span><span class="pos">${d.inc.toLocaleString()} в‚ё</span></div><div class="month-bar-bg"><div class="month-bar-fill" style="width:${(d.inc/maxInc*100).toFixed(1)}%"></div></div><div class="month-meta">рџ“… ${wd} РґРЅ. В· в‰€ ${avg.toLocaleString()} в‚ё/РґРµРЅСЊ</div></div>`;}).join('')}`:'';
     const delivByMonth={};
     allTx.forEach(t=>{if(t.type==='income'&&DELIVERY_POINTS.includes(t.subcategory)){const m=(t.date||'').slice(0,7);if(!delivByMonth[m])delivByMonth[m]={sum:0,days:new Set()};delivByMonth[m].sum+=t.amount;delivByMonth[m].days.add(t.date);}});
     const sortedDeliv=Object.entries(delivByMonth).sort((a,b)=>b[0]>a[0]?1:-1).slice(0,6);
     const maxDeliv=Math.max(...sortedDeliv.map(([,d])=>d.sum),1);
-    const delivHtml=sortedDeliv.length>0?`<div class="sec-title" style="margin-top:18px;color:#ffd166;">🚴 По точкам (F1·F2·F3·ALLEY·Ночь)</div>${sortedDeliv.map(([m,d])=>{const days=d.days.size,avg=days>0?Math.round(d.sum/days):0;return`<div class="month-row"><div class="month-top"><span>${fmtM(m)}</span><span style="color:#ffd166;font-weight:bold;">${d.sum.toLocaleString()} ₸</span></div><div class="month-bar-bg"><div class="month-bar-fill" style="width:${(d.sum/maxDeliv*100).toFixed(1)}%;background:#ffd166;"></div></div><div class="month-meta">📅 ${days} дн. · ≈ ${avg.toLocaleString()} ₸/день</div></div>`;}).join('')}`:'';
-    el.innerHTML=chartHtml+bwHtml+monthHtml+delivHtml||'<div class="muted">Недостаточно данных</div>';
+    const delivHtml=sortedDeliv.length>0?`<div class="sec-title" style="margin-top:18px;color:#ffd166;">рџљґ РџРѕ С‚РѕС‡РєР°Рј (F1В·F2В·F3В·ALLEYВ·РќРѕС‡СЊ)</div>${sortedDeliv.map(([m,d])=>{const days=d.days.size,avg=days>0?Math.round(d.sum/days):0;return`<div class="month-row"><div class="month-top"><span>${fmtM(m)}</span><span style="color:#ffd166;font-weight:bold;">${d.sum.toLocaleString()} в‚ё</span></div><div class="month-bar-bg"><div class="month-bar-fill" style="width:${(d.sum/maxDeliv*100).toFixed(1)}%;background:#ffd166;"></div></div><div class="month-meta">рџ“… ${days} РґРЅ. В· в‰€ ${avg.toLocaleString()} в‚ё/РґРµРЅСЊ</div></div>`;}).join('')}`:'';
+    el.innerHTML=chartHtml+bwHtml+monthHtml+delivHtml||'<div class="muted">РќРµРґРѕСЃС‚Р°С‚РѕС‡РЅРѕ РґР°РЅРЅС‹С…</div>';
     if(chartData){
       const{filteredDays,maxVal,W,H,pad}=chartData;
       const canvas=document.getElementById('incomeChart');if(!canvas)return;
@@ -1174,7 +1178,7 @@
         filteredDays.forEach(([d,],i)=>ctx.fillText(d.slice(8),getX(i),H+14));
       }
       const getIdx=cx=>{const r=canvas.getBoundingClientRect(),mx=(cx-r.left)*(W/r.width);let cl=0,md=Infinity;filteredDays.forEach(([,],i)=>{const dist=Math.abs(getX(i)-mx);if(dist<md){md=dist;cl=i;}});return cl;};
-      const showTip=idx=>{const[d,v]=filteredDays[idx];document.getElementById('chartTipDate').textContent=d.slice(8)+'.'+d.slice(5,7);document.getElementById('chartTipVal').textContent=v.toLocaleString()+' ₸';draw(idx);};
+      const showTip=idx=>{const[d,v]=filteredDays[idx];document.getElementById('chartTipDate').textContent=d.slice(8)+'.'+d.slice(5,7);document.getElementById('chartTipVal').textContent=v.toLocaleString()+' в‚ё';draw(idx);};
       const hideTip=()=>{document.getElementById('chartTipDate').textContent='';document.getElementById('chartTipVal').textContent='';draw(-1);};
       canvas.addEventListener('touchstart',e=>showTip(getIdx(e.touches[0].clientX)),{passive:true});
       canvas.addEventListener('touchend',()=>hideTip());
@@ -1185,13 +1189,13 @@
   }
 
   window.deleteTx = async (id) => {
-    if(confirm("Удалить?")) await window.fbMethods.deleteDoc(window.fbMethods.doc(window.fbDB,"transactions",id));
+    if(confirm("РЈРґР°Р»РёС‚СЊ?")) await window.fbMethods.deleteDoc(window.fbMethods.doc(window.fbDB,"transactions",id));
   };
 
-  // Обработка уведомлений от банков (вызывается из NotificationService -> MainActivity)
+  // РћР±СЂР°Р±РѕС‚РєР° СѓРІРµРґРѕРјР»РµРЅРёР№ РѕС‚ Р±Р°РЅРєРѕРІ (РІС‹Р·С‹РІР°РµС‚СЃСЏ РёР· NotificationService -> MainActivity)
   window.onNotificationReceived = function(title, text, app) {
-    console.log("Уведомление перехвачено:", title, text, app);
-    // Здесь логика парсинга SMS/уведомлений от банков
+    console.log("РЈРІРµРґРѕРјР»РµРЅРёРµ РїРµСЂРµС…РІР°С‡РµРЅРѕ:", title, text, app);
+    // Р—РґРµСЃСЊ Р»РѕРіРёРєР° РїР°СЂСЃРёРЅРіР° SMS/СѓРІРµРґРѕРјР»РµРЅРёР№ РѕС‚ Р±Р°РЅРєРѕРІ
   };
 </script>
 <script>
@@ -1216,10 +1220,10 @@
       ind.classList.add('visible');
       if (dist > PTR_THRESHOLD) {
         spinner.classList.add('spin');
-        txt.textContent = 'Отпустите для обновления';
+        txt.textContent = 'РћС‚РїСѓСЃС‚РёС‚Рµ РґР»СЏ РѕР±РЅРѕРІР»РµРЅРёСЏ';
       } else {
         spinner.classList.remove('spin');
-        txt.textContent = 'Потяните вниз для обновления';
+        txt.textContent = 'РџРѕС‚СЏРЅРёС‚Рµ РІРЅРёР· РґР»СЏ РѕР±РЅРѕРІР»РµРЅРёСЏ';
       }
     }
   }, { passive: true });
@@ -1232,9 +1236,9 @@
     const spinner = document.getElementById('ptr-spinner');
     
     if (dist > PTR_THRESHOLD) {
-      document.getElementById('ptr-text').textContent = 'Обновление...';
+      document.getElementById('ptr-text').textContent = 'РћР±РЅРѕРІР»РµРЅРёРµ...';
       setTimeout(() => {
-        // Жесткая перезагрузка страницы для сброса кэша и полного обновления
+        // Р–РµСЃС‚РєР°СЏ РїРµСЂРµР·Р°РіСЂСѓР·РєР° СЃС‚СЂР°РЅРёС†С‹ РґР»СЏ СЃР±СЂРѕСЃР° РєСЌС€Р° Рё РїРѕР»РЅРѕРіРѕ РѕР±РЅРѕРІР»РµРЅРёСЏ
         window.location.reload(); 
       }, 500);
     } else {
