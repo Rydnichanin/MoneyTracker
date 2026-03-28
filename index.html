@@ -222,7 +222,10 @@
       window.fbUser = user;
       if (!window.appStarted) {
         window.appStarted = true;
-        window.dispatchEvent(new Event("fbReady"));
+        // Даём время второму скрипту зарегистрировать слушатель fbReady
+        setTimeout(() => {
+          window.dispatchEvent(new Event("fbReady"));
+        }, 100);
       }
     }
 
@@ -1380,10 +1383,11 @@
       setTimeout(() => {
         ind.classList.remove('visible');
         spinner.classList.remove('spin');
-        // Перезапускаем данные без перезагрузки страницы
-        if (window.render) window.render();
-        if (window.fbUser && !window.appStarted) {
-          window.appStarted = true;
+        if (window.render) {
+          window.render();
+        } else if (window.fbUser) {
+          // initApp ещё не запущен — запускаем
+          window.appStarted = false;
           window.dispatchEvent(new Event("fbReady"));
         }
       }, 500);
