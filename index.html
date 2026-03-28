@@ -1460,17 +1460,35 @@
       else if (/alley|алей/i.test(firstLine)) point = 'ALLEY PUB';
       if (!point) continue;
 
-      // Определяем адрес
-      const addrMatch = firstLine.match(/[:\s]\s*(\d+[-–]\d+[-–]?\S*)/);
-      const address = addrMatch ? addrMatch[1] : firstLine;
+      // Ищем адрес во всех строках блока (телефон может быть до или после адреса)
+      let address = '';
+      for (const line of lines) {
+        // Адрес — содержит цифры-цифры (дом-квартира)
+        const addrMatch = line.match(/(\d+[-–]\d+[-–]?\S*)/);
+        if (addrMatch && !/^\+?7/.test(line.trim())) {
+          // Убеждаемся что это не телефон (не начинается с +7)
+          address = addrMatch[1];
+          break;
+        }
+      }
+      // Если не нашли отдельно — пробуем из первой строки после двоеточия
+      if (!address) {
+        const addrMatch = firstLine.match(/[:\s]\s*(\d+[-–]\d+[-–]?\S*)/);
+        address = addrMatch ? addrMatch[1] : '';
+      }
+      if (!address) continue;
 
       // Логика определения типа доставки:
       // - два числа через дефис (12-43) → до подъезда
-      // - три числа через дефис (6-13-34) → до квартиры
-      // - оканчивается на "п" → до подъезда
-      // - оканчивается на "кв" или цифру после трёх сегментов → до квартиры
-      const twoPartAddr = /^\d+[-–]\d+$/.test(address.trim());
-      const isUnder = twoPartAddr || /п$|п\s*$/i.test(address);
+      // - три числа через дефис (6-13-34) → до квартиры  
+      // - оканчивается на "п" или "пп" → до подъезда
+      // - оканчивается на "кв" или цифру (три сегмента) → до квартиры
+      const cleanAddr = address.trim().toLowerCase();
+      const twoPartAddr = /^\d+[-–]\d+$/.test(cleanAddr);
+      const hasP = /пп?$/.test(cleanAddr);
+      const hasKv = /кв$/.test(cleanAddr);
+      const threePartDigit = /^\d+[-–]\d+[-–]\d+$/.test(cleanAddr);
+      const isUnder = twoPartAddr || hasP;
       const isFlat = !isUnder;
 
       const prices = POINTS[point] || { under: 150, flat: 300 };
