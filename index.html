@@ -197,7 +197,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-    import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithCredential, signOut, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithCredential, signOut, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
     const app = initializeApp({
       apiKey: "AIzaSyBYvSsrzjgkrBwhaBAt0KlCGrAtzgOPYx8",
@@ -266,6 +266,22 @@
     };
 
     window.fbSignOut = () => signOut(auth);
+
+    window.resetPassword = async () => {
+      const email = (document.getElementById('loginEmail')?.value || '').trim();
+      if (!email) return showError('Введите email выше');
+      try {
+        await sendPasswordResetEmail(auth, email);
+        showError('');
+        alert('✅ Письмо отправлено на ' + email + '. Проверь почту.');
+      } catch(e) {
+        const msgs = {
+          'auth/user-not-found': 'Пользователь не найден',
+          'auth/invalid-email': 'Неверный формат email'
+        };
+        showError(msgs[e.code] || 'Ошибка: ' + e.message);
+      }
+    };
 
     // ── Email / пароль ─────────────────────────────────────────────
     const showError = (msg) => {
@@ -339,8 +355,12 @@
       Войти
     </button>
     <button onclick="emailRegister()"
-      style="width:100%;padding:14px;border-radius:12px;border:1px solid #222;background:none;color:#888;font-size:14px;cursor:pointer;margin-bottom:22px;">
+      style="width:100%;padding:14px;border-radius:12px;border:1px solid #222;background:none;color:#888;font-size:14px;cursor:pointer;margin-bottom:10px;">
       Зарегистрироваться
+    </button>
+    <button onclick="resetPassword()"
+      style="width:100%;padding:10px;border:none;background:none;color:#555;font-size:13px;cursor:pointer;margin-bottom:12px;">
+      Забыли пароль?
     </button>
 
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
