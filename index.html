@@ -1520,7 +1520,7 @@
   window.saveWA = async () => {
     if (!waEntries.length) return;
     const btn = document.querySelector('#waResult button');
-    btn.textContent = '⏳ Сохраняю...';
+    btn.textContent = '⏳ Проверяю дубли...';
     btn.disabled = true;
 
     const { fbDB, fbMethods } = window;
@@ -1534,7 +1534,20 @@
     const time = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 
     try {
+      // Загружаем уже существующие записи за сегодня
+      const existing = (window.allTx || []).filter(t =>
+        t.date === today && t.type === 'income' && t.categoryName === 'Доставка'
+      );
+      // Ключ для проверки дубля: точка + адрес
+      const existingKeys = new Set(existing.map(t => `${t.subcategory}|${(t.comment||'').trim().toLowerCase()}`));
+
+      let saved = 0, skipped = 0;
       for (const e of waEntries) {
+        const key = `${e.point}|${e.address.trim().toLowerCase()}`;
+        if (existingKeys.has(key)) {
+          skipped++;
+          continue;
+        }
         await fbMethods.addDoc(txRef, {
           type: 'income',
           amount: e.amount,
@@ -1546,8 +1559,14 @@
           comment: e.address,
           createdAt: Date.now()
         });
+        existingKeys.add(key); // чтобы не дублировать даже внутри одной вставки
+        saved++;
       }
-      alert(`✅ Записано ${waEntries.length} доставок!`);
+
+      let msg = `✅ Записано: ${saved}`;
+      if (skipped > 0) msg += `\n⚠️ Пропущено дублей: ${skipped}`;
+      alert(msg);
+
       waEntries = [];
       document.getElementById('waInput').value = '';
       document.getElementById('waResult').style.display = 'none';
