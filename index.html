@@ -837,11 +837,13 @@
   let ACCOUNTS = []; window.ACCOUNTS = ACCOUNTS;
   let allTx = []; window.allTx = allTx;
 
-  let appInitialized = false;
+  let appInitialized = false; window.appInitialized = false;
   function tryInitApp() {
     if (appInitialized) return;
-    if (window.fbDB && window.fbMethods) { appInitialized = true; initApp(); }
+    if (window.fbDB && window.fbMethods) { appInitialized = true; window.appInitialized = true; initApp(); }
   }
+  // Позволяем внешнему коду сбросить флаг
+  window.resetApp = () => { appInitialized = false; window.appInitialized = false; };
   window.addEventListener("fbReady", tryInitApp);
   const checkFB = setInterval(() => {
     if (window.fbDB && window.fbMethods && window.fbUser) { clearInterval(checkFB); tryInitApp(); }
@@ -1383,12 +1385,13 @@
       setTimeout(() => {
         ind.classList.remove('visible');
         spinner.classList.remove('spin');
-        if (window.render) {
-          window.render();
-        } else if (window.fbUser) {
-          // initApp ещё не запущен — запускаем
+        // Перезапускаем initApp полностью — свежие данные из Firebase
+        if (window.fbUser && window.fbDB && window.fbMethods) {
+          if (window.resetApp) window.resetApp();
           window.appStarted = false;
-          window.dispatchEvent(new Event("fbReady"));
+          setTimeout(() => window.dispatchEvent(new Event("fbReady")), 50);
+        } else if (window.render) {
+          window.render();
         }
       }, 500);
     } else {
