@@ -1464,9 +1464,14 @@
       const addrMatch = firstLine.match(/[:\s]\s*(\d+[-–]\d+[-–]?\S*)/);
       const address = addrMatch ? addrMatch[1] : firstLine;
 
-      // До подъезда (п) или до квартиры (цифра в конце или кв)
-      const isFlat = /\d+кв$|\d+$|кв/i.test(address) && !/п$|п\s*$/i.test(address);
-      const isUnder = /п$|п\s*$/i.test(address);
+      // Логика определения типа доставки:
+      // - два числа через дефис (12-43) → до подъезда
+      // - три числа через дефис (6-13-34) → до квартиры
+      // - оканчивается на "п" → до подъезда
+      // - оканчивается на "кв" или цифру после трёх сегментов → до квартиры
+      const twoPartAddr = /^\d+[-–]\d+$/.test(address.trim());
+      const isUnder = twoPartAddr || /п$|п\s*$/i.test(address);
+      const isFlat = !isUnder;
 
       const prices = POINTS[point] || { under: 150, flat: 300 };
       const amount = isUnder ? prices.under : prices.flat;
