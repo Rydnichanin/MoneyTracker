@@ -2,37 +2,38 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8"/>
-  <title>Миграция данных</title>
+  <title>Миграция данных v2</title>
   <style>
     body { background:#000; color:#fff; font-family:-apple-system,sans-serif; padding:30px; max-width:500px; margin:0 auto; }
     h2 { color:#65d48b; }
-    .btn { width:100%; padding:15px; border-radius:12px; border:none; background:#65d48b; color:#000; font-size:16px; font-weight:bold; cursor:pointer; margin-top:20px; }
+    .btn { width:100%; padding:15px; border-radius:12px; border:none; background:#65d48b; color:#000; font-size:16px; font-weight:bold; cursor:pointer; margin-top:12px; }
+    .btn.red { background:#ff6b6b; }
     .btn:disabled { background:#333; color:#666; cursor:not-allowed; }
     .log { margin-top:20px; background:#111; border-radius:10px; padding:14px; font-size:13px; line-height:1.8; max-height:400px; overflow-y:auto; }
-    .ok { color:#65d48b; }
-    .err { color:#ff6b6b; }
-    .info { color:#ffd166; }
+    .ok { color:#65d48b; } .err { color:#ff6b6b; } .info { color:#ffd166; }
+    input { width:100%;padding:12px;border-radius:10px;border:1px solid #222;background:#111;color:#fff;font-size:15px;box-sizing:border-box;margin-bottom:10px; }
   </style>
 </head>
 <body>
-  <h2>🔄 Миграция данных</h2>
-  <p style="color:#888;">Переносит твои данные из общей коллекции в личную (по userId).</p>
-  <p style="color:#555;font-size:13px;">Запусти один раз. Старые данные не удаляются.</p>
+  <h2>🔄 Миграция данных v2</h2>
+  <p style="color:#888;font-size:13px;">Сначала очистит дубли, потом перенесёт данные правильно.</p>
 
   <div id="authBlock">
-    <p style="color:#ffd166;">Сначала войди в аккаунт:</p>
-    <input id="email" type="email" placeholder="Email" style="width:100%;padding:12px;border-radius:10px;border:1px solid #222;background:#111;color:#fff;font-size:15px;box-sizing:border-box;margin-bottom:10px;"/>
-    <input id="pass" type="password" placeholder="Пароль" style="width:100%;padding:12px;border-radius:10px;border:1px solid #222;background:#111;color:#fff;font-size:15px;box-sizing:border-box;"/>
+    <input id="email" type="email" placeholder="Email"/>
+    <input id="pass" type="password" placeholder="Пароль"/>
     <button class="btn" onclick="doLogin()">Войти</button>
   </div>
 
-  <button class="btn" id="migrateBtn" style="display:none;" onclick="migrate()">Перенести мои данные</button>
+  <div id="actions" style="display:none;">
+    <button class="btn red" onclick="clearUserData()">1. Очистить мои данные (удалить дубли)</button>
+    <button class="btn" onclick="migrate()">2. Перенести данные из старой коллекции</button>
+  </div>
   <div class="log" id="log" style="display:none;"></div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, getDocs, addDoc, doc, setDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-    import { getAuth, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
     const app = initializeApp({
       apiKey: "AIzaSyBYvSsrzjgkrBwhaBAt0KlCGrAtzgOPYx8",
@@ -54,77 +55,78 @@
     }
 
     window.doLogin = async () => {
-      const email = document.getElementById('email').value.trim();
-      const pass = document.getElementById('pass').value.trim();
       try {
-        await signInWithEmailAndPassword(auth, email, pass);
-      } catch(e) {
-        alert('Ошибка: ' + e.message);
-      }
+        await signInWithEmailAndPassword(auth,
+          document.getElementById('email').value.trim(),
+          document.getElementById('pass').value.trim()
+        );
+      } catch(e) { alert('Ошибка: ' + e.message); }
     };
 
     auth.onAuthStateChanged(user => {
       if (user) {
         document.getElementById('authBlock').style.display = 'none';
-        document.getElementById('migrateBtn').style.display = 'block';
-        log(`✅ Вошёл как: ${user.email || user.uid}`, 'ok');
+        document.getElementById('actions').style.display = 'block';
+        log(`✅ Вошёл: ${user.email}`, 'ok');
         log(`UID: ${user.uid}`, 'info');
       }
     });
 
-    window.migrate = async () => {
-      const btn = document.getElementById('migrateBtn');
-      btn.disabled = true;
-      btn.textContent = 'Идёт перенос...';
-
+    // Шаг 1: удалить все текущие данные пользователя (чтобы убрать дубли)
+    window.clearUserData = async () => {
+      if (!confirm('Удалить все текущие данные пользователя? (транзакции и настройки)')) return;
       const user = auth.currentUser;
-      if (!user) return log('❌ Не авторизован', 'err');
-
       const uid = user.uid;
 
-      try {
-        // Перенос транзакций
-        log('📦 Читаю транзакции...', 'info');
-        const txSnap = await getDocs(collection(db, 'transactions'));
-        log(`Найдено транзакций: ${txSnap.size}`, 'info');
+      log('🗑️ Удаляю текущие транзакции...', 'info');
+      const txSnap = await getDocs(collection(db, 'users', uid, 'transactions'));
+      for (const d of txSnap.docs) await deleteDoc(doc(db, 'users', uid, 'transactions', d.id));
+      log(`Удалено транзакций: ${txSnap.size}`, 'ok');
 
-        let txOk = 0, txSkip = 0;
-        for (const d of txSnap.docs) {
-          const data = d.data();
-          try {
-            await addDoc(collection(db, 'users', uid, 'transactions'), data);
-            txOk++;
-          } catch(e) {
-            log(`⚠️ Ошибка транзакции: ${e.message}`, 'err');
-            txSkip++;
-          }
-        }
-        log(`✅ Транзакции перенесены: ${txOk} (пропущено: ${txSkip})`, 'ok');
+      log('🗑️ Удаляю текущие настройки...', 'info');
+      const setSnap = await getDocs(collection(db, 'users', uid, 'settings'));
+      for (const d of setSnap.docs) await deleteDoc(doc(db, 'users', uid, 'settings', d.id));
+      log(`Удалено настроек: ${setSnap.size}`, 'ok');
 
-        // Перенос настроек
-        log('⚙️ Читаю настройки...', 'info');
-        const setSnap = await getDocs(collection(db, 'settings'));
-        log(`Найдено настроек: ${setSnap.size}`, 'info');
+      log('✅ Готово. Теперь нажми кнопку 2.', 'ok');
+    };
 
-        let setOk = 0;
-        for (const d of setSnap.docs) {
-          const data = d.data();
-          try {
-            await addDoc(collection(db, 'users', uid, 'settings'), data);
-            setOk++;
-          } catch(e) {
-            log(`⚠️ Ошибка настройки: ${e.message}`, 'err');
-          }
-        }
-        log(`✅ Настройки перенесены: ${setOk}`, 'ok');
+    // Шаг 2: перенести из старых коллекций
+    window.migrate = async () => {
+      const user = auth.currentUser;
+      const uid = user.uid;
 
-        log('🎉 Готово! Можешь открывать приложение.', 'ok');
-        btn.textContent = '✅ Готово';
-      } catch(e) {
-        log('❌ Ошибка: ' + e.message, 'err');
-        btn.disabled = false;
-        btn.textContent = 'Попробовать снова';
+      // Проверяем что уже пусто
+      const check = await getDocs(collection(db, 'users', uid, 'transactions'));
+      if (check.size > 0) {
+        log('⚠️ Данные уже есть! Сначала нажми кнопку 1 (очистить).', 'err');
+        return;
       }
+
+      log('📦 Переношу транзакции...', 'info');
+      const txSnap = await getDocs(collection(db, 'transactions'));
+      log(`Найдено в старой коллекции: ${txSnap.size}`, 'info');
+      let txOk = 0;
+      for (const d of txSnap.docs) {
+        try {
+          await addDoc(collection(db, 'users', uid, 'transactions'), d.data());
+          txOk++;
+        } catch(e) { log('⚠️ ' + e.message, 'err'); }
+      }
+      log(`✅ Транзакций перенесено: ${txOk}`, 'ok');
+
+      log('⚙️ Переношу настройки...', 'info');
+      const setSnap = await getDocs(collection(db, 'settings'));
+      log(`Найдено настроек: ${setSnap.size}`, 'info');
+      let setOk = 0;
+      for (const d of setSnap.docs) {
+        try {
+          await addDoc(collection(db, 'users', uid, 'settings'), d.data());
+          setOk++;
+        } catch(e) { log('⚠️ ' + e.message, 'err'); }
+      }
+      log(`✅ Настроек перенесено: ${setOk}`, 'ok');
+      log('🎉 Миграция завершена! Открывай приложение.', 'ok');
     };
   </script>
 </body>
