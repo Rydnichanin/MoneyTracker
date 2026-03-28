@@ -586,6 +586,46 @@
       </div>
     </div>
 
+    <!-- 5. ЧАТ / ВСТАВКА ИЗ WHATSAPP -->
+    <div class="tab" id="tab-wa">
+      <div class="card" style="border-color:#1a2a1a;">
+        <div class="card-title" style="color:#65d48b;">📋 Вставить из WhatsApp</div>
+
+        <!-- Ночной режим -->
+        <div style="display:flex;align-items:center;justify-content:space-between;background:#111;border-radius:10px;padding:10px 14px;margin-bottom:12px;">
+          <div>
+            <div style="font-size:14px;font-weight:600;">🌙 Ночной режим</div>
+            <div style="font-size:11px;color:#444;margin-top:2px;">Все записи = Ночь 500 ₸</div>
+          </div>
+          <label style="position:relative;display:inline-block;width:46px;height:26px;">
+            <input type="checkbox" id="nightMode" style="opacity:0;width:0;height:0;" onchange="toggleNightMode()">
+            <span id="nightSlider" style="position:absolute;cursor:pointer;inset:0;background:#222;border-radius:26px;transition:0.3s;">
+              <span style="position:absolute;content:'';height:20px;width:20px;left:3px;bottom:3px;background:#444;border-radius:50%;transition:0.3s;" id="nightThumb"></span>
+            </span>
+          </label>
+        </div>
+
+        <!-- Поле вставки -->
+        <textarea id="waInput" placeholder="Вставь сообщения из WhatsApp сюда..." 
+          style="width:100%;height:140px;padding:12px;border-radius:10px;border:1px solid #222;background:#1a1a1a;color:#fff;font-size:14px;resize:none;box-sizing:border-box;outline:none;font-family:-apple-system,sans-serif;"></textarea>
+        
+        <button onclick="parseWA()" style="width:100%;padding:14px;border-radius:12px;border:none;background:#65d48b;color:#000;font-size:15px;font-weight:bold;cursor:pointer;margin-top:8px;">
+          🤖 Разобрать
+        </button>
+      </div>
+
+      <!-- Результат парсинга -->
+      <div id="waResult" style="display:none;">
+        <div class="card">
+          <div class="card-title">Найденные записи</div>
+          <div id="waList"></div>
+          <button onclick="saveWA()" style="width:100%;padding:14px;border-radius:12px;border:none;background:#65d48b;color:#000;font-size:15px;font-weight:bold;cursor:pointer;margin-top:12px;">
+            ✅ Записать всё
+          </button>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <!-- НИЖНЯЯ НАВИГАЦИЯ -->
@@ -601,6 +641,9 @@
     </button>
     <button class="nav-item" onclick="switchTab('expense')" id="nav-expense">
       <span class="nav-icon">📉</span><span class="nav-label">Расходы</span>
+    </button>
+    <button class="nav-item" onclick="switchTab('wa')" id="nav-wa">
+      <span class="nav-icon">📋</span><span class="nav-label">Чат</span>
     </button>
   </nav>
 
@@ -1346,6 +1389,174 @@
 
   window.deleteTx = async (id) => {
     if(confirm("Удалить?")) await window.fbMethods.deleteDoc(window.fbMethods.doc(window.fbDB,"users",window.fbUser.uid,"transactions",id));
+  };
+
+  // ── WHATSAPP ПАРСЕР ────────────────────────────────────────────
+  let waEntries = [];
+  let nightMode = false;
+
+  window.toggleNightMode = () => {
+    nightMode = document.getElementById('nightMode').checked;
+    const thumb = document.getElementById('nightThumb');
+    const slider = document.getElementById('nightSlider');
+    if (nightMode) {
+      slider.style.background = '#1a3a2a';
+      thumb.style.background = '#65d48b';
+      thumb.style.transform = 'translateX(20px)';
+    } else {
+      slider.style.background = '#222';
+      thumb.style.background = '#444';
+      thumb.style.transform = 'translateX(0)';
+    }
+  };
+
+  window.parseWA = async () => {
+    const text = document.getElementById('waInput').value.trim();
+    if (!text) return alert('Вставь текст из WhatsApp');
+
+    const btn = document.querySelector('#tab-wa .card button');
+    btn.textContent = '⏳ Анализирую...';
+    btn.disabled = true;
+
+    // Если ночной режим — простой парсинг без ИИ
+    if (nightMode) {
+      // Считаем количество строк с адресами (номер дома)
+      const lines = text.split('\n').filter(l => /\d+-\d+/.test(l));
+      waEntries = lines.map(l => ({
+        point: 'Ночь', amount: 500,
+        address: l.trim(), type: 'до подъезда'
+      }));
+      renderWAResult();
+      btn.textContent = '🤖 Разобрать';
+      btn.disabled = false;
+      return;
+    }
+
+    // Правила парсинга
+    const POINTS = {
+      'F1': { under: 150, flat: 300 },
+      'F2': { under: 150, flat: 300 },
+      'F3': { under: 150, flat: 300 },
+      'ALLEY': { under: 600, flat: 900 },
+      'ALLEY PUB': { under: 600, flat: 900 },
+    };
+
+    // Парсим локально без ИИ — по шаблону
+    const entries = [];
+    const blocks = text.split(/\[\d+\.\d+,\s*\d+:\d+\]/).filter(b => b.trim());
+
+    for (const block of blocks) {
+      const lines = block.trim().split('\n').filter(l => l.trim());
+      if (!lines.length) continue;
+
+      // Первая строка — организация и адрес
+      const firstLine = lines[0].trim();
+
+      // Определяем точку
+      let point = null;
+      if (/F\s*1/i.test(firstLine)) point = 'F1';
+      else if (/F\s*2/i.test(firstLine)) point = 'F2';
+      else if (/F\s*3/i.test(firstLine)) point = 'F3';
+      else if (/alley|алей/i.test(firstLine)) point = 'ALLEY PUB';
+      if (!point) continue;
+
+      // Определяем адрес
+      const addrMatch = firstLine.match(/[:\s]\s*(\d+[-–]\d+[-–]?\S*)/);
+      const address = addrMatch ? addrMatch[1] : firstLine;
+
+      // До подъезда (п) или до квартиры (цифра в конце или кв)
+      const isFlat = /\d+кв$|\d+$|кв/i.test(address) && !/п$|п\s*$/i.test(address);
+      const isUnder = /п$|п\s*$/i.test(address);
+
+      const prices = POINTS[point] || { under: 150, flat: 300 };
+      const amount = isUnder ? prices.under : prices.flat;
+      const type = isUnder ? 'до подъезда' : 'до квартиры';
+
+      entries.push({ point, amount, address, type });
+    }
+
+    waEntries = entries;
+    renderWAResult();
+    btn.textContent = '🤖 Разобрать';
+    btn.disabled = false;
+  };
+
+  function renderWAResult() {
+    const result = document.getElementById('waResult');
+    const list = document.getElementById('waList');
+
+    if (!waEntries.length) {
+      list.innerHTML = '<div class="muted">Ничего не найдено. Проверь формат текста.</div>';
+      result.style.display = 'block';
+      return;
+    }
+
+    const total = waEntries.reduce((s, e) => s + e.amount, 0);
+    list.innerHTML = waEntries.map((e, i) => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #1a1a1a;">
+        <div>
+          <div style="font-size:14px;font-weight:600;">${e.point} · ${e.type}</div>
+          <div style="font-size:11px;color:#444;">${e.address}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="color:#65d48b;font-weight:bold;">${e.amount.toLocaleString()} ₸</span>
+          <button onclick="removeWAEntry(${i})" style="background:none;border:none;color:#333;font-size:16px;cursor:pointer;padding:4px;">✕</button>
+        </div>
+      </div>
+    `).join('') + `
+      <div style="display:flex;justify-content:space-between;padding:12px 0;font-weight:bold;">
+        <span>Итого (${waEntries.length} записей)</span>
+        <span style="color:#65d48b;">${total.toLocaleString()} ₸</span>
+      </div>`;
+
+    result.style.display = 'block';
+  }
+
+  window.removeWAEntry = (i) => {
+    waEntries.splice(i, 1);
+    renderWAResult();
+  };
+
+  window.saveWA = async () => {
+    if (!waEntries.length) return;
+    const btn = document.querySelector('#waResult button');
+    btn.textContent = '⏳ Сохраняю...';
+    btn.disabled = true;
+
+    const { fbDB, fbMethods } = window;
+    const uid = window.fbUser.uid;
+    const txRef = fbMethods.collection(fbDB, 'users', uid, 'transactions');
+    const today = (() => {
+      const now = new Date();
+      if (now.getHours() < 3) now.setDate(now.getDate() - 1);
+      return new Date(now - now.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+    })();
+    const time = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+
+    try {
+      for (const e of waEntries) {
+        await fbMethods.addDoc(txRef, {
+          type: 'income',
+          amount: e.amount,
+          categoryName: 'Доставка',
+          subcategory: e.point,
+          account: 'Наличные',
+          date: today,
+          time,
+          comment: e.address,
+          createdAt: Date.now()
+        });
+      }
+      alert(`✅ Записано ${waEntries.length} доставок!`);
+      waEntries = [];
+      document.getElementById('waInput').value = '';
+      document.getElementById('waResult').style.display = 'none';
+    } catch(e) {
+      alert('Ошибка: ' + e.message);
+    }
+
+    btn.textContent = '✅ Записать всё';
+    btn.disabled = false;
   };
 
   // Обработка уведомлений от банков (вызывается из NotificationService -> MainActivity)
