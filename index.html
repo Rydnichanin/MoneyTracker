@@ -1443,11 +1443,21 @@
 
     // Парсим локально без ИИ — по шаблону
     const entries = [];
-    const blocks = text.split(/\[\d+\.\d+,\s*\d+:\d+\]/).filter(b => b.trim());
+    // Разбиваем вместе с временными метками
+    const rawBlocks = text.split(/(\[\d+\.\d+,\s*\d+:\d+\])/);
+    const blocks = [];
+    for (let i = 1; i < rawBlocks.length; i += 2) {
+      const timeTag = rawBlocks[i]; // [28.03, 17:02]
+      const body = rawBlocks[i+1] || '';
+      const timeMatch = timeTag.match(/(\d+:\d+)/);
+      const msgTime = timeMatch ? timeMatch[1] : '';
+      blocks.push({ body: body.trim(), msgTime });
+    }
 
     for (const block of blocks) {
-      const lines = block.trim().split('\n').filter(l => l.trim());
+      const lines = block.body.split('\n').filter(l => l.trim());
       if (!lines.length) continue;
+      const msgTime = block.msgTime;
 
       // Первая строка — организация и адрес
       const firstLine = lines[0].trim();
@@ -1519,7 +1529,7 @@
       <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #1a1a1a;">
         <div>
           <div style="font-size:14px;font-weight:600;">${e.point} · ${e.type}</div>
-          <div style="font-size:11px;color:#444;">${e.address}</div>
+          <div style="font-size:11px;color:#444;">${e.address}${e.msgTime ? ' · ' + e.msgTime : ''}</div>
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
           <span style="color:#65d48b;font-weight:bold;">${e.amount.toLocaleString()} ₸</span>
@@ -1562,11 +1572,14 @@
         t.date === today && t.type === 'income' && t.categoryName === 'Доставка'
       );
       // Ключ для проверки дубля: точка + адрес
-      const existingKeys = new Set(existing.map(t => `${t.subcategory}|${(t.comment||'').trim().toLowerCase()}`));
+      // Дубль = та же точка + адрес + время сообщения WhatsApp
+      const existingKeys = new Set(existing.map(t =>
+        `${t.subcategory}|${(t.comment||'').trim().toLowerCase()}|${t.waTime||''}`
+      ));
 
       let saved = 0, skipped = 0;
       for (const e of waEntries) {
-        const key = `${e.point}|${e.address.trim().toLowerCase()}`;
+        const key = `${e.point}|${e.address.trim().toLowerCase()}|${e.msgTime||''}`;
         if (existingKeys.has(key)) {
           skipped++;
           continue;
@@ -1580,9 +1593,10 @@
           date: today,
           time,
           comment: e.address,
+          waTime: e.msgTime || '',
           createdAt: Date.now()
         });
-        existingKeys.add(key); // чтобы не дублировать даже внутри одной вставки
+        existingKeys.add(key);
         saved++;
       }
 
