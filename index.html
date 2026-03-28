@@ -1017,20 +1017,28 @@
       const balSel=document.getElementById("setBalanceAcc");
       if (balSel) balSel.innerHTML=sorted.map(a=>`<option value="${a.id}">${a.name}</option>`).join("");
 
-      // Восстанавливаем последний выбор или ставим по умолчанию
-      const lastType = localStorage.getItem('lastType') || 'income';
-      const lastCat  = localStorage.getItem('lastCat')  || '';
-      const lastSub  = localStorage.getItem('lastSub')  || '';
-      if (restoreLast && lastType) elT.value = lastType;
+      // restoreLast=true → берём дефолт из настроек (localStorage)
+      // restoreLast=false → берём то что в памяти сессии (window._s*)
+      const defType = localStorage.getItem('lastType') || 'income';
+      const defCat  = localStorage.getItem('lastCat')  || '';
+      const defSub  = localStorage.getItem('lastSub')  || '';
+
+      if (restoreLast) {
+        elT.value = defType;
+      } else if (window._sType) {
+        elT.value = window._sType;
+      }
 
       const currentCats=DEFAULTS[elT.value]||[];
       elC.innerHTML=currentCats.map(c=>`<option value="${c.id}">${c.name}</option>`).join("");
       document.getElementById("setParentCat").innerHTML=[...DEFAULTS.income,...DEFAULTS.expense].map(c=>`<option value="${c.id}">${c.name}</option>`).join("");
 
-      // Восстанавливаем категорию
-      if (restoreLast && lastCat) {
-        const catExists = currentCats.find(c=>c.id===lastCat);
-        if (catExists) elC.value = lastCat;
+      if (restoreLast) {
+        const catExists = currentCats.find(c=>c.id===defCat);
+        if (catExists) elC.value = defCat;
+      } else if (window._sCat) {
+        const catExists = currentCats.find(c=>c.id===window._sCat);
+        if (catExists) elC.value = window._sCat;
       }
 
       const fillSubs=(restore=false)=>{
@@ -1038,19 +1046,21 @@
         if(cat&&cat.sub&&cat.sub.length>0){
           document.getElementById("subcatWrap").classList.remove("hidden");
           elS.innerHTML=cat.sub.map(s=>`<option value="${s}">${s}</option>`).join("");
-          if (restore && lastSub && cat.sub.includes(lastSub)) elS.value = lastSub;
+          if (restore) {
+            if (defSub && cat.sub.includes(defSub)) elS.value = defSub;
+          } else if (window._sSub && cat.sub.includes(window._sSub)) {
+            elS.value = window._sSub;
+          }
         } else {
           document.getElementById("subcatWrap").classList.add("hidden");
           elS.innerHTML="";
         }
       };
 
-      elT.onchange=()=>{ updateUI(false); };
-      elC.onchange=()=>{ fillSubs(false); };
-      // Сохраняем выбор при изменении
-      elT.onchange=()=>{ localStorage.setItem('lastType',elT.value); updateUI(false); };
-      elC.onchange=()=>{ localStorage.setItem('lastCat',elC.value); fillSubs(false); };
-      elS.onchange=()=>{ localStorage.setItem('lastSub',elS.value); };
+      // Запоминаем выбор только в памяти сессии — при обновлении сбросится на дефолт
+      elT.onchange=()=>{ window._sType=elT.value; window._sCat=''; window._sSub=''; updateUI(false); };
+      elC.onchange=()=>{ window._sCat=elC.value; window._sSub=''; fillSubs(false); };
+      elS.onchange=()=>{ window._sSub=elS.value; };
 
       fillSubs(restoreLast);
     }
