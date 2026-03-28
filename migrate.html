@@ -2,21 +2,20 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8"/>
-  <title>Миграция данных v2</title>
+  <title>Миграция v3</title>
   <style>
     body { background:#000; color:#fff; font-family:-apple-system,sans-serif; padding:30px; max-width:500px; margin:0 auto; }
     h2 { color:#65d48b; }
-    .btn { width:100%; padding:15px; border-radius:12px; border:none; background:#65d48b; color:#000; font-size:16px; font-weight:bold; cursor:pointer; margin-top:12px; }
-    .btn.red { background:#ff6b6b; }
-    .btn:disabled { background:#333; color:#666; cursor:not-allowed; }
-    .log { margin-top:20px; background:#111; border-radius:10px; padding:14px; font-size:13px; line-height:1.8; max-height:400px; overflow-y:auto; }
-    .ok { color:#65d48b; } .err { color:#ff6b6b; } .info { color:#ffd166; }
-    input { width:100%;padding:12px;border-radius:10px;border:1px solid #222;background:#111;color:#fff;font-size:15px;box-sizing:border-box;margin-bottom:10px; }
+    .btn { width:100%;padding:15px;border-radius:12px;border:none;background:#65d48b;color:#000;font-size:16px;font-weight:bold;cursor:pointer;margin-top:12px; }
+    .btn:disabled { background:#333;color:#666;cursor:not-allowed; }
+    .log { margin-top:20px;background:#111;border-radius:10px;padding:14px;font-size:13px;line-height:1.8;max-height:400px;overflow-y:auto; }
+    .ok{color:#65d48b;}.err{color:#ff6b6b;}.info{color:#ffd166;}
+    input{width:100%;padding:12px;border-radius:10px;border:1px solid #222;background:#111;color:#fff;font-size:15px;box-sizing:border-box;margin-bottom:10px;}
   </style>
 </head>
 <body>
-  <h2>🔄 Миграция данных v2</h2>
-  <p style="color:#888;font-size:13px;">Сначала очистит дубли, потом перенесёт данные правильно.</p>
+  <h2>🔄 Умная миграция</h2>
+  <p style="color:#888;font-size:13px;">Переносит только уникальные записи, дубли пропускает.</p>
 
   <div id="authBlock">
     <input id="email" type="email" placeholder="Email"/>
@@ -25,8 +24,7 @@
   </div>
 
   <div id="actions" style="display:none;">
-    <button class="btn red" onclick="clearUserData()">1. Очистить мои данные (удалить дубли)</button>
-    <button class="btn" onclick="migrate()">2. Перенести данные из старой коллекции</button>
+    <button class="btn" onclick="smartMigrate()">🚀 Запустить умную миграцию</button>
   </div>
   <div class="log" id="log" style="display:none;"></div>
 
@@ -43,7 +41,6 @@
       messagingSenderId: "440589448883",
       appId: "1:440589448883:web:5ad507b270fa414731a2c6"
     });
-
     const db = getFirestore(app);
     const auth = getAuth(app);
 
@@ -68,65 +65,109 @@
         document.getElementById('authBlock').style.display = 'none';
         document.getElementById('actions').style.display = 'block';
         log(`✅ Вошёл: ${user.email}`, 'ok');
-        log(`UID: ${user.uid}`, 'info');
       }
     });
 
-    // Шаг 1: удалить все текущие данные пользователя (чтобы убрать дубли)
-    window.clearUserData = async () => {
-      if (!confirm('Удалить все текущие данные пользователя? (транзакции и настройки)')) return;
-      const user = auth.currentUser;
-      const uid = user.uid;
+    // Создаём уникальный ключ для записи чтобы определять дубли
+    function txKey(d) {
+      return [d.type, d.amount, d.date, d.categoryName, d.account, d.createdAt].join('|');
+    }
+    function setKey(d) {
+      return [d.type, d.name, d.catType].join('|');
+    }
 
-      log('🗑️ Удаляю текущие транзакции...', 'info');
-      const txSnap = await getDocs(collection(db, 'users', uid, 'transactions'));
-      for (const d of txSnap.docs) await deleteDoc(doc(db, 'users', uid, 'transactions', d.id));
-      log(`Удалено транзакций: ${txSnap.size}`, 'ok');
+    window.smartMigrate = async () => {
+      const btn = document.querySelector('.btn');
+      btn.disabled = true;
+      btn.textContent = 'Идёт миграция...';
+      const uid = auth.currentUser.uid;
 
-      log('🗑️ Удаляю текущие настройки...', 'info');
-      const setSnap = await getDocs(collection(db, 'users', uid, 'settings'));
-      for (const d of setSnap.docs) await deleteDoc(doc(db, 'users', uid, 'settings', d.id));
-      log(`Удалено настроек: ${setSnap.size}`, 'ok');
+      try {
+        // ── ТРАНЗАКЦИИ ──────────────────────────────────────────────
+        log('📦 Читаю старые транзакции...', 'info');
+        const oldTx = await getDocs(collection(db, 'transactions'));
+        log(`Старых транзакций: ${oldTx.size}`, 'info');
 
-      log('✅ Готово. Теперь нажми кнопку 2.', 'ok');
-    };
+        log('📦 Читаю текущие транзакции пользователя...', 'info');
+        const newTx = await getDocs(collection(db, 'users', uid, 'transactions'));
+        log(`Текущих транзакций: ${newTx.size}`, 'info');
 
-    // Шаг 2: перенести из старых коллекций
-    window.migrate = async () => {
-      const user = auth.currentUser;
-      const uid = user.uid;
+        // Собираем ключи уже перенесённых
+        const existingTxKeys = new Set();
+        newTx.forEach(d => existingTxKeys.add(txKey(d.data())));
 
-      // Проверяем что уже пусто
-      const check = await getDocs(collection(db, 'users', uid, 'transactions'));
-      if (check.size > 0) {
-        log('⚠️ Данные уже есть! Сначала нажми кнопку 1 (очистить).', 'err');
-        return;
+        // Также находим и удаляем дубли внутри текущих
+        log('🔍 Ищу дубли в текущих данных...', 'info');
+        const seenKeys = new Set();
+        let dupCount = 0;
+        for (const d of newTx.docs) {
+          const k = txKey(d.data());
+          if (seenKeys.has(k)) {
+            await deleteDoc(doc(db, 'users', uid, 'transactions', d.id));
+            dupCount++;
+          } else {
+            seenKeys.add(k);
+          }
+        }
+        if (dupCount > 0) log(`🗑️ Удалено дублей: ${dupCount}`, 'info');
+
+        // Переносим только те которых ещё нет
+        let added = 0, skipped = 0;
+        for (const d of oldTx.docs) {
+          const data = d.data();
+          const k = txKey(data);
+          if (seenKeys.has(k)) {
+            skipped++;
+          } else {
+            await addDoc(collection(db, 'users', uid, 'transactions'), data);
+            seenKeys.add(k);
+            added++;
+          }
+        }
+        log(`✅ Транзакций добавлено: ${added}, пропущено дублей: ${skipped}`, 'ok');
+
+        // ── НАСТРОЙКИ ───────────────────────────────────────────────
+        log('⚙️ Читаю старые настройки...', 'info');
+        const oldSet = await getDocs(collection(db, 'settings'));
+        log(`Старых настроек: ${oldSet.size}`, 'info');
+
+        const newSet = await getDocs(collection(db, 'users', uid, 'settings'));
+
+        // Удаляем дубли в текущих настройках
+        const seenSetKeys = new Set();
+        let setDups = 0;
+        for (const d of newSet.docs) {
+          const k = setKey(d.data());
+          if (seenSetKeys.has(k)) {
+            await deleteDoc(doc(db, 'users', uid, 'settings', d.id));
+            setDups++;
+          } else {
+            seenSetKeys.add(k);
+          }
+        }
+        if (setDups > 0) log(`🗑️ Удалено дублей настроек: ${setDups}`, 'info');
+
+        let setAdded = 0, setSkipped = 0;
+        for (const d of oldSet.docs) {
+          const data = d.data();
+          const k = setKey(data);
+          if (seenSetKeys.has(k)) {
+            setSkipped++;
+          } else {
+            await addDoc(collection(db, 'users', uid, 'settings'), data);
+            seenSetKeys.add(k);
+            setAdded++;
+          }
+        }
+        log(`✅ Настроек добавлено: ${setAdded}, пропущено: ${setSkipped}`, 'ok');
+
+        log('🎉 Готово! Открывай приложение.', 'ok');
+        btn.textContent = '✅ Миграция завершена';
+      } catch(e) {
+        log('❌ Ошибка: ' + e.message, 'err');
+        btn.disabled = false;
+        btn.textContent = 'Попробовать снова';
       }
-
-      log('📦 Переношу транзакции...', 'info');
-      const txSnap = await getDocs(collection(db, 'transactions'));
-      log(`Найдено в старой коллекции: ${txSnap.size}`, 'info');
-      let txOk = 0;
-      for (const d of txSnap.docs) {
-        try {
-          await addDoc(collection(db, 'users', uid, 'transactions'), d.data());
-          txOk++;
-        } catch(e) { log('⚠️ ' + e.message, 'err'); }
-      }
-      log(`✅ Транзакций перенесено: ${txOk}`, 'ok');
-
-      log('⚙️ Переношу настройки...', 'info');
-      const setSnap = await getDocs(collection(db, 'settings'));
-      log(`Найдено настроек: ${setSnap.size}`, 'info');
-      let setOk = 0;
-      for (const d of setSnap.docs) {
-        try {
-          await addDoc(collection(db, 'users', uid, 'settings'), d.data());
-          setOk++;
-        } catch(e) { log('⚠️ ' + e.message, 'err'); }
-      }
-      log(`✅ Настроек перенесено: ${setOk}`, 'ok');
-      log('🎉 Миграция завершена! Открывай приложение.', 'ok');
     };
   </script>
 </body>
