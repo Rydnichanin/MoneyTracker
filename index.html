@@ -820,48 +820,76 @@
   }
 
   // Снятие / пополнение депозита
-  window.depAction = async (depIndex, action) => {
+  // Показываем встроенную форму вместо prompt() (prompt не работает в WebView)
+  window.depAction = (depIndex, action) => {
     const name = DEP_NAMES[depIndex];
-    const label = action === 'withdraw' ? 'Снять из «' + name + '»' : 'Пополнить «' + name + '»';
-    const amtStr = prompt(label + ' (сумма в ₸):');
-    if (!amtStr) return;
-    const amt = Number(amtStr.replace(/\s/g,''));
-    if (!amt || amt <= 0) return alert('Введите корректную сумму');
+    const label = action === 'withdraw' ? '− Снять из: ' + name : '+ Пополнить: ' + name;
+    const color = action === 'withdraw' ? '#ff6b6b' : '#65d48b';
 
-    const comment = prompt('Примечание (необязательно):') || '';
+    // Удаляем старую форму если есть
+    const old = document.getElementById('depActionForm');
+    if (old) old.remove();
+
+    const form = document.createElement('div');
+    form.id = 'depActionForm';
+    form.style.cssText = `position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.85);
+      display:flex;align-items:center;justify-content:center;padding:20px;`;
+    form.innerHTML = `
+      <div style="background:#1c1c1e;border-radius:18px;padding:24px;width:100%;max-width:340px;border:1px solid #2a2a2a;">
+        <div style="font-size:15px;font-weight:600;color:${color};margin-bottom:16px;">${label}</div>
+        <input id="depAmt" type="number" inputmode="decimal" placeholder="Сумма ₸"
+          style="width:100%;padding:13px;border-radius:10px;border:1px solid #333;background:#2c2c2e;
+          color:#fff;font-size:16px;box-sizing:border-box;margin-bottom:10px;outline:none;"/>
+        <input id="depComment" type="text" placeholder="Примечание (необязательно)"
+          style="width:100%;padding:13px;border-radius:10px;border:1px solid #333;background:#2c2c2e;
+          color:#fff;font-size:14px;box-sizing:border-box;margin-bottom:16px;outline:none;"/>
+        <div style="display:flex;gap:10px;">
+          <button onclick="document.getElementById('depActionForm').remove()"
+            style="flex:1;padding:13px;border-radius:10px;border:1px solid #333;background:none;
+            color:#888;font-size:14px;cursor:pointer;">Отмена</button>
+          <button onclick="confirmDepAction(${depIndex},'${action}')"
+            style="flex:1;padding:13px;border-radius:10px;border:none;background:${color};
+            color:#000;font-size:14px;font-weight:bold;cursor:pointer;">Подтвердить</button>
+        </div>
+      </div>`;
+    document.body.appendChild(form);
+    setTimeout(() => document.getElementById('depAmt')?.focus(), 100);
+  };
+
+  window.confirmDepAction = async (depIndex, action) => {
+    const name = DEP_NAMES[depIndex];
+    const amtEl = document.getElementById('depAmt');
+    const commentEl = document.getElementById('depComment');
+    const amt = Number((amtEl?.value||'').replace(/\s/g,''));
+    if (!amt || amt <= 0) { amtEl.style.borderColor='#ff6b6b'; return; }
+    const comment = commentEl?.value || '';
+
+    document.getElementById('depActionForm').remove();
+
     const today = new Date().toISOString().slice(0,10);
     const time = new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
     const finalAmt = action === 'withdraw' ? -amt : amt;
-
-    // Находим счёт Наличные
     const nalichAcc = (window.ACCOUNTS||[]).find(a => a.name.toLowerCase().includes('налич'));
 
     try {
       const { fbDB, fbMethods } = window;
       const txRef = fbMethods.collection(fbDB, 'users', window.fbUser.uid, 'transactions');
 
-      // Запись в депозит
       await fbMethods.addDoc(txRef, {
-        type: 'dep_manual',
-        depIndex,
-        amount: finalAmt,
-        date: today,
-        time,
+        type: 'dep_manual', depIndex,
+        amount: finalAmt, date: today, time,
         comment: comment || (action === 'withdraw' ? 'Снятие' : 'Пополнение'),
         createdAt: Date.now()
       });
 
-      // Если снятие — возвращаем на наличные как доход
-      // Если пополнение — снимаем с наличных как расход
       if (nalichAcc) {
         await fbMethods.addDoc(txRef, {
           type: action === 'withdraw' ? 'income' : 'expense',
           amount: amt,
-          categoryName: action === 'withdraw' ? 'Депозит' : 'Депозит',
+          categoryName: 'Депозит',
           subcategory: (action === 'withdraw' ? '← ' : '→ ') + name,
           account: nalichAcc.name,
-          date: today,
-          time,
+          date: today, time,
           comment: comment || (action === 'withdraw' ? 'Снятие с депозита' : 'Пополнение депозита'),
           createdAt: Date.now() + 1
         });
@@ -870,7 +898,6 @@
       renderDeposits();
     } catch(e) {
       console.error('depAction error:', e);
-      alert('Ошибка: ' + e.message);
     }
   };
 </script>
