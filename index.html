@@ -336,6 +336,17 @@
   </script>
 </head>
 <body>
+<script>
+  window.showToast = (msg, duration=2500) => {
+    let t = document.getElementById('appToast');
+    if (!t) { t = document.createElement('div'); t.id='appToast'; t.className='toast'; document.body.appendChild(t); }
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => t.classList.remove('show'), duration);
+  };
+</script>
+
 
 <!-- ЛОГИН -->
 <!-- PULL TO REFRESH -->
@@ -1416,16 +1427,6 @@
       draw(-1);
     }
   }
-
-
-  window.showToast = (msg, duration=2500) => {
-    let t = document.getElementById('appToast');
-    if (!t) { t = document.createElement('div'); t.id='appToast'; t.className='toast'; document.body.appendChild(t); }
-    t.textContent = msg;
-    t.classList.add('show');
-    clearTimeout(t._timer);
-    t._timer = setTimeout(() => t.classList.remove('show'), duration);
-  };
 
   window.deleteTx = (id) => {
     const overlay = document.createElement('div');
