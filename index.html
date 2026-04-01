@@ -1535,14 +1535,14 @@
         isUnder = false; // явно квартира
       } else if (/^[а-яё]/i.test(a)) {
         isUnder = true; // начинается с буквы — спецадрес (Магазин, Баня и т.п.)
-      } else if (/[а-яё]п$/i.test(a) && !/кв/.test(a)) {
-        isUnder = true; // заканчивается на п
-      } else if (/^\d+[а-я]?[-–]\d+[-–]\d+[а-я]?$/i.test(a)) {
-        isUnder = false; // три сегмента цифр — квартира
+      } else if (/^\d+[а-я]?[-–]\d+[-–](\d+п|пп?)$/i.test(a)) {
+        isUnder = true; // три сегмента, последний = п/пп/1п — до подъезда (1-22-1п, 1-22-пп)
+      } else if (/^\d+[а-я]?[-–]\d+[-–]\d+[а-яёa-z]?$/i.test(a)) {
+        isUnder = false; // три сегмента — квартира
       } else if (/^\d+[а-я]?[-–]\d+$/i.test(a)) {
         isUnder = true; // два сегмента — подъезд
-      } else if (/[-–]\d+[а-я]$/i.test(a) && !/п$/i.test(a)) {
-        isUnder = false; // три сегмента, последний с буквой не п — квартира
+      } else if (/[а-яё]п$/i.test(a) && !/кв/.test(a)) {
+        isUnder = true; // заканчивается на п
       } else {
         isUnder = false;
       }
