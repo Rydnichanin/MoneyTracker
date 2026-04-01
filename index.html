@@ -88,6 +88,9 @@
     .sec-title { font-size: 11px; color: #444; text-transform: uppercase; letter-spacing: 1px; margin: 14px 0 8px; }
     .chart-wrap { overflow-x: scroll; -webkit-overflow-scrolling: touch; }
 
+
+    .toast { position:fixed; bottom:90px; left:50%; transform:translateX(-50%); background:#1c1c1e; color:#fff; padding:12px 20px; border-radius:12px; font-size:14px; z-index:9999; border:1px solid #333; max-width:300px; text-align:center; opacity:0; transition:opacity 0.2s; pointer-events:none; }
+    .toast.show { opacity:1; }
     .pos { color: var(--pos); } .neg { color: var(--neg); } .muted { color: #444; }
     .hidden { display: none; }
 
@@ -264,7 +267,7 @@
       try {
         await signInWithPopup(auth, provider);
       } catch(e) {
-        if (e?.code !== "auth/popup-closed-by-user") alert("Ошибка входа: " + (e?.message || e));
+        if (e?.code !== "auth/popup-closed-by-user") window.showToast("Ошибка входа: " + (e?.message || e));
       }
     };
 
@@ -276,7 +279,7 @@
       try {
         await sendPasswordResetEmail(auth, email);
         showError('');
-        alert('✅ Письмо отправлено на ' + email + '. Проверь почту.');
+        window.showToast('✅ Письмо отправлено на ' + email + '. Проверь почту.');
       } catch(e) {
         const msgs = {
           'auth/user-not-found': 'Пользователь не найден',
@@ -1001,7 +1004,7 @@
       if (!accId || isNaN(val)) return;
       await fbMethods.updateDoc(fbMethods.doc(fbDB,"users",window.fbUser.uid,"settings",accId), { initialBalance: val });
       document.getElementById("setBalanceVal").value = "";
-      alert("Начальный баланс установлен!");
+      window.showToast("Начальный баланс установлен!");
     };
     window.addSub = async () => {
       const parentId = document.getElementById("setParentCat").value;
@@ -1039,7 +1042,7 @@
       localStorage.setItem('lastType', type);
       localStorage.setItem('lastCat', cat);
       localStorage.setItem('lastSub', sub);
-      alert('✅ Сохранено! Теперь форма будет открываться с этими значениями.');
+      window.showToast('✅ Сохранено! Теперь форма будет открываться с этими значениями.');
     };
 
     // Инициализируем селекты в настройках когда они открываются
@@ -1161,9 +1164,9 @@
   window.doTransfer = async () => {
     const from=document.getElementById("transferFrom").value, to=document.getElementById("transferTo").value;
     const amt=Number(document.getElementById("transferAmount").value), date=document.getElementById("transferDate").value;
-    if(!amt||amt<=0) return alert("Введите сумму");
-    if(from===to) return alert("Счета должны быть разными");
-    if(!date) return alert("Выберите дату");
+    if(!amt||amt<=0) return window.showToast("Введите сумму");
+    if(from===to) return window.showToast("Счета должны быть разными");
+    if(!date) return window.showToast("Выберите дату");
     await window.fbMethods.addDoc(window.fbMethods.collection(window.fbDB,"users",window.fbUser.uid,"transactions"),{
       type:'transfer',amount:amt,fromAccount:from,toAccount:to,account:from,
       categoryName:`Перевод → ${to}`,subcategory:'',date,
@@ -1171,7 +1174,7 @@
       createdAt:Date.now(),comment:`${from} → ${to}`
     });
     document.getElementById("transferAmount").value="";
-    alert(`Переведено ${amt.toLocaleString()} ₸`);
+    window.showToast(`Переведено ${amt.toLocaleString()} ₸`);
   };
 
   function render() {
@@ -1414,6 +1417,16 @@
     }
   }
 
+
+  window.showToast = (msg, duration=2500) => {
+    let t = document.getElementById('appToast');
+    if (!t) { t = document.createElement('div'); t.id='appToast'; t.className='toast'; document.body.appendChild(t); }
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => t.classList.remove('show'), duration);
+  };
+
   window.deleteTx = (id) => {
     const overlay = document.createElement('div');
     overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;';
@@ -1456,7 +1469,7 @@
 
   window.parseWA = async () => {
     const text = document.getElementById('waInput').value.trim();
-    if (!text) return alert('Вставь текст из WhatsApp');
+    if (!text) return window.showToast('Вставь текст из WhatsApp');
 
     const btn = document.querySelector('#tab-wa .card button');
     btn.textContent = '⏳ Анализирую...';
@@ -1665,13 +1678,13 @@
 
       let msg = `✅ Записано: ${saved}`;
       if (skipped > 0) msg += `\n⚠️ Пропущено дублей: ${skipped}`;
-      alert(msg);
+      window.showToast(msg);
 
       waEntries = [];
       document.getElementById('waInput').value = '';
       document.getElementById('waResult').style.display = 'none';
     } catch(e) {
-      alert('Ошибка: ' + e.message);
+      window.showToast('Ошибка: ' + e.message);
     }
 
     btn.textContent = '✅ Записать всё';
