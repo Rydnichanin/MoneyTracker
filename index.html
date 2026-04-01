@@ -1357,7 +1357,8 @@
     });
     const days=Object.entries(byDay).filter(([d])=>d);
     let bestDay=null,worstDay=null;
-    if(days.length>0){bestDay=days.reduce((a,b)=>b[1]>a[1]?b:a);const dl=days.filter(([d])=>deliveryDays.has(d));if(dl.length>0)worstDay=dl.reduce((a,b)=>b[1]<a[1]?b:a);}
+    const delivDays=Object.entries(byDayDeliv).filter(([d])=>d);
+    if(delivDays.length>0){bestDay=delivDays.reduce((a,b)=>b[1]>a[1]?b:a);worstDay=delivDays.reduce((a,b)=>b[1]<a[1]?b:a);}
     const fmtD=d=>{if(!d)return'—';const[y,mo,day]=d.split('-');return`${day}.${mo}.${y}`;};
     const fmtM=m=>{if(!m)return'—';const mn=['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];const[y,mo]=m.split('-');return`${mn[parseInt(mo)-1]} ${y}`;};
     const from=document.getElementById("fromDate").value,to=document.getElementById("toDate").value;
@@ -1368,20 +1369,16 @@
       chartData={filteredDays,maxVal,W,H,pad};
       chartHtml=`<div class="sec-title">График дохода по дням</div><div style="text-align:center;height:24px;display:flex;align-items:center;justify-content:center;gap:8px;"><span id="chartTipDate" style="font-size:11px;color:#444;"></span><span id="chartTipVal" style="font-size:15px;font-weight:bold;color:#a78bfa;"></span></div><div class="chart-wrap"><canvas id="incomeChart" width="${W}" height="${H+20}" style="display:block;"></canvas></div>`;
     }
-    const bestDeliv=bestDay?byDayDeliv[bestDay[0]]||0:0;
-    const worstDeliv=worstDay?byDayDeliv[worstDay[0]]||0:0;
-    const bwHtml=bestDay?`<div class="sec-title">Лучший и худший день</div><div class="bw-grid">
+    const bwHtml=bestDay?`<div class="sec-title">Лучший и худший день (по точкам)</div><div class="bw-grid">
       <div class="bw-card best">
         <div class="bw-label">🏆 Лучший</div>
         <div class="bw-val pos">${bestDay[1].toLocaleString()} ₸</div>
         <div class="bw-date">${fmtD(bestDay[0])}</div>
-        ${bestDeliv>0?`<div style="margin-top:6px;padding-top:6px;border-top:1px solid #1a3a1a;font-size:10px;color:#555;">🚴 по точкам</div><div style="font-size:13px;font-weight:bold;color:#ffd166;">${bestDeliv.toLocaleString()} ₸</div>`:''}
       </div>
       <div class="bw-card worst">
         <div class="bw-label">📉 Худший</div>
         <div class="bw-val neg">${worstDay?worstDay[1].toLocaleString():'—'} ₸</div>
         <div class="bw-date">${worstDay?fmtD(worstDay[0]):'—'}</div>
-        ${worstDeliv>0?`<div style="margin-top:6px;padding-top:6px;border-top:1px solid #3a1a1a;font-size:10px;color:#555;">🚴 по точкам</div><div style="font-size:13px;font-weight:bold;color:#ffd166;">${worstDeliv.toLocaleString()} ₸</div>`:''}
       </div>
     </div>`:'';
     const DELIVERY_POINTS=["F1","F2","F3","ALLEY PUB","Ночь"];
