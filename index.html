@@ -1414,8 +1414,25 @@
     }
   }
 
-  window.deleteTx = async (id) => {
-    if(confirm("Удалить?")) await window.fbMethods.deleteDoc(window.fbMethods.doc(window.fbDB,"users",window.fbUser.uid,"transactions",id));
+  window.deleteTx = (id) => {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;';
+    overlay.innerHTML = `
+      <div style="background:#1c1c1e;border-radius:16px;padding:24px 20px;width:280px;text-align:center;border:1px solid #333;">
+        <div style="font-size:16px;font-weight:600;margin-bottom:8px;">Удалить запись?</div>
+        <div style="font-size:13px;color:#666;margin-bottom:20px;">Это действие нельзя отменить</div>
+        <div style="display:flex;gap:10px;">
+          <button id="delCancel" style="flex:1;padding:12px;border-radius:10px;border:none;background:#2c2c2e;color:#fff;font-size:15px;cursor:pointer;">Отмена</button>
+          <button id="delConfirm" style="flex:1;padding:12px;border-radius:10px;border:none;background:#ff6b6b;color:#fff;font-size:15px;font-weight:bold;cursor:pointer;">Удалить</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    document.getElementById('delCancel').onclick = () => overlay.remove();
+    document.getElementById('delConfirm').onclick = async () => {
+      overlay.remove();
+      await window.fbMethods.deleteDoc(window.fbMethods.doc(window.fbDB,"users",window.fbUser.uid,"transactions",id));
+      if(window.render) window.render();
+    };
   };
 
   // ── WHATSAPP ПАРСЕР ────────────────────────────────────────────
