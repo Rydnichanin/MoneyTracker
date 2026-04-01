@@ -1481,58 +1481,77 @@
       blocks.push({ body: body.trim(), msgTime });
     }
 
+    const isPhone = s => /^[\+\d8]/.test(s.trim()) && /[\d\s\-\(\)]{7,}/.test(s);
+    const cleanPhone = s => s.replace(/[\+\d][\d\s\-\(\)]{7,}/g,'').replace(/^8\d{10}/g,'').trim();
+    const skipLine = s => /через|забрать|звонить|код|готов|мкрн|гараж|подъезд\s|этаж\s|кв\s*$/i.test(s) === false
+      ? false : true;
+
     for (const block of blocks) {
       const lines = block.body.split('\n').filter(l => l.trim());
       if (!lines.length) continue;
       const msgTime = block.msgTime;
-
-      // Первая строка — организация и адрес
       const firstLine = lines[0].trim();
 
       // Определяем точку
       let point = null;
-      if (/F\s*1/i.test(firstLine)) point = 'F1';
-      else if (/F\s*2/i.test(firstLine)) point = 'F2';
-      else if (/F\s*3/i.test(firstLine)) point = 'F3';
-      else if (/alley|алей/i.test(firstLine)) point = 'ALLEY PUB';
+      const fl = firstLine.toUpperCase();
+      if (/ALLEY|АЛЕЙ/.test(fl)) point = 'ALLEY PUB';
+      else if (/F\s*3/.test(fl)) point = 'F3';
+      else if (/F\s*2/.test(fl)) point = 'F2';
+      else if (/F\s*1/.test(fl)) point = 'F1';
       if (!point) continue;
 
-      // Ищем адрес во всех строках блока (телефон может быть до или после адреса)
+      // Извлекаем часть после названия точки и двоеточия
+      let afterColon = firstLine.replace(/^.*?(?:ALLEY\s*PUB|F\s*[123])\s*:/i, '').trim();
+      // Убираем телефон из afterColon
+      afterColon = cleanPhone(afterColon).replace(/,.*$/, '').trim();
+
       let address = '';
-      for (const line of lines) {
-        // Адрес — содержит цифры-цифры (дом-квартира)
-        const addrMatch = line.match(/(\d+[-–]\d+[-–]?\S*)/);
-        if (addrMatch && !/^\+?7/.test(line.trim())) {
-          // Убеждаемся что это не телефон (не начинается с +7)
-          address = addrMatch[1];
-          break;
+
+      // 1. Адрес в первой строке после двоеточия (не телефон, есть содержимое)
+      if (afterColon && !isPhone(afterColon) && afterColon.length > 1) {
+        address = afterColon;
+      }
+
+      // 2. Ищем в остальных строках
+      if (!address) {
+        for (const line of lines.slice(1)) {
+          if (isPhone(line)) continue;
+          if (/^(через|забрать|звонить|код|готов|с гаража)/i.test(line)) continue;
+          const cleaned = cleanPhone(line).replace(/,.*$/, '').trim();
+          if (cleaned.length > 1) { address = cleaned; break; }
         }
       }
-      // Если не нашли отдельно — пробуем из первой строки после двоеточия
-      if (!address) {
-        const addrMatch = firstLine.match(/[:\s]\s*(\d+[-–]\d+[-–]?\S*)/);
-        address = addrMatch ? addrMatch[1] : '';
-      }
+
       if (!address) continue;
 
-      // Логика определения типа доставки:
-      // - два числа через дефис (12-43) → до подъезда
-      // - три числа через дефис (6-13-34) → до квартиры  
-      // - оканчивается на "п" или "пп" → до подъезда
-      // - оканчивается на "кв" или цифру (три сегмента) → до квартиры
-      const cleanAddr = address.trim().toLowerCase();
-      const twoPartAddr = /^\d+[-–]\d+$/.test(cleanAddr);
-      const hasP = /пп?$/.test(cleanAddr);
-      const hasKv = /кв$/.test(cleanAddr);
-      const threePartDigit = /^\d+[-–]\d+[-–]\d+$/.test(cleanAddr);
-      const isUnder = twoPartAddr || hasP;
-      const isFlat = !isUnder;
+      // Классифицируем адрес
+      const a = address.toLowerCase().trim();
+      let isUnder = false;
+
+      if (/п\.п$|пп$|последний\s+подъезд/.test(a)) {
+        isUnder = true; // пп / п.п
+      } else if (/кв/.test(a)) {
+        isUnder = false; // явно квартира
+      } else if (/^[а-яё]/i.test(a)) {
+        isUnder = true; // начинается с буквы — спецадрес (Магазин, Баня и т.п.)
+      } else if (/[а-яё]п$/i.test(a) && !/кв/.test(a)) {
+        isUnder = true; // заканчивается на п
+      } else if (/^\d+[а-я]?[-–]\d+[-–]\d+[а-я]?$/i.test(a)) {
+        isUnder = false; // три сегмента цифр — квартира
+      } else if (/^\d+[а-я]?[-–]\d+$/i.test(a)) {
+        isUnder = true; // два сегмента — подъезд
+      } else if (/[-–]\d+[а-я]$/i.test(a) && !/п$/i.test(a)) {
+        isUnder = false; // три сегмента, последний с буквой не п — квартира
+      } else {
+        isUnder = false;
+      }
 
       const prices = POINTS[point] || { under: 150, flat: 300 };
       const amount = isUnder ? prices.under : prices.flat;
       const type = isUnder ? 'до подъезда' : 'до квартиры';
 
-      entries.push({ point, amount, address, type });
+      entries.push({ point, amount, address, type, msgTime });
     }
 
     waEntries = entries;
