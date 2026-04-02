@@ -89,6 +89,17 @@
     .chart-wrap { overflow-x: scroll; -webkit-overflow-scrolling: touch; }
 
 
+    /* ЧАТ ИИ */
+    .ai-messages { display:flex; flex-direction:column; gap:10px; padding-bottom:8px; }
+    .ai-msg { max-width:85%; padding:10px 14px; border-radius:16px; font-size:14px; line-height:1.5; word-break:break-word; }
+    .ai-msg.user { background:#1a3a1a; color:#fff; align-self:flex-end; border-bottom-right-radius:4px; }
+    .ai-msg.bot  { background:#1c1c1e; color:#ddd; align-self:flex-start; border-bottom-left-radius:4px; border:1px solid #2a2a2a; }
+    .ai-msg.typing { color:#555; font-style:italic; }
+    .ai-input-row { display:flex; gap:8px; padding:10px 12px; background:#000; border-top:1px solid #111; position:fixed; bottom:65px; left:0; right:0; max-width:500px; margin:0 auto; box-sizing:border-box; z-index:150; }
+    .ai-input { flex:1; padding:11px 14px; border-radius:24px; border:1px solid #2a2a2a; background:#1c1c1e; color:#fff; font-size:15px; outline:none; }
+    .ai-send { background:#65d48b; border:none; border-radius:50%; width:44px; height:44px; color:#000; font-size:20px; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
+    .ai-key-setup { background:#1c1c1e; border-radius:14px; padding:16px; border:1px solid #2a2a2a; margin-bottom:12px; }
+
     .toast { position:fixed; bottom:90px; left:50%; transform:translateX(-50%); background:#1c1c1e; color:#fff; padding:12px 20px; border-radius:12px; font-size:14px; z-index:9999; border:1px solid #333; max-width:300px; text-align:center; opacity:0; transition:opacity 0.2s; pointer-events:none; }
     .toast.show { opacity:1; }
     .pos { color: var(--pos); } .neg { color: var(--neg); } .muted { color: #444; }
@@ -640,6 +651,26 @@
       </div>
     </div>
 
+    <!-- 6. ИИ ЧАТ -->
+    <div class="tab" id="tab-ai">
+      <div id="aiKeySetup" class="ai-key-setup">
+        <div style="font-size:13px;font-weight:600;margin-bottom:6px;">🔑 API ключ Gemini</div>
+        <div style="font-size:11px;color:#444;margin-bottom:10px;">Получи бесплатно на <b style="color:#4a9eff;">aistudio.google.com</b> → Get API key</div>
+        <input id="aiKeyInput" type="password" placeholder="AIzaSy..." style="width:100%;padding:11px;border-radius:10px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:14px;outline:none;box-sizing:border-box;margin-bottom:8px;" />
+        <button onclick="saveAiKey()" style="width:100%;padding:12px;border-radius:10px;border:none;background:#65d48b;color:#000;font-weight:bold;font-size:14px;cursor:pointer;">Сохранить ключ</button>
+      </div>
+      <div id="aiMessages" class="ai-messages"></div>
+      <div style="height:80px;"></div>
+    </div>
+
+  </div>
+
+  <!-- ПОЛЕ ВВОДА ЧАТ ИИ -->
+  <div id="aiInputBar" style="display:none;">
+    <div class="ai-input-row">
+      <input id="aiInput" class="ai-input" type="text" placeholder="Спроси что-нибудь..." onkeydown="if(event.key==='Enter')sendAiMsg()" />
+      <button class="ai-send" onclick="sendAiMsg()">➤</button>
+    </div>
   </div>
 
   <!-- НИЖНЯЯ НАВИГАЦИЯ -->
@@ -658,6 +689,9 @@
     </button>
     <button class="nav-item" onclick="switchTab('wa')" id="nav-wa">
       <span class="nav-icon">📋</span><span class="nav-label">Чат</span>
+    </button>
+    <button class="nav-item" onclick="switchTab('ai')" id="nav-ai">
+      <span class="nav-icon">🤖</span><span class="nav-label">ИИ</span>
     </button>
   </nav>
 
@@ -1750,6 +1784,89 @@
       spinner.classList.remove('spin');
     }
   });
+</script>
+<script>
+  // ── ИИ ЧАТ (Gemini) ──────────────────────────────────────────
+  let aiHistory = [];
+  const AI_SYSTEM = "Ты помощник курьера. Отвечай кратко и по делу на русском языке. Помогаешь с вопросами о работе курьера, доходах, маршрутах, финансах.";
+
+  function saveAiKey() {
+    const key = document.getElementById('aiKeyInput').value.trim();
+    if (!key || !key.startsWith('AIza')) { window.showToast('Неверный ключ'); return; }
+    localStorage.setItem('geminiKey', key);
+    document.getElementById('aiKeySetup').style.display = 'none';
+    window.showToast('✅ Ключ сохранён!');
+  }
+  window.saveAiKey = saveAiKey;
+
+  function initAiTab() {
+    const key = localStorage.getItem('geminiKey');
+    if (key) {
+      document.getElementById('aiKeySetup').style.display = 'none';
+      if (!aiHistory.length) appendAiMsg('bot', '👋 Привет! Я ИИ-помощник на базе Gemini. Чем помочь?');
+    }
+  }
+
+  function appendAiMsg(role, text) {
+    const el = document.getElementById('aiMessages');
+    const div = document.createElement('div');
+    div.className = `ai-msg ${role}`;
+    div.textContent = text;
+    el.appendChild(div);
+    el.scrollTop = el.scrollHeight;
+    return div;
+  }
+
+  window.sendAiMsg = async () => {
+    const input = document.getElementById('aiInput');
+    const text = input.value.trim();
+    if (!text) return;
+    const key = localStorage.getItem('geminiKey');
+    if (!key) { window.showToast('Сначала введи API ключ'); return; }
+
+    input.value = '';
+    appendAiMsg('user', text);
+
+    aiHistory.push({ role: 'user', parts: [{ text }] });
+
+    const typing = appendAiMsg('bot', '...');
+    typing.classList.add('typing');
+
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            system_instruction: { parts: [{ text: AI_SYSTEM }] },
+            contents: aiHistory
+          })
+        }
+      );
+      const data = await res.json();
+      if (data.error) throw new Error(data.error.message);
+      const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || '(нет ответа)';
+      typing.textContent = reply;
+      typing.classList.remove('typing');
+      aiHistory.push({ role: 'model', parts: [{ text: reply }] });
+      // Ограничиваем историю до 20 сообщений
+      if (aiHistory.length > 20) aiHistory = aiHistory.slice(-20);
+    } catch(e) {
+      typing.textContent = '❌ Ошибка: ' + e.message;
+      typing.classList.remove('typing');
+      aiHistory.pop();
+    }
+  };
+
+  // Показываем/скрываем поле ввода при переключении вкладок
+  const origSwitchTab = window.switchTab;
+  window.switchTab = (tab) => {
+    if (origSwitchTab) origSwitchTab(tab);
+    const bar = document.getElementById('aiInputBar');
+    if (bar) bar.style.display = tab === 'ai' ? 'block' : 'none';
+    if (tab === 'ai') initAiTab();
+  };
 </script>
 </body>
 </html>
