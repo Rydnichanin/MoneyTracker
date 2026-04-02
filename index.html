@@ -651,16 +651,60 @@
       </div>
     </div>
 
-    <!-- 6. ИИ ЧАТ -->
+    <!-- 6. ИИ АГЕНТ -->
     <div class="tab" id="tab-ai">
+
+      <!-- Настройки провайдера -->
       <div id="aiKeySetup" class="ai-key-setup">
-        <div style="font-size:13px;font-weight:600;margin-bottom:6px;">🔑 API ключ Gemini</div>
-        <div style="font-size:11px;color:#444;margin-bottom:10px;">Получи бесплатно на <b style="color:#4a9eff;">aistudio.google.com</b> → Get API key</div>
-        <input id="aiKeyInput" type="password" placeholder="AIzaSy..." style="width:100%;padding:11px;border-radius:10px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:14px;outline:none;box-sizing:border-box;margin-bottom:8px;" />
-        <button onclick="loadAiModels()" style="width:100%;padding:10px;border-radius:10px;border:1px solid #2a2a2a;background:#2c2c2e;color:#65d48b;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:8px;" id="loadModelsBtn">📋 Загрузить доступные модели</button>
-        <select id="aiModelSelect" style="width:100%;padding:11px;border-radius:10px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:13px;outline:none;margin-bottom:8px;display:none;"></select>
-        <button onclick="saveAiKey()" style="width:100%;padding:12px;border-radius:10px;border:none;background:#65d48b;color:#000;font-weight:bold;font-size:14px;cursor:pointer;">Сохранить</button>
+        <div style="font-size:14px;font-weight:700;margin-bottom:10px;">🤖 Настройка ИИ Агента</div>
+
+        <!-- Выбор провайдера -->
+        <div style="font-size:11px;color:#444;margin-bottom:6px;">Провайдер</div>
+        <div style="display:flex;gap:6px;margin-bottom:12px;">
+          <button onclick="selectProvider('gemini')" id="provBtn-gemini" style="flex:1;padding:8px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#4a9eff;font-size:12px;font-weight:600;cursor:pointer;">🔵 Gemini</button>
+          <button onclick="selectProvider('claude')" id="provBtn-claude" style="flex:1;padding:8px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#c084fc;font-size:12px;font-weight:600;cursor:pointer;">🟣 Claude</button>
+          <button onclick="selectProvider('openai')" id="provBtn-openai" style="flex:1;padding:8px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#65d48b;font-size:12px;font-weight:600;cursor:pointer;">🟢 OpenAI</button>
+        </div>
+
+        <!-- Ключи для каждого провайдера -->
+        <div id="provSetup-gemini">
+          <div style="font-size:11px;color:#444;margin-bottom:4px;">API ключ Gemini · <span style="color:#4a9eff;">aistudio.google.com</span></div>
+          <input id="keyInput-gemini" type="password" placeholder="AIzaSy..." style="width:100%;padding:10px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:14px;outline:none;box-sizing:border-box;margin-bottom:6px;" />
+          <button onclick="loadAiModels()" id="loadModelsBtn" style="width:100%;padding:9px;border-radius:8px;border:1px solid #2a2a2a;background:#111;color:#4a9eff;font-size:12px;font-weight:600;cursor:pointer;margin-bottom:6px;">📋 Загрузить модели</button>
+          <select id="aiModelSelect" style="width:100%;padding:10px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:13px;outline:none;margin-bottom:6px;display:none;"></select>
+        </div>
+
+        <div id="provSetup-claude" style="display:none;">
+          <div style="font-size:11px;color:#444;margin-bottom:4px;">API ключ Claude · <span style="color:#c084fc;">console.anthropic.com</span></div>
+          <input id="keyInput-claude" type="password" placeholder="sk-ant-..." style="width:100%;padding:10px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:14px;outline:none;box-sizing:border-box;margin-bottom:6px;" />
+          <div style="font-size:11px;color:#444;margin-bottom:4px;">Модель</div>
+          <select id="modelSelect-claude" style="width:100%;padding:10px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:13px;outline:none;margin-bottom:6px;">
+            <option value="claude-haiku-4-5">Claude Haiku 4.5 (быстрый, дешёвый)</option>
+            <option value="claude-sonnet-4-5">Claude Sonnet 4.5 (умнее)</option>
+            <option value="claude-opus-4-5">Claude Opus 4.5 (умнейший)</option>
+          </select>
+        </div>
+
+        <div id="provSetup-openai" style="display:none;">
+          <div style="font-size:11px;color:#444;margin-bottom:4px;">API ключ OpenAI · <span style="color:#65d48b;">platform.openai.com</span></div>
+          <input id="keyInput-openai" type="password" placeholder="sk-..." style="width:100%;padding:10px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:14px;outline:none;box-sizing:border-box;margin-bottom:6px;" />
+          <div style="font-size:11px;color:#444;margin-bottom:4px;">Модель</div>
+          <select id="modelSelect-openai" style="width:100%;padding:10px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:13px;outline:none;margin-bottom:6px;">
+            <option value="gpt-4o-mini">GPT-4o Mini (быстрый, дешёвый)</option>
+            <option value="gpt-4o">GPT-4o (умнее)</option>
+            <option value="gpt-4-turbo">GPT-4 Turbo (мощный)</option>
+          </select>
+        </div>
+
+        <button onclick="saveAiSettings()" style="width:100%;padding:12px;border-radius:10px;border:none;background:#65d48b;color:#000;font-weight:bold;font-size:14px;cursor:pointer;">✅ Сохранить и запустить агента</button>
       </div>
+
+      <!-- Статус агента -->
+      <div id="aiAgentStatus" style="display:none;background:#0a1f0a;border:1px solid #1a3a1a;border-radius:10px;padding:8px 12px;margin-bottom:8px;font-size:11px;color:#65d48b;display:flex;justify-content:space-between;align-items:center;">
+        <span id="aiStatusText">🟢 Агент активен</span>
+        <button onclick="resetAiKey()" style="background:none;border:none;color:#444;font-size:11px;cursor:pointer;">⚙️ Настройки</button>
+      </div>
+
       <div id="aiMessages" class="ai-messages"></div>
       <div style="height:80px;"></div>
     </div>
@@ -1788,152 +1832,449 @@
   });
 </script>
 <script>
-  // ── ИИ ЧАТ (Gemini) ──────────────────────────────────────────
-  let aiHistory = [];
-  const AI_SYSTEM = "Ты помощник курьера. Отвечай кратко и по делу на русском языке. Помогаешь с вопросами о работе курьера, доходах, маршрутах, финансах.";
+// ══════════════════════════════════════════════
+// ИИ АГЕНТ — мульти-провайдер + function calling
+// ══════════════════════════════════════════════
+let aiHistory = [];
+let currentProvider = 'gemini';
 
-  window.loadAiModels = async () => {
-    const key = document.getElementById('aiKeyInput').value.trim();
-    if (!key || !key.startsWith('AIza')) { window.showToast('Сначала введи ключ'); return; }
-    const btn = document.getElementById('loadModelsBtn');
-    btn.textContent = '⏳ Загружаю...';
-    btn.disabled = true;
-    try {
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
-      const data = await res.json();
-      if (data.error) throw new Error(data.error.message);
-      // Фильтруем только модели которые поддерживают generateContent
-      const models = (data.models || []).filter(m =>
-        m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent')
-      );
-      if (!models.length) throw new Error('Нет доступных моделей');
-      const sel = document.getElementById('aiModelSelect');
-      const saved = localStorage.getItem('geminiModel') || '';
-      sel.innerHTML = models.map(m => {
-        const id = m.name.replace('models/', '');
-        const label = m.displayName || id;
-        const selected = id === saved ? 'selected' : '';
-        return `<option value="${id}" ${selected}>${label}</option>`;
-      }).join('');
-      sel.style.display = 'block';
-      btn.textContent = `✅ Загружено ${models.length} моделей`;
-    } catch(e) {
-      btn.textContent = '❌ ' + e.message;
-    }
-    btn.disabled = false;
-  };
-  window.loadAiModels = window.loadAiModels;
+// ── Выбор провайдера ──
+window.selectProvider = (p) => {
+  currentProvider = p;
+  ['gemini','claude','openai'].forEach(x => {
+    const btn = document.getElementById('provBtn-'+x);
+    const setup = document.getElementById('provSetup-'+x);
+    const active = x === p;
+    btn.style.opacity = active ? '1' : '0.4';
+    btn.style.borderColor = active ? (x==='gemini'?'#4a9eff':x==='claude'?'#c084fc':'#65d48b') : '#2a2a2a';
+    if (setup) setup.style.display = active ? 'block' : 'none';
+  });
+};
 
-  function saveAiKey() {
-    const key = document.getElementById('aiKeyInput').value.trim();
-    if (!key || !key.startsWith('AIza')) { window.showToast('Неверный ключ'); return; }
+// ── Загрузка моделей Gemini ──
+window.loadAiModels = async () => {
+  const key = document.getElementById('keyInput-gemini').value.trim();
+  if (!key) { window.showToast('Введи ключ Gemini'); return; }
+  const btn = document.getElementById('loadModelsBtn');
+  btn.textContent = '⏳ Загружаю...'; btn.disabled = true;
+  try {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    const models = (data.models||[]).filter(m => (m.supportedGenerationMethods||[]).includes('generateContent'));
     const sel = document.getElementById('aiModelSelect');
-    if (sel.style.display === 'none' || !sel.value) { window.showToast('Нажми "Загрузить модели" и выбери'); return; }
-    const model = sel.value;
+    const saved = localStorage.getItem('geminiModel')||'';
+    sel.innerHTML = models.map(m => {
+      const id = m.name.replace('models/','');
+      return `<option value="${id}" ${id===saved?'selected':''}>${m.displayName||id}</option>`;
+    }).join('');
+    sel.style.display = 'block';
+    btn.textContent = `✅ ${models.length} моделей`;
+  } catch(e) { btn.textContent = '❌ '+e.message; }
+  btn.disabled = false;
+};
+
+// ── Сохранение настроек ──
+window.saveAiSettings = () => {
+  const p = currentProvider;
+  if (p === 'gemini') {
+    const key = document.getElementById('keyInput-gemini').value.trim();
+    const sel = document.getElementById('aiModelSelect');
+    if (!key) { window.showToast('Введи ключ Gemini'); return; }
+    if (!sel.value) { window.showToast('Загрузи и выбери модель'); return; }
     localStorage.setItem('geminiKey', key);
-    localStorage.setItem('geminiModel', model);
-    document.getElementById('aiKeySetup').style.display = 'none';
-    window.showToast('✅ Сохранено! Модель: ' + model);
+    localStorage.setItem('geminiModel', sel.value);
+  } else if (p === 'claude') {
+    const key = document.getElementById('keyInput-claude').value.trim();
+    if (!key) { window.showToast('Введи ключ Claude'); return; }
+    localStorage.setItem('claudeKey', key);
+    localStorage.setItem('claudeModel', document.getElementById('modelSelect-claude').value);
+  } else if (p === 'openai') {
+    const key = document.getElementById('keyInput-openai').value.trim();
+    if (!key) { window.showToast('Введи ключ OpenAI'); return; }
+    localStorage.setItem('openaiKey', key);
+    localStorage.setItem('openaiModel', document.getElementById('modelSelect-openai').value);
   }
-  window.saveAiKey = saveAiKey;
+  localStorage.setItem('aiProvider', p);
+  document.getElementById('aiKeySetup').style.display = 'none';
+  const names = {gemini:'Gemini 🔵', claude:'Claude 🟣', openai:'OpenAI 🟢'};
+  showAgentStatus(names[p]);
+  if (!aiHistory.length) greetAgent();
+};
 
-  function initAiTab() {
-    const key = localStorage.getItem('geminiKey');
-    const model = localStorage.getItem('geminiModel') || 'gemini-2.5-flash-lite-preview-06-17';
-    // Восстанавливаем выбранную модель в селекте
-    const sel = document.getElementById('aiModelSelect');
-    if (sel) sel.value = model;
-    if (key) {
+window.resetAiKey = () => {
+  document.getElementById('aiKeySetup').style.display = 'block';
+  document.getElementById('aiAgentStatus').style.display = 'none';
+  const p = localStorage.getItem('aiProvider')||'gemini';
+  selectProvider(p);
+  // Подставляем сохранённые ключи
+  const gk = localStorage.getItem('geminiKey'); if(gk) document.getElementById('keyInput-gemini').value=gk;
+  const ck = localStorage.getItem('claudeKey'); if(ck) document.getElementById('keyInput-claude').value=ck;
+  const ok = localStorage.getItem('openaiKey'); if(ok) document.getElementById('keyInput-openai').value=ok;
+  const cm = localStorage.getItem('claudeModel'); if(cm) document.getElementById('modelSelect-claude').value=cm;
+  const om = localStorage.getItem('openaiModel'); if(om) document.getElementById('modelSelect-openai').value=om;
+};
+
+function showAgentStatus(name) {
+  const el = document.getElementById('aiAgentStatus');
+  el.style.display = 'flex';
+  document.getElementById('aiStatusText').textContent = `🟢 Агент: ${name}`;
+}
+
+// ── Контекст данных ──
+function buildContext() {
+  const tx = window.allTx || [];
+  const today = (() => { const n=new Date(); if(n.getHours()<3)n.setDate(n.getDate()-1); return new Date(n-n.getTimezoneOffset()*60000).toISOString().split('T')[0]; })();
+  const month = today.slice(0,7);
+
+  const todayTx = tx.filter(t=>t.date===today&&t.type==='income');
+  const todaySum = todayTx.reduce((s,t)=>s+t.amount,0);
+  const monthTx = tx.filter(t=>(t.date||'').startsWith(month)&&t.type==='income');
+  const monthSum = monthTx.reduce((s,t)=>s+t.amount,0);
+  const last5 = tx.slice(-5).map(t=>`${t.date} ${t.type==='income'?'+':'-'}${t.amount}₸ ${t.subcategory||t.categoryName}`).join('\n');
+
+  const POINTS = ["F1","F2","F3","ALLEY PUB","Ночь"];
+  const byPoint = {};
+  todayTx.forEach(t=>{ if(POINTS.includes(t.subcategory)){byPoint[t.subcategory]=(byPoint[t.subcategory]||0)+t.amount;} });
+
+  const cats = [...(window.DEFAULTS?.income||[]),...(window.DEFAULTS?.expense||[])];
+  const accs = (window.ACCOUNTS||[]).map(a=>a.name);
+
+  return `ДАННЫЕ ПОЛЬЗОВАТЕЛЯ (${today}):
+Сегодня: ${todaySum.toLocaleString()}₸ | По точкам: ${Object.entries(byPoint).map(([k,v])=>`${k}:${v}`).join(', ')||'нет'}
+Месяц (${month}): ${monthSum.toLocaleString()}₸
+Последние 5 записей:
+${last5}
+Счета: ${accs.join(', ')||'нет'}
+Категории прихода: ${(window.DEFAULTS?.income||[]).map(c=>c.name+(c.sub&&c.sub.length?'('+c.sub.join(',')+'/)':'')).join(', ')||'нет'}
+Категории расхода: ${(window.DEFAULTS?.expense||[]).map(c=>c.name).join(', ')||'нет'}
+Всего транзакций в базе: ${tx.length}`;
+}
+
+// ── Инструменты агента ──
+const AGENT_TOOLS_GEMINI = [{
+  functionDeclarations: [
+    {
+      name: 'add_transaction',
+      description: 'Записать транзакцию (доход или расход) в Firebase',
+      parameters: { type:'OBJECT', properties: {
+        type: { type:'STRING', description:'income или expense' },
+        amount: { type:'NUMBER', description:'Сумма в тенге' },
+        categoryName: { type:'STRING', description:'Название категории' },
+        subcategory: { type:'STRING', description:'Подкатегория или точка (F1,F2,F3,ALLEY PUB,Ночь)' },
+        account: { type:'STRING', description:'Счёт (Наличные и т.д.)' },
+        comment: { type:'STRING', description:'Примечание' }
+      }, required:['type','amount','categoryName'] }
+    },
+    {
+      name: 'delete_transaction',
+      description: 'Удалить транзакцию по id или последнюю',
+      parameters: { type:'OBJECT', properties: {
+        id: { type:'STRING', description:'ID транзакции или "last" для последней' }
+      }, required:['id'] }
+    },
+    {
+      name: 'get_stats',
+      description: 'Получить статистику за период',
+      parameters: { type:'OBJECT', properties: {
+        period: { type:'STRING', description:'today, week, month, all или дата YYYY-MM-DD' }
+      }, required:['period'] }
+    },
+    {
+      name: 'add_category',
+      description: 'Добавить новую категорию',
+      parameters: { type:'OBJECT', properties: {
+        name: { type:'STRING', description:'Название категории' },
+        catType: { type:'STRING', description:'income или expense' }
+      }, required:['name','catType'] }
+    },
+    {
+      name: 'add_account',
+      description: 'Добавить новый счёт',
+      parameters: { type:'OBJECT', properties: {
+        name: { type:'STRING', description:'Название счёта' }
+      }, required:['name'] }
+    }
+  ]
+}];
+
+// ── Выполнение инструментов ──
+async function executeTool(name, args) {
+  const { fbDB, fbMethods, fbUser } = window;
+  const uid = fbUser?.uid;
+  if (!uid) return 'Ошибка: пользователь не авторизован';
+
+  const today = (() => { const n=new Date(); if(n.getHours()<3)n.setDate(n.getDate()-1); return new Date(n-n.getTimezoneOffset()*60000).toISOString().split('T')[0]; })();
+  const time = new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
+
+  if (name === 'add_transaction') {
+    const acc = args.account || (window.ACCOUNTS||[]).find(a=>a.name.toLowerCase().includes('налич'))?.name || 'Наличные';
+    await fbMethods.addDoc(fbMethods.collection(fbDB,'users',uid,'transactions'), {
+      type: args.type, amount: Number(args.amount),
+      categoryName: args.categoryName, subcategory: args.subcategory||'',
+      account: acc, date: today, time,
+      comment: args.comment||'(агент)', createdAt: Date.now()
+    });
+    return `✅ Записано: ${args.type==='income'?'+':'−'}${Number(args.amount).toLocaleString()}₸ · ${args.subcategory||args.categoryName}`;
+  }
+
+  if (name === 'delete_transaction') {
+    const tx = window.allTx||[];
+    const target = args.id==='last' ? tx[tx.length-1] : tx.find(t=>t.id===args.id);
+    if (!target) return '❌ Запись не найдена';
+    await fbMethods.deleteDoc(fbMethods.doc(fbDB,'users',uid,'transactions',target.id));
+    return `✅ Удалено: ${target.amount.toLocaleString()}₸ · ${target.subcategory||target.categoryName}`;
+  }
+
+  if (name === 'get_stats') {
+    const tx = window.allTx||[];
+    let filtered = tx;
+    if (args.period==='today') filtered = tx.filter(t=>t.date===today);
+    else if (args.period==='month') filtered = tx.filter(t=>(t.date||'').startsWith(today.slice(0,7)));
+    else if (args.period==='week') { const w=new Date(); w.setDate(w.getDate()-7); const ws=new Date(w-w.getTimezoneOffset()*60000).toISOString().split('T')[0]; filtered=tx.filter(t=>t.date>=ws); }
+    const inc = filtered.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+    const exp = filtered.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+    return `Период: ${args.period} | Доход: ${inc.toLocaleString()}₸ | Расход: ${exp.toLocaleString()}₸ | Чистая: ${(inc-exp).toLocaleString()}₸ | Записей: ${filtered.length}`;
+  }
+
+  if (name === 'add_category') {
+    const setRef = fbMethods.collection(fbDB,'users',uid,'settings');
+    await fbMethods.addDoc(setRef, { type:'category', name:args.name, catType:args.catType, sub:[] });
+    return `✅ Категория "${args.name}" добавлена`;
+  }
+
+  if (name === 'add_account') {
+    const setRef = fbMethods.collection(fbDB,'users',uid,'settings');
+    await fbMethods.addDoc(setRef, { type:'account', name:args.name, initialBalance:0 });
+    return `✅ Счёт "${args.name}" добавлен`;
+  }
+
+  return '❌ Неизвестный инструмент: ' + name;
+}
+
+// ── Отображение сообщений ──
+function appendAiMsg(role, text) {
+  const el = document.getElementById('aiMessages');
+  const div = document.createElement('div');
+  div.className = `ai-msg ${role}`;
+  div.textContent = text;
+  el.appendChild(div);
+  setTimeout(()=>el.scrollTop=el.scrollHeight, 50);
+  return div;
+}
+
+function greetAgent() {
+  const p = localStorage.getItem('aiProvider')||'gemini';
+  const names = {gemini:'Gemini', claude:'Claude', openai:'ChatGPT'};
+  appendAiMsg('bot', `👋 Привет! Я ИИ-агент на базе ${names[p]}. Имею полный доступ к твоим данным и могу:\n• Записывать/удалять транзакции\n• Показывать статистику\n• Добавлять категории и счета\n• Отвечать на любые вопросы\n\nЧто делаем?`);
+}
+
+// ── Отправка сообщения ──
+window.sendAiMsg = async () => {
+  const input = document.getElementById('aiInput');
+  const text = input.value.trim();
+  if (!text) return;
+
+  const provider = localStorage.getItem('aiProvider');
+  if (!provider) { window.showToast('Настрой агента сначала'); return; }
+
+  input.value = '';
+  appendAiMsg('user', text);
+  const typing = appendAiMsg('bot', '...');
+  typing.classList.add('typing');
+
+  const context = buildContext();
+  const systemPrompt = `Ты ИИ-агент приложения "Учёт Курьера Pro". У тебя полный доступ к данным пользователя.
+${context}
+
+Ты можешь выполнять действия через инструменты: записывать транзакции, удалять, показывать статистику, добавлять категории и счета.
+Отвечай кратко на русском языке. При выполнении действий — подтверди что сделал.`;
+
+  try {
+    let reply = '';
+
+    if (provider === 'gemini') {
+      reply = await sendGemini(systemPrompt, text, typing);
+    } else if (provider === 'claude') {
+      reply = await sendClaude(systemPrompt, text, typing);
+    } else if (provider === 'openai') {
+      reply = await sendOpenAI(systemPrompt, text, typing);
+    }
+
+    typing.textContent = reply;
+    typing.classList.remove('typing');
+    aiHistory.push({role:'user', content: text});
+    aiHistory.push({role:'assistant', content: reply});
+    if (aiHistory.length > 30) aiHistory = aiHistory.slice(-30);
+
+  } catch(e) {
+    typing.textContent = '❌ Ошибка: ' + e.message;
+    typing.classList.remove('typing');
+  }
+};
+
+// ── Gemini с function calling ──
+async function sendGemini(systemPrompt, text, typing) {
+  const key = localStorage.getItem('geminiKey');
+  const model = localStorage.getItem('geminiModel')||'gemini-2.5-flash';
+  if (!key) throw new Error('Нет ключа Gemini');
+
+  const contents = [
+    ...aiHistory.map(m => ({
+      role: m.role==='assistant'?'model':'user',
+      parts:[{text:m.content}]
+    })),
+    { role:'user', parts:[{text}] }
+  ];
+
+  let res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ system_instruction:{parts:[{text:systemPrompt}]}, contents, tools: AGENT_TOOLS_GEMINI })
+  });
+  let data = await res.json();
+  if (data.error) throw new Error(data.error.message);
+
+  // Обработка function call
+  const part = data.candidates?.[0]?.content?.parts?.[0];
+  if (part?.functionCall) {
+    const { name, args } = part.functionCall;
+    typing.textContent = `⚙️ Выполняю: ${name}...`;
+    const toolResult = await executeTool(name, args);
+
+    // Второй запрос с результатом инструмента
+    contents.push({ role:'model', parts:[{functionCall:{name,args}}] });
+    contents.push({ role:'user', parts:[{functionResponse:{name, response:{result:toolResult}}}] });
+
+    res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ system_instruction:{parts:[{text:systemPrompt}]}, contents, tools: AGENT_TOOLS_GEMINI })
+    });
+    data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+  }
+
+  return data.candidates?.[0]?.content?.parts?.[0]?.text || '(нет ответа)';
+}
+
+// ── Claude с tool use ──
+async function sendClaude(systemPrompt, text, typing) {
+  const key = localStorage.getItem('claudeKey');
+  const model = localStorage.getItem('claudeModel')||'claude-haiku-4-5';
+  if (!key) throw new Error('Нет ключа Claude');
+
+  const tools = [
+    { name:'add_transaction', description:'Записать транзакцию', input_schema:{ type:'object', properties:{ type:{type:'string'}, amount:{type:'number'}, categoryName:{type:'string'}, subcategory:{type:'string'}, account:{type:'string'}, comment:{type:'string'} }, required:['type','amount','categoryName'] } },
+    { name:'delete_transaction', description:'Удалить транзакцию', input_schema:{ type:'object', properties:{ id:{type:'string'} }, required:['id'] } },
+    { name:'get_stats', description:'Статистика за период', input_schema:{ type:'object', properties:{ period:{type:'string'} }, required:['period'] } },
+    { name:'add_category', description:'Добавить категорию', input_schema:{ type:'object', properties:{ name:{type:'string'}, catType:{type:'string'} }, required:['name','catType'] } },
+    { name:'add_account', description:'Добавить счёт', input_schema:{ type:'object', properties:{ name:{type:'string'} }, required:['name'] } }
+  ];
+
+  const messages = [
+    ...aiHistory.map(m=>({role:m.role==='assistant'?'assistant':'user', content:m.content})),
+    { role:'user', content: text }
+  ];
+
+  let res = await fetch('https://api.anthropic.com/v1/messages', {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json', 'x-api-key':key, 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
+    body: JSON.stringify({ model, max_tokens:1024, system:systemPrompt, tools, messages })
+  });
+  let data = await res.json();
+  if (data.error) throw new Error(data.error.message||data.error);
+
+  // Обработка tool_use
+  if (data.stop_reason === 'tool_use') {
+    const toolUse = data.content.find(b=>b.type==='tool_use');
+    if (toolUse) {
+      typing.textContent = `⚙️ Выполняю: ${toolUse.name}...`;
+      const toolResult = await executeTool(toolUse.name, toolUse.input);
+      messages.push({ role:'assistant', content: data.content });
+      messages.push({ role:'user', content:[{ type:'tool_result', tool_use_id:toolUse.id, content:toolResult }] });
+      res = await fetch('https://api.anthropic.com/v1/messages', {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json', 'x-api-key':key, 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
+        body: JSON.stringify({ model, max_tokens:1024, system:systemPrompt, tools, messages })
+      });
+      data = await res.json();
+      if (data.error) throw new Error(data.error.message||data.error);
+    }
+  }
+
+  return data.content?.find(b=>b.type==='text')?.text || '(нет ответа)';
+}
+
+// ── OpenAI с function calling ──
+async function sendOpenAI(systemPrompt, text, typing) {
+  const key = localStorage.getItem('openaiKey');
+  const model = localStorage.getItem('openaiModel')||'gpt-4o-mini';
+  if (!key) throw new Error('Нет ключа OpenAI');
+
+  const tools = [
+    { type:'function', function:{ name:'add_transaction', description:'Записать транзакцию', parameters:{ type:'object', properties:{ type:{type:'string'}, amount:{type:'number'}, categoryName:{type:'string'}, subcategory:{type:'string'}, account:{type:'string'}, comment:{type:'string'} }, required:['type','amount','categoryName'] } } },
+    { type:'function', function:{ name:'delete_transaction', description:'Удалить транзакцию', parameters:{ type:'object', properties:{ id:{type:'string'} }, required:['id'] } } },
+    { type:'function', function:{ name:'get_stats', description:'Статистика', parameters:{ type:'object', properties:{ period:{type:'string'} }, required:['period'] } } },
+    { type:'function', function:{ name:'add_category', description:'Добавить категорию', parameters:{ type:'object', properties:{ name:{type:'string'}, catType:{type:'string'} }, required:['name','catType'] } } },
+    { type:'function', function:{ name:'add_account', description:'Добавить счёт', parameters:{ type:'object', properties:{ name:{type:'string'} }, required:['name'] } } }
+  ];
+
+  const messages = [
+    { role:'system', content: systemPrompt },
+    ...aiHistory.map(m=>({role:m.role==='assistant'?'assistant':'user', content:m.content})),
+    { role:'user', content: text }
+  ];
+
+  let res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+key },
+    body: JSON.stringify({ model, messages, tools, tool_choice:'auto', max_tokens:1024 })
+  });
+  let data = await res.json();
+  if (data.error) throw new Error(data.error.message);
+
+  const msg = data.choices?.[0]?.message;
+  if (msg?.tool_calls?.length) {
+    const tc = msg.tool_calls[0];
+    typing.textContent = `⚙️ Выполняю: ${tc.function.name}...`;
+    const args = JSON.parse(tc.function.arguments);
+    const toolResult = await executeTool(tc.function.name, args);
+    messages.push(msg);
+    messages.push({ role:'tool', tool_call_id:tc.id, content:toolResult });
+    res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+key },
+      body: JSON.stringify({ model, messages, tools, max_tokens:1024 })
+    });
+    data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+  }
+
+  return data.choices?.[0]?.message?.content || '(нет ответа)';
+}
+
+// ── Инициализация вкладки ──
+function initAiTab() {
+  const p = localStorage.getItem('aiProvider');
+  selectProvider(p||'gemini');
+  if (p) {
+    const hasKey = (p==='gemini'&&localStorage.getItem('geminiKey')) ||
+                   (p==='claude'&&localStorage.getItem('claudeKey')) ||
+                   (p==='openai'&&localStorage.getItem('openaiKey'));
+    if (hasKey) {
       document.getElementById('aiKeySetup').style.display = 'none';
-      if (!aiHistory.length) appendAiMsg('bot', '👋 Привет! Я ИИ-помощник на базе Gemini. Чем помочь?');
-    }
-    // Кнопка смены ключа
-    let changeBtn = document.getElementById('aiChangeKey');
-    if (!changeBtn) {
-      changeBtn = document.createElement('div');
-      changeBtn.id = 'aiChangeKey';
-      changeBtn.style = 'text-align:right;margin-bottom:6px;';
-      changeBtn.innerHTML = `<button onclick="resetAiKey()" style="background:none;border:none;color:#444;font-size:11px;cursor:pointer;padding:4px 0;">🔑 Сменить ключ / модель</button>`;
-      document.getElementById('tab-ai').insertBefore(changeBtn, document.getElementById('aiMessages'));
+      const names = {gemini:'Gemini 🔵', claude:'Claude 🟣', openai:'OpenAI 🟢'};
+      showAgentStatus(names[p]);
+      if (!aiHistory.length) greetAgent();
     }
   }
+}
 
-  window.resetAiKey = () => {
-    const key = localStorage.getItem('geminiKey') || '';
-    document.getElementById('aiKeyInput').value = key;
-    const sel = document.getElementById('aiModelSelect');
-    sel.style.display = 'none';
-    sel.innerHTML = '';
-    const btn = document.getElementById('loadModelsBtn');
-    btn.textContent = '📋 Загрузить доступные модели';
-    btn.disabled = false;
-    document.getElementById('aiKeySetup').style.display = 'block';
-    // Если ключ уже есть — сразу загружаем модели
-    if (key) setTimeout(() => window.loadAiModels(), 100);
-    window.showToast('Выбери модель и сохрани');
-  };
-
-  function appendAiMsg(role, text) {
-    const el = document.getElementById('aiMessages');
-    const div = document.createElement('div');
-    div.className = `ai-msg ${role}`;
-    div.textContent = text;
-    el.appendChild(div);
-    el.scrollTop = el.scrollHeight;
-    return div;
-  }
-
-  window.sendAiMsg = async () => {
-    const input = document.getElementById('aiInput');
-    const text = input.value.trim();
-    if (!text) return;
-    const key = localStorage.getItem('geminiKey');
-    const model = localStorage.getItem('geminiModel') || 'gemini-2.5-flash-lite-preview-06-17';
-    if (!key) { window.showToast('Сначала введи API ключ'); return; }
-
-    input.value = '';
-    appendAiMsg('user', text);
-
-    aiHistory.push({ role: 'user', parts: [{ text }] });
-
-    const typing = appendAiMsg('bot', '...');
-    typing.classList.add('typing');
-
-    try {
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            system_instruction: { parts: [{ text: AI_SYSTEM }] },
-            contents: aiHistory
-          })
-        }
-      );
-      const data = await res.json();
-      if (data.error) throw new Error(data.error.message);
-      const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || '(нет ответа)';
-      typing.textContent = reply;
-      typing.classList.remove('typing');
-      aiHistory.push({ role: 'model', parts: [{ text: reply }] });
-      // Ограничиваем историю до 20 сообщений
-      if (aiHistory.length > 20) aiHistory = aiHistory.slice(-20);
-    } catch(e) {
-      typing.textContent = '❌ Ошибка: ' + e.message;
-      typing.classList.remove('typing');
-      aiHistory.pop();
-    }
-  };
-
-  // Показываем/скрываем поле ввода при переключении вкладок
-  const origSwitchTab = window.switchTab;
-  window.switchTab = (tab) => {
-    if (origSwitchTab) origSwitchTab(tab);
-    const bar = document.getElementById('aiInputBar');
-    if (bar) bar.style.display = tab === 'ai' ? 'block' : 'none';
-    if (tab === 'ai') initAiTab();
-  };
+// ── Переключение вкладок ──
+const origSwitchTab = window.switchTab;
+window.switchTab = (tab) => {
+  if (origSwitchTab) origSwitchTab(tab);
+  const bar = document.getElementById('aiInputBar');
+  if (bar) bar.style.display = tab==='ai' ? 'block' : 'none';
+  if (tab==='ai') initAiTab();
+};
 </script>
 </body>
 </html>
