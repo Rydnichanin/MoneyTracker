@@ -9,7 +9,6 @@
     * { box-sizing: border-box; font-family: -apple-system, sans-serif; -webkit-tap-highlight-color: transparent; }
     body { background: var(--bg); color: #fff; margin: 0; padding: 0; overflow-x: hidden; }
 
-    /* ТОПБАР */
     .topbar {
       position: fixed; top: 0; left: 0; right: 0; z-index: 200;
       height: 52px; background: #000; display: flex; align-items: center;
@@ -25,21 +24,17 @@
     .period-btn { flex: 1; padding: 7px 0; border: 1px solid #1a1a1a; border-radius: 8px; background: #111; color: #444; font-size: 12px; cursor: pointer; font-weight: 600; }
     .period-btn.active { background: #1c1c1e; color: #fff; border-color: #333; }
 
-    /* СТРАНИЦА */
     .page-wrap { max-width: 500px; margin: 0 auto; padding-top: 106px; padding-bottom: calc(var(--nav-h) + 8px); padding-left: 10px; padding-right: 10px; }
 
-    /* НАВ */
     .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; z-index: 200; display: flex; background: #0a0a0a; border-top: 1px solid #1a1a1a; height: var(--nav-h); max-width: 500px; margin: 0 auto; }
     .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; cursor: pointer; color: #2a2a2a; border: none; background: none; padding-bottom: 6px; transition: color 0.15s; }
     .nav-item.active { color: var(--pos); }
     .nav-icon { font-size: 22px; line-height: 1; }
     .nav-label { font-size: 10px; font-weight: 600; }
 
-    /* ВКЛАДКИ */
     .tab { display: none; }
     .tab.active { display: block; }
 
-    /* БАЛАНС БЛОК (внутри вкладки) */
     .balance-block { background: #1c1c1e; border-radius: 16px; padding: 16px; margin-bottom: 10px; border: 1px solid #222; }
     .bal-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
     .bal-main { font-size: 28px; font-weight: bold; }
@@ -53,7 +48,6 @@
     .gas-bg { height: 3px; background: #1a1a1a; border-radius: 2px; overflow: hidden; }
     .gas-fill { height: 100%; background: var(--accent); width: 0%; transition: 0.4s; }
 
-    /* КАРТОЧКИ */
     .card { background: var(--card); border-radius: 16px; padding: 14px; margin-bottom: 10px; border: 1px solid #1a1a1a; }
     .card-title { font-size: 11px; color: #444; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
     .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
@@ -88,10 +82,8 @@
     .sec-title { font-size: 11px; color: #444; text-transform: uppercase; letter-spacing: 1px; margin: 14px 0 8px; }
     .chart-wrap { overflow-x: scroll; -webkit-overflow-scrolling: touch; }
 
-
-    /* ЧАТ ИИ */
     .ai-messages { display:flex; flex-direction:column; gap:10px; padding-bottom:8px; }
-    .ai-msg { max-width:85%; padding:10px 14px; border-radius:16px; font-size:14px; line-height:1.5; word-break:break-word; }
+    .ai-msg { max-width:85%; padding:10px 14px; border-radius:16px; font-size:14px; line-height:1.5; word-break:break-word; white-space: pre-wrap; }
     .ai-msg.user { background:#1a3a1a; color:#fff; align-self:flex-end; border-bottom-right-radius:4px; }
     .ai-msg.bot  { background:#1c1c1e; color:#ddd; align-self:flex-start; border-bottom-left-radius:4px; border:1px solid #2a2a2a; }
     .ai-msg.typing { color:#555; font-style:italic; }
@@ -105,7 +97,6 @@
     .pos { color: var(--pos); } .neg { color: var(--neg); } .muted { color: #444; }
     .hidden { display: none; }
 
-    /* БОКОВОЕ МЕНЮ */
     .drawer-overlay {
       position: fixed; inset: 0; z-index: 300;
       background: rgba(0,0,0,0.6); opacity: 0; pointer-events: none; transition: opacity 0.25s;
@@ -134,7 +125,6 @@
     .drawer-item.danger { color: var(--neg); }
     .drawer-section { padding: 6px 20px 2px; font-size: 10px; color: #333; text-transform: uppercase; letter-spacing: 1px; }
 
-    /* СТРАНИЦА НАСТРОЕК (внутри drawer) */
     .settings-page {
       position: fixed; inset: 0; z-index: 302; background: #000;
       transform: translateX(100%); transition: transform 0.25s ease;
@@ -154,7 +144,6 @@
 
     .transfer-card { background: #0a1a0a; border: 1px solid #1a2e1a; border-radius: 16px; padding: 14px; margin-bottom: 10px; }
 
-    /* ЭКРАН ДЕПОЗИТОВ */
     .deposit-screen {
       position: fixed; inset: 0; z-index: 400; background: #000;
       transform: translateY(100%); transition: transform 0.3s ease;
@@ -166,10 +155,7 @@
       display: flex; align-items: center; gap: 10px;
       border-bottom: 1px solid #111; z-index: 10;
     }
-    .dep-card {
-      border-radius: 16px; padding: 16px; margin-bottom: 10px;
-      border: 1px solid #1a1a1a;
-    }
+    .dep-card { border-radius: 16px; padding: 16px; margin-bottom: 10px; border: 1px solid #1a1a1a; }
     .dep-card.future  { background: #0a0f1f; border-color: #1a2a4a; }
     .dep-card.bday    { background: #1a0a1a; border-color: #3a1a3a; }
     .dep-card.car     { background: #0f1a0a; border-color: #2a3a1a; }
@@ -182,7 +168,6 @@
     .dep-log { font-size: 11px; color: #333; border-top: 1px solid #111; padding-top: 8px; max-height: 120px; overflow-y: auto; }
     .dep-log-item { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid #0a0a0a; }
 
-    /* PULL TO REFRESH */
     #ptr-indicator {
       position: fixed; top: 0; left: 0; right: 0; z-index: 999;
       display: flex; align-items: center; justify-content: center;
@@ -196,16 +181,6 @@
     }
     #ptr-spinner.spin { animation: spin 0.7s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
-
-    /* ЭКРАН ВХОДА */
-    .login-logo { font-size: 80px; margin-bottom: 20px; }
-    .login-btn {
-      display: flex; align-items: center; gap: 12px;
-      background: #fff; color: #000; border: none; padding: 15px 28px;
-      border-radius: 14px; font-size: 16px; font-weight: bold; cursor: pointer;
-      box-shadow: 0 4px 15px rgba(255,255,255,0.2);
-    }
-    .login-btn:active { transform: scale(0.98); }
   </style>
 
   <script type="module">
@@ -227,7 +202,6 @@
     const auth = getAuth(app);
     const provider = new GoogleAuthProvider();
 
-    // ── Запуск приложения ──────────────────────────────────────────
     function startApp(user) {
       document.getElementById("loginScreen").style.display = "none";
       document.getElementById("appScreen").style.display = "block";
@@ -236,14 +210,10 @@
       window.fbUser = user;
       if (!window.appStarted) {
         window.appStarted = true;
-        // Даём время второму скрипту зарегистрировать слушатель fbReady
-        setTimeout(() => {
-          window.dispatchEvent(new Event("fbReady"));
-        }, 100);
+        setTimeout(() => { window.dispatchEvent(new Event("fbReady")); }, 100);
       }
     }
 
-    // ── onAuthStateChanged — главный триггер ───────────────────────
     onAuthStateChanged(auth, user => {
       if (user) {
         startApp(user);
@@ -255,21 +225,14 @@
       }
     });
 
-    // ── receiveAuthToken — вызывается APK после входа ──────────────
-    // APK вызывает: window.receiveAuthToken({idToken, name, email})
     window.receiveAuthToken = async (data) => {
-      console.log("receiveAuthToken:", data && data.idToken ? "токен есть" : "нет токена");
       if (!data || !data.idToken) return;
       try {
         const credential = GoogleAuthProvider.credential(data.idToken);
         await signInWithCredential(auth, credential);
-        // onAuthStateChanged автоматически вызовет startApp
-      } catch(e) {
-        console.error("receiveAuthToken error:", e);
-      }
+      } catch(e) { console.error("receiveAuthToken error:", e); }
     };
 
-    // ── Кнопка входа ───────────────────────────────────────────────
     window.fbSignIn = async () => {
       if (window.AndroidBridge) {
         window.AndroidBridge.openBrowser("https://rydnichanin.github.io/MoneyTracker/auth.html");
@@ -290,25 +253,15 @@
       try {
         await sendPasswordResetEmail(auth, email);
         showError('');
-        window.showToast('✅ Письмо отправлено на ' + email + '. Проверь почту.');
+        window.showToast('✅ Письмо отправлено на ' + email);
       } catch(e) {
-        const msgs = {
-          'auth/user-not-found': 'Пользователь не найден',
-          'auth/invalid-email': 'Неверный формат email'
-        };
+        const msgs = { 'auth/user-not-found': 'Пользователь не найден', 'auth/invalid-email': 'Неверный формат email' };
         showError(msgs[e.code] || 'Ошибка: ' + e.message);
       }
     };
 
-    // ── Email / пароль ─────────────────────────────────────────────
-    const showError = (msg) => {
-      const el = document.getElementById('loginError');
-      if (el) el.textContent = msg;
-    };
-    const getEmailPass = () => ({
-      email: (document.getElementById('loginEmail')?.value || '').trim(),
-      pass:  (document.getElementById('loginPassword')?.value || '').trim()
-    });
+    const showError = (msg) => { const el = document.getElementById('loginError'); if (el) el.textContent = msg; };
+    const getEmailPass = () => ({ email: (document.getElementById('loginEmail')?.value || '').trim(), pass: (document.getElementById('loginPassword')?.value || '').trim() });
 
     window.emailSignIn = async () => {
       const { email, pass } = getEmailPass();
@@ -317,13 +270,7 @@
       try {
         await signInWithEmailAndPassword(auth, email, pass);
       } catch(e) {
-        const msgs = {
-          'auth/user-not-found': 'Пользователь не найден',
-          'auth/wrong-password': 'Неверный пароль',
-          'auth/invalid-email': 'Неверный формат email',
-          'auth/invalid-credential': 'Неверный email или пароль',
-          'auth/too-many-requests': 'Слишком много попыток, подождите'
-        };
+        const msgs = { 'auth/user-not-found': 'Пользователь не найден', 'auth/wrong-password': 'Неверный пароль', 'auth/invalid-email': 'Неверный формат email', 'auth/invalid-credential': 'Неверный email или пароль', 'auth/too-many-requests': 'Слишком много попыток' };
         showError(msgs[e.code] || 'Ошибка: ' + e.message);
       }
     };
@@ -336,11 +283,7 @@
       try {
         await createUserWithEmailAndPassword(auth, email, pass);
       } catch(e) {
-        const msgs = {
-          'auth/email-already-in-use': 'Этот email уже используется',
-          'auth/invalid-email': 'Неверный формат email',
-          'auth/weak-password': 'Пароль слишком простой'
-        };
+        const msgs = { 'auth/email-already-in-use': 'Этот email уже используется', 'auth/invalid-email': 'Неверный формат email', 'auth/weak-password': 'Пароль слишком простой' };
         showError(msgs[e.code] || 'Ошибка: ' + e.message);
       }
     };
@@ -358,47 +301,31 @@
   };
 </script>
 
-
-<!-- ЛОГИН -->
-<!-- PULL TO REFRESH -->
 <div id="ptr-indicator">
   <div id="ptr-spinner"></div>
   <span id="ptr-text">Потяните вниз для обновления</span>
 </div>
 
+<!-- ЛОГИН -->
 <div id="loginScreen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;background:#000;text-align:center;padding:24px;box-sizing:border-box;">
   <div style="font-size:52px;margin-bottom:12px;">💰</div>
   <h2 style="margin-bottom:4px;">Учёт Курьера Pro</h2>
   <p style="color:#444;margin-bottom:24px;font-size:13px;">Войдите чтобы продолжить</p>
-
   <div style="width:100%;max-width:320px;">
     <input id="loginEmail" type="email" placeholder="Email" autocomplete="email"
       style="width:100%;padding:14px;border-radius:12px;border:1px solid #222;background:#111;color:#fff;font-size:16px;margin-bottom:10px;outline:none;box-sizing:border-box;" />
     <input id="loginPassword" type="password" placeholder="Пароль"
       style="width:100%;padding:14px;border-radius:12px;border:1px solid #222;background:#111;color:#fff;font-size:16px;margin-bottom:6px;outline:none;box-sizing:border-box;" />
     <div id="loginError" style="color:#ff6b6b;font-size:12px;min-height:16px;margin-bottom:10px;text-align:left;padding:0 2px;"></div>
-
-    <button onclick="emailSignIn()"
-      style="width:100%;padding:15px;border-radius:12px;border:none;background:#65d48b;color:#000;font-size:16px;font-weight:bold;cursor:pointer;margin-bottom:10px;">
-      Войти
-    </button>
-    <button onclick="emailRegister()"
-      style="width:100%;padding:14px;border-radius:12px;border:1px solid #222;background:none;color:#888;font-size:14px;cursor:pointer;margin-bottom:10px;">
-      Зарегистрироваться
-    </button>
-    <button onclick="resetPassword()"
-      style="width:100%;padding:10px;border:none;background:none;color:#555;font-size:13px;cursor:pointer;margin-bottom:12px;">
-      Забыли пароль?
-    </button>
-
+    <button onclick="emailSignIn()" style="width:100%;padding:15px;border-radius:12px;border:none;background:#65d48b;color:#000;font-size:16px;font-weight:bold;cursor:pointer;margin-bottom:10px;">Войти</button>
+    <button onclick="emailRegister()" style="width:100%;padding:14px;border-radius:12px;border:1px solid #222;background:none;color:#888;font-size:14px;cursor:pointer;margin-bottom:10px;">Зарегистрироваться</button>
+    <button onclick="resetPassword()" style="width:100%;padding:10px;border:none;background:none;color:#555;font-size:13px;cursor:pointer;margin-bottom:12px;">Забыли пароль?</button>
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
       <div style="flex:1;height:1px;background:#1a1a1a;"></div>
       <span style="color:#333;font-size:12px;">или</span>
       <div style="flex:1;height:1px;background:#1a1a1a;"></div>
     </div>
-
-    <button onclick="fbSignIn()"
-      style="width:100%;padding:14px;border-radius:12px;border:1px solid #222;background:#111;color:#fff;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;box-sizing:border-box;">
+    <button onclick="fbSignIn()" style="width:100%;padding:14px;border-radius:12px;border:1px solid #222;background:#111;color:#fff;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;box-sizing:border-box;">
       <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#4285F4" d="M44.5 20H24v8.5h11.8C34.7 33.9 29.8 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 5.1 29.6 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21c10.5 0 20-7.6 20-21 0-1.4-.1-2.7-.5-4z"/></svg>
       Войти через Google
     </button>
@@ -408,10 +335,8 @@
 <!-- ПРИЛОЖЕНИЕ -->
 <div id="appScreen" style="display:none;">
 
-  <!-- ОВЕРЛЕЙ МЕНЮ -->
   <div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
 
-  <!-- БОКОВОЕ МЕНЮ -->
   <div class="drawer" id="drawer">
     <div class="drawer-header">
       <div class="drawer-avatar">👤</div>
@@ -420,20 +345,14 @@
     </div>
     <div class="drawer-nav">
       <div class="drawer-section">Навигация</div>
-      <button class="drawer-item home" onclick="closeDrawer()">
-        <span class="di-icon">🏠</span> Главный экран
-      </button>
-      <button class="drawer-item" onclick="openSettings()">
-        <span class="di-icon">⚙️</span> Настройки
-      </button>
+      <button class="drawer-item home" onclick="closeDrawer()"><span class="di-icon">🏠</span> Главный экран</button>
+      <button class="drawer-item" onclick="openSettings()"><span class="di-icon">⚙️</span> Настройки</button>
       <div class="drawer-section" style="margin-top:8px;">Аккаунт</div>
-      <button class="drawer-item danger" onclick="fbSignOut(); closeDrawer();">
-        <span class="di-icon">🚪</span> Выйти
-      </button>
+      <button class="drawer-item danger" onclick="fbSignOut(); closeDrawer();"><span class="di-icon">🚪</span> Выйти</button>
     </div>
   </div>
 
-  <!-- СТРАНИЦА НАСТРОЕК -->
+  <!-- НАСТРОЙКИ -->
   <div class="settings-page" id="settingsPage">
     <div class="settings-topbar">
       <button class="back-btn" onclick="closeSettings()">‹</button>
@@ -507,13 +426,10 @@
     </div>
   </div>
 
-  <!-- ВКЛАДКИ -->
   <div class="page-wrap">
 
     <!-- 1. ЗАПИСЬ -->
     <div class="tab active" id="tab-record">
-
-      <!-- БАЛАНС БЛОК -->
       <div class="balance-block">
         <div class="bal-top">
           <div>
@@ -532,7 +448,6 @@
         </div>
       </div>
 
-      <!-- ФОРМА -->
       <div class="card">
         <div class="card-title">Новая запись</div>
         <form id="txForm">
@@ -564,7 +479,6 @@
         </form>
       </div>
 
-      <!-- ИСТОРИЯ -->
       <div class="card">
         <div class="card-title">История</div>
         <div id="list"><div class="muted">Нет записей</div></div>
@@ -615,8 +529,6 @@
     <div class="tab" id="tab-wa">
       <div class="card" style="border-color:#1a2a1a;">
         <div class="card-title" style="color:#65d48b;">📋 Вставить из WhatsApp</div>
-
-        <!-- Ночной режим -->
         <div style="display:flex;align-items:center;justify-content:space-between;background:#111;border-radius:10px;padding:10px 14px;margin-bottom:12px;">
           <div>
             <div style="font-size:14px;font-weight:600;">🌙 Ночной режим</div>
@@ -625,55 +537,39 @@
           <label style="position:relative;display:inline-block;width:46px;height:26px;">
             <input type="checkbox" id="nightMode" style="opacity:0;width:0;height:0;" onchange="toggleNightMode()">
             <span id="nightSlider" style="position:absolute;cursor:pointer;inset:0;background:#222;border-radius:26px;transition:0.3s;">
-              <span style="position:absolute;content:'';height:20px;width:20px;left:3px;bottom:3px;background:#444;border-radius:50%;transition:0.3s;" id="nightThumb"></span>
+              <span style="position:absolute;height:20px;width:20px;left:3px;bottom:3px;background:#444;border-radius:50%;transition:0.3s;" id="nightThumb"></span>
             </span>
           </label>
         </div>
-
-        <!-- Поле вставки -->
-        <textarea id="waInput" placeholder="Вставь сообщения из WhatsApp сюда..." 
+        <textarea id="waInput" placeholder="Вставь сообщения из WhatsApp сюда..."
           style="width:100%;height:140px;padding:12px;border-radius:10px;border:1px solid #222;background:#1a1a1a;color:#fff;font-size:14px;resize:none;box-sizing:border-box;outline:none;font-family:-apple-system,sans-serif;"></textarea>
-        
-        <button onclick="parseWA()" style="width:100%;padding:14px;border-radius:12px;border:none;background:#65d48b;color:#000;font-size:15px;font-weight:bold;cursor:pointer;margin-top:8px;">
-          🤖 Разобрать
-        </button>
+        <button onclick="parseWA()" style="width:100%;padding:14px;border-radius:12px;border:none;background:#65d48b;color:#000;font-size:15px;font-weight:bold;cursor:pointer;margin-top:8px;">🤖 Разобрать</button>
       </div>
-
-      <!-- Результат парсинга -->
       <div id="waResult" style="display:none;">
         <div class="card">
           <div class="card-title">Найденные записи</div>
           <div id="waList"></div>
-          <button onclick="saveWA()" style="width:100%;padding:14px;border-radius:12px;border:none;background:#65d48b;color:#000;font-size:15px;font-weight:bold;cursor:pointer;margin-top:12px;">
-            ✅ Записать всё
-          </button>
+          <button onclick="saveWA()" style="width:100%;padding:14px;border-radius:12px;border:none;background:#65d48b;color:#000;font-size:15px;font-weight:bold;cursor:pointer;margin-top:12px;">✅ Записать всё</button>
         </div>
       </div>
     </div>
 
     <!-- 6. ИИ АГЕНТ -->
     <div class="tab" id="tab-ai">
-
-      <!-- Настройки провайдера -->
       <div id="aiKeySetup" class="ai-key-setup">
         <div style="font-size:14px;font-weight:700;margin-bottom:10px;">🤖 Настройка ИИ Агента</div>
-
-        <!-- Выбор провайдера -->
         <div style="font-size:11px;color:#444;margin-bottom:6px;">Провайдер</div>
         <div style="display:flex;gap:6px;margin-bottom:12px;">
           <button onclick="selectProvider('gemini')" id="provBtn-gemini" style="flex:1;padding:8px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#4a9eff;font-size:12px;font-weight:600;cursor:pointer;">🔵 Gemini</button>
           <button onclick="selectProvider('claude')" id="provBtn-claude" style="flex:1;padding:8px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#c084fc;font-size:12px;font-weight:600;cursor:pointer;">🟣 Claude</button>
           <button onclick="selectProvider('openai')" id="provBtn-openai" style="flex:1;padding:8px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#65d48b;font-size:12px;font-weight:600;cursor:pointer;">🟢 OpenAI</button>
         </div>
-
-        <!-- Ключи для каждого провайдера -->
         <div id="provSetup-gemini">
           <div style="font-size:11px;color:#444;margin-bottom:4px;">API ключ Gemini · <span style="color:#4a9eff;">aistudio.google.com</span></div>
           <input id="keyInput-gemini" type="password" placeholder="AIzaSy..." style="width:100%;padding:10px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:14px;outline:none;box-sizing:border-box;margin-bottom:6px;" />
           <button onclick="loadAiModels()" id="loadModelsBtn" style="width:100%;padding:9px;border-radius:8px;border:1px solid #2a2a2a;background:#111;color:#4a9eff;font-size:12px;font-weight:600;cursor:pointer;margin-bottom:6px;">📋 Загрузить модели</button>
           <select id="aiModelSelect" style="width:100%;padding:10px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:13px;outline:none;margin-bottom:6px;display:none;"></select>
         </div>
-
         <div id="provSetup-claude" style="display:none;">
           <div style="font-size:11px;color:#444;margin-bottom:4px;">API ключ Claude · <span style="color:#c084fc;">console.anthropic.com</span></div>
           <input id="keyInput-claude" type="password" placeholder="sk-ant-..." style="width:100%;padding:10px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:14px;outline:none;box-sizing:border-box;margin-bottom:6px;" />
@@ -684,7 +580,6 @@
             <option value="claude-opus-4-5">Claude Opus 4.5 (умнейший)</option>
           </select>
         </div>
-
         <div id="provSetup-openai" style="display:none;">
           <div style="font-size:11px;color:#444;margin-bottom:4px;">API ключ OpenAI · <span style="color:#65d48b;">platform.openai.com</span></div>
           <input id="keyInput-openai" type="password" placeholder="sk-..." style="width:100%;padding:10px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:14px;outline:none;box-sizing:border-box;margin-bottom:6px;" />
@@ -695,12 +590,10 @@
             <option value="gpt-4-turbo">GPT-4 Turbo (мощный)</option>
           </select>
         </div>
-
         <button onclick="saveAiSettings()" style="width:100%;padding:12px;border-radius:10px;border:none;background:#65d48b;color:#000;font-weight:bold;font-size:14px;cursor:pointer;">✅ Сохранить и запустить агента</button>
       </div>
 
-      <!-- Статус агента -->
-      <div id="aiAgentStatus" style="display:none;background:#0a1f0a;border:1px solid #1a3a1a;border-radius:10px;padding:8px 12px;margin-bottom:8px;font-size:11px;color:#65d48b;display:flex;justify-content:space-between;align-items:center;">
+      <div id="aiAgentStatus" style="display:none;background:#0a1f0a;border:1px solid #1a3a1a;border-radius:10px;padding:8px 12px;margin-bottom:8px;font-size:11px;color:#65d48b;flex-direction:row;justify-content:space-between;align-items:center;">
         <span id="aiStatusText">🟢 Агент активен</span>
         <button onclick="resetAiKey()" style="background:none;border:none;color:#444;font-size:11px;cursor:pointer;">⚙️ Настройки</button>
       </div>
@@ -741,82 +634,62 @@
     </button>
   </nav>
 
-<!-- ЭКРАН ДЕПОЗИТОВ -->
-<div class="deposit-screen" id="depositScreen">
-  <div class="deposit-topbar">
-    <button class="back-btn" onclick="closeDeposits()">‹</button>
-    <span style="font-size:16px;font-weight:600;">Накопления</span>
+  <!-- ЭКРАН ДЕПОЗИТОВ -->
+  <div class="deposit-screen" id="depositScreen">
+    <div class="deposit-topbar">
+      <button class="back-btn" onclick="closeDeposits()">‹</button>
+      <span style="font-size:16px;font-weight:600;">Накопления</span>
+    </div>
+    <div style="padding:12px;max-width:500px;margin:0 auto;">
+      <div style="background:#111;border-radius:12px;padding:12px;margin-bottom:14px;font-size:12px;color:#444;text-align:center;">
+        Автоматически откладывается от дневного дохода.<br>Снятие возвращается на наличные.
+      </div>
+      <div class="dep-card future">
+        <div class="dep-label future">🌅 Будущее · 10%</div>
+        <div class="dep-total" id="dep1Total" style="color:#4a7aff;">0 ₸</div>
+        <div class="dep-today" id="dep1Today"></div>
+        <div style="display:flex;gap:8px;margin:10px 0 6px;">
+          <button onclick="depAction(0,'withdraw')" style="flex:1;padding:9px;border-radius:10px;background:#1a1a2a;border:1px solid #2a2a4a;color:#4a7aff;font-size:13px;font-weight:600;cursor:pointer;">− Снять</button>
+          <button onclick="depAction(0,'topup')" style="flex:1;padding:9px;border-radius:10px;background:#0a0f1f;border:1px solid #1a2a4a;color:#7aaaff;font-size:13px;font-weight:600;cursor:pointer;">+ Пополнить</button>
+        </div>
+        <div class="dep-log" id="dep1Log"></div>
+      </div>
+      <div class="dep-card bday">
+        <div class="dep-label bday">🎂 День рождения · 20%</div>
+        <div class="dep-total" id="dep2Total" style="color:#c77aff;">0 ₸</div>
+        <div class="dep-today" id="dep2Today"></div>
+        <div style="display:flex;gap:8px;margin:10px 0 6px;">
+          <button onclick="depAction(1,'withdraw')" style="flex:1;padding:9px;border-radius:10px;background:#1a0a1a;border:1px solid #3a1a3a;color:#c77aff;font-size:13px;font-weight:600;cursor:pointer;">− Снять</button>
+          <button onclick="depAction(1,'topup')" style="flex:1;padding:9px;border-radius:10px;background:#120a12;border:1px solid #2a1a2a;color:#d799ff;font-size:13px;font-weight:600;cursor:pointer;">+ Пополнить</button>
+        </div>
+        <div class="dep-log" id="dep2Log"></div>
+      </div>
+      <div class="dep-card car">
+        <div class="dep-label car">🚗 Авто · 20%</div>
+        <div class="dep-total" id="dep3Total" style="color:#65d48b;">0 ₸</div>
+        <div class="dep-today" id="dep3Today"></div>
+        <div style="display:flex;gap:8px;margin:10px 0 6px;">
+          <button onclick="depAction(2,'withdraw')" style="flex:1;padding:9px;border-radius:10px;background:#0a1a0a;border:1px solid #1a3a1a;color:#65d48b;font-size:13px;font-weight:600;cursor:pointer;">− Снять</button>
+          <button onclick="depAction(2,'topup')" style="flex:1;padding:9px;border-radius:10px;background:#081508;border:1px solid #153015;color:#85f4ab;font-size:13px;font-weight:600;cursor:pointer;">+ Пополнить</button>
+        </div>
+        <div class="dep-log" id="dep3Log"></div>
+      </div>
+      <div style="background:#0a0a0a;border-radius:12px;padding:14px;text-align:center;border:1px solid #1a1a1a;">
+        <div style="font-size:10px;color:#333;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Всего отложено</div>
+        <div id="depGrandTotal" style="font-size:24px;font-weight:bold;color:#ffd166;">0 ₸</div>
+        <div style="font-size:11px;color:#333;margin-top:4px;">50% от всех доходов</div>
+      </div>
+    </div>
   </div>
-  <div style="padding:12px;max-width:500px;margin:0 auto;">
-
-    <div style="background:#111;border-radius:12px;padding:12px;margin-bottom:14px;font-size:12px;color:#444;text-align:center;">
-      Автоматически откладывается от дневного дохода.<br>Снятие возвращается на наличные.
-    </div>
-
-    <!-- Будущее 10% -->
-    <div class="dep-card future">
-      <div class="dep-label future">🌅 Будущее · 10%</div>
-      <div class="dep-total" id="dep1Total" style="color:#4a7aff;">0 ₸</div>
-      <div class="dep-today" id="dep1Today"></div>
-      <div style="display:flex;gap:8px;margin:10px 0 6px;">
-        <button onclick="depAction(0,'withdraw')" style="flex:1;padding:9px;border-radius:10px;background:#1a1a2a;border:1px solid #2a2a4a;color:#4a7aff;font-size:13px;font-weight:600;cursor:pointer;">− Снять</button>
-        <button onclick="depAction(0,'topup')" style="flex:1;padding:9px;border-radius:10px;background:#0a0f1f;border:1px solid #1a2a4a;color:#7aaaff;font-size:13px;font-weight:600;cursor:pointer;">+ Пополнить</button>
-      </div>
-      <div class="dep-log" id="dep1Log"></div>
-    </div>
-
-    <!-- День рождения 20% -->
-    <div class="dep-card bday">
-      <div class="dep-label bday">🎂 День рождения · 20%</div>
-      <div class="dep-total" id="dep2Total" style="color:#c77aff;">0 ₸</div>
-      <div class="dep-today" id="dep2Today"></div>
-      <div style="display:flex;gap:8px;margin:10px 0 6px;">
-        <button onclick="depAction(1,'withdraw')" style="flex:1;padding:9px;border-radius:10px;background:#1a0a1a;border:1px solid #3a1a3a;color:#c77aff;font-size:13px;font-weight:600;cursor:pointer;">− Снять</button>
-        <button onclick="depAction(1,'topup')" style="flex:1;padding:9px;border-radius:10px;background:#120a12;border:1px solid #2a1a2a;color:#d799ff;font-size:13px;font-weight:600;cursor:pointer;">+ Пополнить</button>
-      </div>
-      <div class="dep-log" id="dep2Log"></div>
-    </div>
-
-    <!-- Авто 20% -->
-    <div class="dep-card car">
-      <div class="dep-label car">🚗 Авто · 20%</div>
-      <div class="dep-total" id="dep3Total" style="color:#65d48b;">0 ₸</div>
-      <div class="dep-today" id="dep3Today"></div>
-      <div style="display:flex;gap:8px;margin:10px 0 6px;">
-        <button onclick="depAction(2,'withdraw')" style="flex:1;padding:9px;border-radius:10px;background:#0a1a0a;border:1px solid #1a3a1a;color:#65d48b;font-size:13px;font-weight:600;cursor:pointer;">− Снять</button>
-        <button onclick="depAction(2,'topup')" style="flex:1;padding:9px;border-radius:10px;background:#081508;border:1px solid #153015;color:#85f4ab;font-size:13px;font-weight:600;cursor:pointer;">+ Пополнить</button>
-      </div>
-      <div class="dep-log" id="dep3Log"></div>
-    </div>
-
-    <div style="background:#0a0a0a;border-radius:12px;padding:14px;text-align:center;border:1px solid #1a1a1a;">
-      <div style="font-size:10px;color:#333;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Всего отложено</div>
-      <div id="depGrandTotal" style="font-size:24px;font-weight:bold;color:#ffd166;">0 ₸</div>
-      <div style="font-size:11px;color:#333;margin-top:4px;">50% от всех доходов</div>
-    </div>
-
-  </div>
-</div>
 
 </div><!-- /appScreen -->
 
 <script>
   // DRAWER
-  window.openDrawer = () => {
-    document.getElementById('drawer').classList.add('open');
-    document.getElementById('drawerOverlay').classList.add('open');
-  };
-  window.closeDrawer = () => {
-    document.getElementById('drawer').classList.remove('open');
-    document.getElementById('drawerOverlay').classList.remove('open');
-  };
-  window.openSettings = () => {
-    closeDrawer();
-    setTimeout(() => document.getElementById('settingsPage').classList.add('open'), 50);
-  };
-  window.closeSettings = () => {
-    document.getElementById('settingsPage').classList.remove('open');
-  };
+  window.openDrawer = () => { document.getElementById('drawer').classList.add('open'); document.getElementById('drawerOverlay').classList.add('open'); };
+  window.closeDrawer = () => { document.getElementById('drawer').classList.remove('open'); document.getElementById('drawerOverlay').classList.remove('open'); };
+  window.openSettings = () => { closeDrawer(); setTimeout(() => document.getElementById('settingsPage').classList.add('open'), 50); };
+  window.closeSettings = () => { document.getElementById('settingsPage').classList.remove('open'); };
 
   // TABS
   window.switchTab = (name) => {
@@ -833,20 +706,11 @@
     _tapCount++;
     if (_tapTimer) clearTimeout(_tapTimer);
     _tapTimer = setTimeout(() => { _tapCount = 0; }, 600);
-    if (_tapCount >= 3) {
-      _tapCount = 0;
-      clearTimeout(_tapTimer);
-      openDeposits();
-    }
+    if (_tapCount >= 3) { _tapCount = 0; clearTimeout(_tapTimer); openDeposits(); }
   };
 
-  window.openDeposits = () => {
-    renderDeposits();
-    document.getElementById('depositScreen').classList.add('open');
-  };
-  window.closeDeposits = () => {
-    document.getElementById('depositScreen').classList.remove('open');
-  };
+  window.openDeposits = () => { renderDeposits(); document.getElementById('depositScreen').classList.add('open'); };
+  window.closeDeposits = () => { document.getElementById('depositScreen').classList.remove('open'); };
 
   const DEP_NAMES = ['Будущее', 'День рождения', 'Авто'];
   const DEP_RATES = [0.10, 0.20, 0.20];
@@ -857,7 +721,6 @@
     const byDay = {};
     (window.allTx || []).forEach(t => {
       if (t.type !== 'income') return;
-      // Исключаем возвраты с депозитов — чтобы не начислять % повторно
       if (t.subcategory && t.subcategory.startsWith('← ')) return;
       const d = t.date || '';
       if (d < DEP_START) return;
@@ -867,8 +730,6 @@
 
     const today = new Date().toISOString().slice(0,10);
     const sortedDays = Object.entries(byDay).filter(([d]) => d).sort((a,b) => a[0] > b[0] ? 1 : -1);
-
-    // Читаем ручные операции из Firestore
     const manualOps = (window.allTx || []).filter(t => t.type === 'dep_manual');
 
     let grand = 0;
@@ -877,7 +738,6 @@
       let autoTotal = 0;
       let logItems = [];
 
-      // Авто-начисления
       sortedDays.forEach(([d, sum]) => {
         const amt = Math.round(sum * rate);
         autoTotal += amt;
@@ -885,10 +745,9 @@
         logItems.push({ d, html: `<div class="dep-log-item"><span>${dd}</span><span style="color:#65d48b;">+${amt.toLocaleString()} ₸</span></div>` });
       });
 
-      // Ручные операции для этого депозита
       let manualTotal = 0;
       manualOps.filter(t => t.depIndex === i).forEach(t => {
-        manualTotal += t.amount; // отрицательное для снятия
+        manualTotal += t.amount;
         const dd = (t.date||'').slice(8) + '.' + (t.date||'').slice(5,7);
         const isW = t.amount < 0;
         logItems.push({ d: t.date||'', html: `<div class="dep-log-item"><span>${dd} ${t.comment||''}</span><span style="color:${isW?'#ff6b6b':'#ffd166'};">${isW?'':'+'}${t.amount.toLocaleString()} ₸</span></div>` });
@@ -897,53 +756,39 @@
       const total = autoTotal + manualTotal;
       grand += total;
 
-      // Сортируем лог — новые сверху
       logItems.sort((a,b) => b.d > a.d ? 1 : -1);
       const logHtml = logItems.map(l => l.html).join('');
 
       document.getElementById(id + 'Total').textContent = total.toLocaleString() + ' ₸';
-
       const todayAmt = byDay[today] ? Math.round(byDay[today] * rate) : 0;
-      document.getElementById(id + 'Today').textContent = todayAmt > 0
-        ? `Сегодня +${todayAmt.toLocaleString()} ₸`
-        : '';
+      document.getElementById(id + 'Today').textContent = todayAmt > 0 ? `Сегодня +${todayAmt.toLocaleString()} ₸` : '';
       document.getElementById(id + 'Log').innerHTML = logHtml || '<span style="color:#222;">Нет данных</span>';
     });
 
     document.getElementById('depGrandTotal').textContent = grand.toLocaleString() + ' ₸';
   }
 
-  // Снятие / пополнение депозита
-  // Показываем встроенную форму вместо prompt() (prompt не работает в WebView)
   window.depAction = (depIndex, action) => {
     const name = DEP_NAMES[depIndex];
     const label = action === 'withdraw' ? '− Снять из: ' + name : '+ Пополнить: ' + name;
     const color = action === 'withdraw' ? '#ff6b6b' : '#65d48b';
-
-    // Удаляем старую форму если есть
     const old = document.getElementById('depActionForm');
     if (old) old.remove();
-
     const form = document.createElement('div');
     form.id = 'depActionForm';
-    form.style.cssText = `position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.85);
-      display:flex;align-items:center;justify-content:center;padding:20px;`;
+    form.style.cssText = `position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;padding:20px;`;
     form.innerHTML = `
       <div style="background:#1c1c1e;border-radius:18px;padding:24px;width:100%;max-width:340px;border:1px solid #2a2a2a;">
         <div style="font-size:15px;font-weight:600;color:${color};margin-bottom:16px;">${label}</div>
         <input id="depAmt" type="number" inputmode="decimal" placeholder="Сумма ₸"
-          style="width:100%;padding:13px;border-radius:10px;border:1px solid #333;background:#2c2c2e;
-          color:#fff;font-size:16px;box-sizing:border-box;margin-bottom:10px;outline:none;"/>
+          style="width:100%;padding:13px;border-radius:10px;border:1px solid #333;background:#2c2c2e;color:#fff;font-size:16px;box-sizing:border-box;margin-bottom:10px;outline:none;"/>
         <input id="depComment" type="text" placeholder="Примечание (необязательно)"
-          style="width:100%;padding:13px;border-radius:10px;border:1px solid #333;background:#2c2c2e;
-          color:#fff;font-size:14px;box-sizing:border-box;margin-bottom:16px;outline:none;"/>
+          style="width:100%;padding:13px;border-radius:10px;border:1px solid #333;background:#2c2c2e;color:#fff;font-size:14px;box-sizing:border-box;margin-bottom:16px;outline:none;"/>
         <div style="display:flex;gap:10px;">
           <button onclick="document.getElementById('depActionForm').remove()"
-            style="flex:1;padding:13px;border-radius:10px;border:1px solid #333;background:none;
-            color:#888;font-size:14px;cursor:pointer;">Отмена</button>
+            style="flex:1;padding:13px;border-radius:10px;border:1px solid #333;background:none;color:#888;font-size:14px;cursor:pointer;">Отмена</button>
           <button onclick="confirmDepAction(${depIndex},'${action}')"
-            style="flex:1;padding:13px;border-radius:10px;border:none;background:${color};
-            color:#000;font-size:14px;font-weight:bold;cursor:pointer;">Подтвердить</button>
+            style="flex:1;padding:13px;border-radius:10px;border:none;background:${color};color:#000;font-size:14px;font-weight:bold;cursor:pointer;">Подтвердить</button>
         </div>
       </div>`;
     document.body.appendChild(form);
@@ -957,42 +802,20 @@
     const amt = Number((amtEl?.value||'').replace(/\s/g,''));
     if (!amt || amt <= 0) { amtEl.style.borderColor='#ff6b6b'; return; }
     const comment = commentEl?.value || '';
-
     document.getElementById('depActionForm').remove();
-
     const today = new Date().toISOString().slice(0,10);
     const time = new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
     const finalAmt = action === 'withdraw' ? -amt : amt;
     const nalichAcc = (window.ACCOUNTS||[]).find(a => a.name.toLowerCase().includes('налич'));
-
     try {
       const { fbDB, fbMethods } = window;
       const txRef = fbMethods.collection(fbDB, 'users', window.fbUser.uid, 'transactions');
-
-      await fbMethods.addDoc(txRef, {
-        type: 'dep_manual', depIndex,
-        amount: finalAmt, date: today, time,
-        comment: comment || (action === 'withdraw' ? 'Снятие' : 'Пополнение'),
-        createdAt: Date.now()
-      });
-
+      await fbMethods.addDoc(txRef, { type: 'dep_manual', depIndex, amount: finalAmt, date: today, time, comment: comment || (action === 'withdraw' ? 'Снятие' : 'Пополнение'), createdAt: Date.now() });
       if (nalichAcc) {
-        await fbMethods.addDoc(txRef, {
-          type: action === 'withdraw' ? 'income' : 'expense',
-          amount: amt,
-          categoryName: 'Депозит',
-          subcategory: (action === 'withdraw' ? '← ' : '→ ') + name,
-          account: nalichAcc.name,
-          date: today, time,
-          comment: comment || (action === 'withdraw' ? 'Снятие с депозита' : 'Пополнение депозита'),
-          createdAt: Date.now() + 1
-        });
+        await fbMethods.addDoc(txRef, { type: action === 'withdraw' ? 'income' : 'expense', amount: amt, categoryName: 'Депозит', subcategory: (action === 'withdraw' ? '← ' : '→ ') + name, account: nalichAcc.name, date: today, time, comment: comment || (action === 'withdraw' ? 'Снятие с депозита' : 'Пополнение депозита'), createdAt: Date.now() + 1 });
       }
-
       renderDeposits();
-    } catch(e) {
-      console.error('depAction error:', e);
-    }
+    } catch(e) { console.error('depAction error:', e); }
   };
 </script>
 
@@ -1006,7 +829,6 @@
     if (appInitialized) return;
     if (window.fbDB && window.fbMethods) { appInitialized = true; window.appInitialized = true; initApp(); }
   }
-  // Позволяем внешнему коду сбросить флаг
   window.resetApp = () => { appInitialized = false; window.appInitialized = false; };
   window.addEventListener("fbReady", tryInitApp);
   const checkFB = setInterval(() => {
@@ -1016,7 +838,6 @@
   function initApp() {
     const { fbDB, fbMethods } = window;
     const uid = window.fbUser.uid;
-    const userDoc = fbMethods.doc(fbDB, "users", uid);
     const txRef = fbMethods.collection(fbDB, "users", uid, "transactions");
     const setRef = fbMethods.collection(fbDB, "users", uid, "settings");
 
@@ -1060,18 +881,11 @@
             `<span style="display:inline-flex;align-items:center;gap:3px;background:#2a2a2a;border-radius:5px;padding:2px 7px;margin:2px;font-size:12px;">
               ${s}<button onclick="deleteSub('${d.id}','${s}')" style="background:none;border:none;color:var(--neg);font-size:11px;padding:0;cursor:pointer;line-height:1;">✕</button>
             </span>`).join("");
-          setHtml += `<div class="set-item">
-            <div class="set-item-top"><span>📂 ${data.name} <span style="color:#333;font-size:11px;">${data.catType==='income'?'(+)':'(−)'}</span></span>
-            <button class="set-del" onclick="deleteSet('${d.id}')">✕</button></div>
-            <div style="margin-top:5px;display:flex;flex-wrap:wrap;">${subBtns||'<span style="color:#2a2a2a;font-size:10px;">нет подкатегорий</span>'}</div>
-          </div>`;
+          setHtml += `<div class="set-item"><div class="set-item-top"><span>📂 ${data.name} <span style="color:#333;font-size:11px;">${data.catType==='income'?'(+)':'(−)'}</span></span><button class="set-del" onclick="deleteSet('${d.id}')">✕</button></div><div style="margin-top:5px;display:flex;flex-wrap:wrap;">${subBtns||'<span style="color:#2a2a2a;font-size:10px;">нет подкатегорий</span>'}</div></div>`;
         } else if (data.type === 'account') {
           ACCOUNTS.push({ id: d.id, ...data }); window.ACCOUNTS = ACCOUNTS;
           const ib = Number(data.initialBalance)||0;
-          setHtml += `<div class="set-item">
-            <div class="set-item-top"><span>💳 ${data.name}</span><button class="set-del" onclick="deleteSet('${d.id}')">✕</button></div>
-            <div style="font-size:10px;color:#333;margin-top:3px;">Нач. баланс: ${ib.toLocaleString()} ₸</div>
-          </div>`;
+          setHtml += `<div class="set-item"><div class="set-item-top"><span>💳 ${data.name}</span><button class="set-del" onclick="deleteSet('${d.id}')">✕</button></div><div style="font-size:10px;color:#333;margin-top:3px;">Нач. баланс: ${ib.toLocaleString()} ₸</div></div>`;
         }
       });
       document.getElementById("settingsList").innerHTML = setHtml || '<div class="muted" style="font-size:13px;padding:8px 0;">Нет настроек</div>';
@@ -1105,7 +919,6 @@
     };
     window.deleteSet = async (id) => { if (confirm("Удалить?")) await fbMethods.deleteDoc(fbMethods.doc(fbDB,"users",window.fbUser.uid,"settings",id)); };
 
-    // Настройка значений по умолчанию
     window.updateDefCats = () => {
       const type = document.getElementById('defType').value;
       const cats = DEFAULTS[type] || [];
@@ -1121,10 +934,7 @@
       if (cat && cat.sub && cat.sub.length > 0) {
         subSel.style.display = 'block';
         subSel.innerHTML = cat.sub.map(s=>`<option value="${s}">${s}</option>`).join('');
-      } else {
-        subSel.style.display = 'none';
-        subSel.innerHTML = '';
-      }
+      } else { subSel.style.display = 'none'; subSel.innerHTML = ''; }
     };
     window.saveDefaults = () => {
       const type = document.getElementById('defType').value;
@@ -1133,15 +943,13 @@
       localStorage.setItem('lastType', type);
       localStorage.setItem('lastCat', cat);
       localStorage.setItem('lastSub', sub);
-      window.showToast('✅ Сохранено! Теперь форма будет открываться с этими значениями.');
+      window.showToast('✅ Сохранено!');
     };
 
-    // Инициализируем селекты в настройках когда они открываются
     const origOpenSettings = window.openSettings;
     window.openSettings = () => {
       origOpenSettings();
       setTimeout(() => {
-        // Восстанавливаем текущие дефолты
         const lastType = localStorage.getItem('lastType') || 'income';
         const defTypeSel = document.getElementById('defType');
         if (defTypeSel) {
@@ -1154,10 +962,7 @@
             if (defCatSel && lastCat) {
               defCatSel.value = lastCat;
               updateDefSubs();
-              setTimeout(() => {
-                const defSubSel = document.getElementById('defSub');
-                if (defSubSel && lastSub) defSubSel.value = lastSub;
-              }, 50);
+              setTimeout(() => { const defSubSel = document.getElementById('defSub'); if (defSubSel && lastSub) defSubSel.value = lastSub; }, 50);
             }
           }, 50);
         }
@@ -1181,51 +986,33 @@
       const balSel=document.getElementById("setBalanceAcc");
       if (balSel) balSel.innerHTML=sorted.map(a=>`<option value="${a.id}">${a.name}</option>`).join("");
 
-      // restoreLast=true → берём дефолт из настроек (localStorage)
-      // restoreLast=false → берём то что в памяти сессии (window._s*)
       const defType = localStorage.getItem('lastType') || 'income';
       const defCat  = localStorage.getItem('lastCat')  || '';
       const defSub  = localStorage.getItem('lastSub')  || '';
 
-      if (restoreLast) {
-        elT.value = defType;
-      } else if (window._sType) {
-        elT.value = window._sType;
-      }
+      if (restoreLast) { elT.value = defType; }
+      else if (window._sType) { elT.value = window._sType; }
 
       const currentCats=DEFAULTS[elT.value]||[];
       elC.innerHTML=currentCats.map(c=>`<option value="${c.id}">${c.name}</option>`).join("");
       document.getElementById("setParentCat").innerHTML=[...DEFAULTS.income,...DEFAULTS.expense].map(c=>`<option value="${c.id}">${c.name}</option>`).join("");
 
-      if (restoreLast) {
-        const catExists = currentCats.find(c=>c.id===defCat);
-        if (catExists) elC.value = defCat;
-      } else if (window._sCat) {
-        const catExists = currentCats.find(c=>c.id===window._sCat);
-        if (catExists) elC.value = window._sCat;
-      }
+      if (restoreLast) { const catExists=currentCats.find(c=>c.id===defCat); if(catExists)elC.value=defCat; }
+      else if (window._sCat) { const catExists=currentCats.find(c=>c.id===window._sCat); if(catExists)elC.value=window._sCat; }
 
       const fillSubs=(restore=false)=>{
         const cat=currentCats.find(c=>c.id===elC.value);
         if(cat&&cat.sub&&cat.sub.length>0){
           document.getElementById("subcatWrap").classList.remove("hidden");
           elS.innerHTML=cat.sub.map(s=>`<option value="${s}">${s}</option>`).join("");
-          if (restore) {
-            if (defSub && cat.sub.includes(defSub)) elS.value = defSub;
-          } else if (window._sSub && cat.sub.includes(window._sSub)) {
-            elS.value = window._sSub;
-          }
-        } else {
-          document.getElementById("subcatWrap").classList.add("hidden");
-          elS.innerHTML="";
-        }
+          if(restore){ if(defSub&&cat.sub.includes(defSub))elS.value=defSub; }
+          else if(window._sSub&&cat.sub.includes(window._sSub)){ elS.value=window._sSub; }
+        } else { document.getElementById("subcatWrap").classList.add("hidden"); elS.innerHTML=""; }
       };
 
-      // Запоминаем выбор только в памяти сессии — при обновлении сбросится на дефолт
       elT.onchange=()=>{ window._sType=elT.value; window._sCat=''; window._sSub=''; updateUI(false); };
       elC.onchange=()=>{ window._sCat=elC.value; window._sSub=''; fillSubs(false); };
       elS.onchange=()=>{ window._sSub=elS.value; };
-
       fillSubs(restoreLast);
     }
 
@@ -1272,7 +1059,6 @@
     const from=document.getElementById("fromDate").value, to=document.getElementById("toDate").value;
     const filtered=allTx.filter(t=>{
       if(!(!from||t.date>=from)||!(!to||t.date<=to)) return false;
-      // Исключаем депозитные операции из основной истории
       if(t.type==='dep_manual') return false;
       if(t.subcategory&&(t.subcategory.startsWith('← ')||t.subcategory.startsWith('→ '))) return false;
       return true;
@@ -1292,18 +1078,14 @@
       if(t.type==='transfer'){if(accs[t.fromAccount]!==undefined)accs[t.fromAccount]-=t.amount;if(accs[t.toAccount]!==undefined)accs[t.toAccount]+=t.amount;return;}
       const acc=t.account&&t.account!=='undefined'&&t.account!==''&&t.account!=='Счет не выбран'?t.account:null;
       if(!acc)return; if(accs[acc]===undefined)accs[acc]=0;
-      // → пополнение депозита исключаем (наличные уже вычитаются через totalDeposit)
-      // ← снятие с депозита оставляем — деньги реально вернулись на наличные
       if(t.subcategory&&t.subcategory.startsWith('→ ')) return;
       accs[acc]+=(t.type==='income'?t.amount:-t.amount);
     });
 
-    // Вычитаем депозиты (50% от дохода) из наличных — только с 19 марта 2026
     const DEP_START_DATE = '2026-03-19';
     const byDayAll={};
     allTx.forEach(t=>{
       if(t.type!=='income'||!t.date||t.date<DEP_START_DATE)return;
-      // Исключаем возвраты с депозитов
       if(t.subcategory&&t.subcategory.startsWith('← '))return;
       if(!byDayAll[t.date])byDayAll[t.date]=0;
       byDayAll[t.date]+=t.amount;
@@ -1346,33 +1128,24 @@
     document.getElementById("potentialStats").innerHTML=vdHtml||'<div class="muted">Нет данных ВД</div>';
     if(totalGain>0)document.getElementById("potentialStats").innerHTML+=`<div class="gain-box"><span>ВЫГОДА ВД:</span><span class="pos">+${totalGain.toLocaleString()} ₸</span></div>`;
 
-    // Расходы — объединяем категории с одинаковым именем (регистронезависимо)
     const statsExpRaw={};
     filtered.filter(t=>t.type==='expense').forEach(t=>{
-      // Нормализуем название: первая буква заглавная, остальное как есть
       const rawName = t.categoryName || 'Прочее';
-      // Ищем существующий ключ с таким же именем (без учёта регистра)
       const existingKey = Object.keys(statsExpRaw).find(k => k.toLowerCase() === rawName.toLowerCase());
       const key = existingKey || rawName;
       if(!statsExpRaw[key]) statsExpRaw[key]={sum:0,subs:{}};
       statsExpRaw[key].sum+=t.amount;
-      // Подкатегория: если categoryName совпадает с другой категорией — добавляем как подкат
       const subKey = t.subcategory || null;
       if(subKey) statsExpRaw[key].subs[subKey]=(statsExpRaw[key].subs[subKey]||0)+t.amount;
     });
 
-    // Дополнительно: если есть категория "Напитки" и есть "Еда" — переносим Напитки в Еда как подкат
-    const mergeMap = {}; // 'откуда (lower)' -> 'куда (lower)'
+    const mergeMap = {};
     const expKeys = Object.keys(statsExpRaw);
     expKeys.forEach(k => {
-      // Ищем категорию которая является подкатегорией другой категории
       expKeys.forEach(parent => {
         if (k === parent) return;
         const parentData = statsExpRaw[parent];
-        // Если имя k встречается как подкатегория parent — значит k надо слить с parent
-        if (Object.keys(parentData.subs).some(s => s.toLowerCase() === k.toLowerCase())) {
-          mergeMap[k.toLowerCase()] = parent;
-        }
+        if (Object.keys(parentData.subs).some(s => s.toLowerCase() === k.toLowerCase())) { mergeMap[k.toLowerCase()] = parent; }
       });
     });
 
@@ -1380,25 +1153,15 @@
     Object.entries(statsExpRaw).forEach(([k, d]) => {
       const targetKey = mergeMap[k.toLowerCase()];
       if (targetKey) {
-        // Переносим сумму в родительскую категорию как подкатегорию
         if (!statsExp[targetKey]) statsExp[targetKey] = {...statsExpRaw[targetKey]};
         statsExp[targetKey].sum += d.sum;
-        // Добавляем подкатегории
-        Object.entries(d.subs).forEach(([s,v]) => {
-          statsExp[targetKey].subs[s] = (statsExp[targetKey].subs[s]||0) + v;
-        });
-        // Если подкатегорий нет — добавляем само название как подкат
-        if (Object.keys(d.subs).length === 0) {
-          statsExp[targetKey].subs[k] = (statsExp[targetKey].subs[k]||0) + d.sum;
-        }
+        Object.entries(d.subs).forEach(([s,v]) => { statsExp[targetKey].subs[s] = (statsExp[targetKey].subs[s]||0) + v; });
+        if (Object.keys(d.subs).length === 0) { statsExp[targetKey].subs[k] = (statsExp[targetKey].subs[k]||0) + d.sum; }
       } else if (!Object.values(mergeMap).includes(k) || !statsExp[k]) {
         if (!statsExp[k]) statsExp[k] = d;
       }
     });
-    // Убеждаемся что родительские категории добавлены
-    Object.values(mergeMap).forEach(parent => {
-      if (!statsExp[parent] && statsExpRaw[parent]) statsExp[parent] = {...statsExpRaw[parent]};
-    });
+    Object.values(mergeMap).forEach(parent => { if (!statsExp[parent] && statsExpRaw[parent]) statsExp[parent] = {...statsExpRaw[parent]}; });
 
     document.getElementById("expenseDetails").innerHTML=Object.entries(statsExp)
       .sort((a,b)=>b[1].sum-a[1].sum)
@@ -1425,12 +1188,9 @@
     allTx.forEach(t=>{if(t.type!=='income')return;const d=t.date||'',m=d.slice(0,7);if(!byDay[d])byDay[d]=0;byDay[d]+=t.amount;if(!byMonth[m])byMonth[m]={inc:0,exp:0};byMonth[m].inc+=t.amount;});
     allTx.forEach(t=>{if(t.type!=='expense')return;const m=(t.date||'').slice(0,7);if(!byMonth[m])byMonth[m]={inc:0,exp:0};byMonth[m].exp+=t.amount;});
     const DELIVERY_POINTS_BW=["F1","F2","F3","ALLEY PUB","Ночь"];
-    const deliveryDays=new Set();
-    // Сумма по точкам за каждый день
     const byDayDeliv={};
     allTx.forEach(t=>{
       if(t.type==='income'&&DELIVERY_POINTS_BW.includes(t.subcategory)){
-        deliveryDays.add(t.date);
         if(!byDayDeliv[t.date])byDayDeliv[t.date]=0;
         byDayDeliv[t.date]+=t.amount;
       }
@@ -1450,16 +1210,8 @@
       chartHtml=`<div class="sec-title">График дохода по дням</div><div style="text-align:center;height:24px;display:flex;align-items:center;justify-content:center;gap:8px;"><span id="chartTipDate" style="font-size:11px;color:#444;"></span><span id="chartTipVal" style="font-size:15px;font-weight:bold;color:#a78bfa;"></span></div><div class="chart-wrap"><canvas id="incomeChart" width="${W}" height="${H+20}" style="display:block;"></canvas></div>`;
     }
     const bwHtml=bestDay?`<div class="sec-title">Лучший и худший день (по точкам)</div><div class="bw-grid">
-      <div class="bw-card best">
-        <div class="bw-label">🏆 Лучший</div>
-        <div class="bw-val pos">${bestDay[1].toLocaleString()} ₸</div>
-        <div class="bw-date">${fmtD(bestDay[0])}</div>
-      </div>
-      <div class="bw-card worst">
-        <div class="bw-label">📉 Худший</div>
-        <div class="bw-val neg">${worstDay?worstDay[1].toLocaleString():'—'} ₸</div>
-        <div class="bw-date">${worstDay?fmtD(worstDay[0]):'—'}</div>
-      </div>
+      <div class="bw-card best"><div class="bw-label">🏆 Лучший</div><div class="bw-val pos">${bestDay[1].toLocaleString()} ₸</div><div class="bw-date">${fmtD(bestDay[0])}</div></div>
+      <div class="bw-card worst"><div class="bw-label">📉 Худший</div><div class="bw-val neg">${worstDay?worstDay[1].toLocaleString():'—'} ₸</div><div class="bw-date">${worstDay?fmtD(worstDay[0]):'—'}</div></div>
     </div>`:'';
     const DELIVERY_POINTS=["F1","F2","F3","ALLEY PUB","Ночь"];
     const wdByM={};
@@ -1526,7 +1278,7 @@
     };
   };
 
-  // ── WHATSAPP ПАРСЕР ────────────────────────────────────────────
+  // WHATSAPP ПАРСЕР
   let waEntries = [];
   let nightMode = false;
 
@@ -1534,55 +1286,29 @@
     nightMode = document.getElementById('nightMode').checked;
     const thumb = document.getElementById('nightThumb');
     const slider = document.getElementById('nightSlider');
-    if (nightMode) {
-      slider.style.background = '#1a3a2a';
-      thumb.style.background = '#65d48b';
-      thumb.style.transform = 'translateX(20px)';
-    } else {
-      slider.style.background = '#222';
-      thumb.style.background = '#444';
-      thumb.style.transform = 'translateX(0)';
-    }
+    if (nightMode) { slider.style.background='#1a3a2a'; thumb.style.background='#65d48b'; thumb.style.transform='translateX(20px)'; }
+    else { slider.style.background='#222'; thumb.style.background='#444'; thumb.style.transform='translateX(0)'; }
   };
 
   window.parseWA = async () => {
     const text = document.getElementById('waInput').value.trim();
     if (!text) return window.showToast('Вставь текст из WhatsApp');
-
     const btn = document.querySelector('#tab-wa .card button');
-    btn.textContent = '⏳ Анализирую...';
-    btn.disabled = true;
+    btn.textContent = '⏳ Анализирую...'; btn.disabled = true;
 
-    // Если ночной режим — простой парсинг без ИИ
     if (nightMode) {
-      // Считаем количество строк с адресами (номер дома)
       const lines = text.split('\n').filter(l => /\d+-\d+/.test(l));
-      waEntries = lines.map(l => ({
-        point: 'Ночь', amount: 500,
-        address: l.trim(), type: 'до подъезда'
-      }));
-      renderWAResult();
-      btn.textContent = '🤖 Разобрать';
-      btn.disabled = false;
+      waEntries = lines.map(l => ({ point: 'Ночь', amount: 500, address: l.trim(), type: 'до подъезда' }));
+      renderWAResult(); btn.textContent = '🤖 Разобрать'; btn.disabled = false;
       return;
     }
 
-    // Правила парсинга
-    const POINTS = {
-      'F1': { under: 150, flat: 300 },
-      'F2': { under: 150, flat: 300 },
-      'F3': { under: 150, flat: 300 },
-      'ALLEY': { under: 600, flat: 900 },
-      'ALLEY PUB': { under: 600, flat: 900 },
-    };
-
-    // Парсим локально без ИИ — по шаблону
+    const POINTS = { 'F1': {under:150,flat:300}, 'F2': {under:150,flat:300}, 'F3': {under:150,flat:300}, 'ALLEY': {under:600,flat:900}, 'ALLEY PUB': {under:600,flat:900} };
     const entries = [];
-    // Разбиваем вместе с временными метками
     const rawBlocks = text.split(/(\[\d+\.\d+,\s*\d+:\d+\])/);
     const blocks = [];
     for (let i = 1; i < rawBlocks.length; i += 2) {
-      const timeTag = rawBlocks[i]; // [28.03, 17:02]
+      const timeTag = rawBlocks[i];
       const body = rawBlocks[i+1] || '';
       const timeMatch = timeTag.match(/(\d+:\d+)/);
       const msgTime = timeMatch ? timeMatch[1] : '';
@@ -1591,16 +1317,12 @@
 
     const isPhone = s => /^[\+\d8]/.test(s.trim()) && /[\d\s\-\(\)]{7,}/.test(s);
     const cleanPhone = s => s.replace(/[\+\d][\d\s\-\(\)]{7,}/g,'').replace(/^8\d{10}/g,'').trim();
-    const skipLine = s => /через|забрать|звонить|код|готов|мкрн|гараж|подъезд\s|этаж\s|кв\s*$/i.test(s) === false
-      ? false : true;
 
     for (const block of blocks) {
       const lines = block.body.split('\n').filter(l => l.trim());
       if (!lines.length) continue;
       const msgTime = block.msgTime;
       const firstLine = lines[0].trim();
-
-      // Определяем точку
       let point = null;
       const fl = firstLine.toUpperCase();
       if (/ALLEY|АЛЕЙ/.test(fl)) point = 'ALLEY PUB';
@@ -1609,19 +1331,10 @@
       else if (/F\s*1/.test(fl)) point = 'F1';
       if (!point) continue;
 
-      // Извлекаем часть после названия точки и двоеточия
       let afterColon = firstLine.replace(/^.*?(?:ALLEY\s*PUB|F\s*[123])\s*:/i, '').trim();
-      // Убираем телефон из afterColon
       afterColon = cleanPhone(afterColon).replace(/,.*$/, '').trim();
-
       let address = '';
-
-      // 1. Адрес в первой строке после двоеточия (не телефон, есть содержимое)
-      if (afterColon && !isPhone(afterColon) && afterColon.length > 1) {
-        address = afterColon;
-      }
-
-      // 2. Ищем в остальных строках
+      if (afterColon && !isPhone(afterColon) && afterColon.length > 1) { address = afterColon; }
       if (!address) {
         for (const line of lines.slice(1)) {
           if (isPhone(line)) continue;
@@ -1630,54 +1343,34 @@
           if (cleaned.length > 1) { address = cleaned; break; }
         }
       }
-
       if (!address) continue;
 
-      // Классифицируем адрес
       const a = address.toLowerCase().trim();
       let isUnder = false;
+      if (/п\.п$|пп$|последний\s+подъезд/.test(a)) isUnder = true;
+      else if (/кв/.test(a)) isUnder = false;
+      else if (/^[а-яё]/i.test(a)) isUnder = true;
+      else if (/^\d+[а-я]?[-–]\d+[-–](\d+п|пп?)$/i.test(a)) isUnder = true;
+      else if (/^\d+[а-я]?[-–]\d+[-–]\d+[а-яёa-z]?$/i.test(a)) isUnder = false;
+      else if (/^\d+[а-я]?[-–]\d+$/i.test(a)) isUnder = true;
+      else if (/[а-яё]п$/i.test(a) && !/кв/.test(a)) isUnder = true;
+      else isUnder = false;
 
-      if (/п\.п$|пп$|последний\s+подъезд/.test(a)) {
-        isUnder = true; // пп / п.п
-      } else if (/кв/.test(a)) {
-        isUnder = false; // явно квартира
-      } else if (/^[а-яё]/i.test(a)) {
-        isUnder = true; // начинается с буквы — спецадрес (Магазин, Баня и т.п.)
-      } else if (/^\d+[а-я]?[-–]\d+[-–](\d+п|пп?)$/i.test(a)) {
-        isUnder = true; // три сегмента, последний = п/пп/1п — до подъезда (1-22-1п, 1-22-пп)
-      } else if (/^\d+[а-я]?[-–]\d+[-–]\d+[а-яёa-z]?$/i.test(a)) {
-        isUnder = false; // три сегмента — квартира
-      } else if (/^\d+[а-я]?[-–]\d+$/i.test(a)) {
-        isUnder = true; // два сегмента — подъезд
-      } else if (/[а-яё]п$/i.test(a) && !/кв/.test(a)) {
-        isUnder = true; // заканчивается на п
-      } else {
-        isUnder = false;
-      }
-
-      const prices = POINTS[point] || { under: 150, flat: 300 };
+      const prices = POINTS[point] || {under:150,flat:300};
       const amount = isUnder ? prices.under : prices.flat;
       const type = isUnder ? 'до подъезда' : 'до квартиры';
-
       entries.push({ point, amount, address, type, msgTime });
     }
 
     waEntries = entries;
     renderWAResult();
-    btn.textContent = '🤖 Разобрать';
-    btn.disabled = false;
+    btn.textContent = '🤖 Разобрать'; btn.disabled = false;
   };
 
   function renderWAResult() {
     const result = document.getElementById('waResult');
     const list = document.getElementById('waList');
-
-    if (!waEntries.length) {
-      list.innerHTML = '<div class="muted">Ничего не найдено. Проверь формат текста.</div>';
-      result.style.display = 'block';
-      return;
-    }
-
+    if (!waEntries.length) { list.innerHTML = '<div class="muted">Ничего не найдено.</div>'; result.style.display = 'block'; return; }
     const total = waEntries.reduce((s, e) => s + e.amount, 0);
     list.innerHTML = waEntries.map((e, i) => `
       <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #1a1a1a;">
@@ -1689,148 +1382,78 @@
           <span style="color:#65d48b;font-weight:bold;">${e.amount.toLocaleString()} ₸</span>
           <button onclick="removeWAEntry(${i})" style="background:none;border:none;color:#333;font-size:16px;cursor:pointer;padding:4px;">✕</button>
         </div>
-      </div>
-    `).join('') + `
-      <div style="display:flex;justify-content:space-between;padding:12px 0;font-weight:bold;">
+      </div>`).join('') +
+      `<div style="display:flex;justify-content:space-between;padding:12px 0;font-weight:bold;">
         <span>Итого (${waEntries.length} записей)</span>
         <span style="color:#65d48b;">${total.toLocaleString()} ₸</span>
       </div>`;
-
     result.style.display = 'block';
   }
 
-  window.removeWAEntry = (i) => {
-    waEntries.splice(i, 1);
-    renderWAResult();
-  };
+  window.removeWAEntry = (i) => { waEntries.splice(i, 1); renderWAResult(); };
 
   window.saveWA = async () => {
     if (!waEntries.length) return;
     const btn = document.querySelector('#waResult button');
-    btn.textContent = '⏳ Проверяю дубли...';
-    btn.disabled = true;
-
+    btn.textContent = '⏳ Проверяю дубли...'; btn.disabled = true;
     const { fbDB, fbMethods } = window;
     const uid = window.fbUser.uid;
     const txRef = fbMethods.collection(fbDB, 'users', uid, 'transactions');
-    const today = (() => {
-      const now = new Date();
-      if (now.getHours() < 3) now.setDate(now.getDate() - 1);
-      return new Date(now - now.getTimezoneOffset() * 60000).toISOString().split('T')[0];
-    })();
-    const time = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-
+    const today = (() => { const now=new Date(); if(now.getHours()<3)now.setDate(now.getDate()-1); return new Date(now-now.getTimezoneOffset()*60000).toISOString().split('T')[0]; })();
+    const time = new Date().toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'});
     try {
-      // Загружаем уже существующие записи за сегодня
-      const existing = (window.allTx || []).filter(t =>
-        t.date === today && t.type === 'income' && t.categoryName === 'Доставка'
-      );
-      // Ключ для проверки дубля: точка + адрес
-      // Дубль = та же точка + адрес + время сообщения WhatsApp
-      const existingKeys = new Set(existing.map(t =>
-        `${t.subcategory}|${(t.comment||'').trim().toLowerCase()}|${t.waTime||''}`
-      ));
-
-      let saved = 0, skipped = 0;
+      const existing = (window.allTx||[]).filter(t=>t.date===today&&t.type==='income'&&t.categoryName==='Доставка');
+      const existingKeys = new Set(existing.map(t=>`${t.subcategory}|${(t.comment||'').trim().toLowerCase()}|${t.waTime||''}`));
+      let saved=0, skipped=0;
       for (const e of waEntries) {
         const key = `${e.point}|${e.address.trim().toLowerCase()}|${e.msgTime||''}`;
-        if (existingKeys.has(key)) {
-          skipped++;
-          continue;
-        }
-        await fbMethods.addDoc(txRef, {
-          type: 'income',
-          amount: e.amount,
-          categoryName: 'Доставка',
-          subcategory: e.point,
-          account: 'Наличные',
-          date: today,
-          time,
-          comment: e.address,
-          waTime: e.msgTime || '',
-          createdAt: Date.now()
-        });
-        existingKeys.add(key);
-        saved++;
+        if (existingKeys.has(key)) { skipped++; continue; }
+        await fbMethods.addDoc(txRef, { type:'income', amount:e.amount, categoryName:'Доставка', subcategory:e.point, account:'Наличные', date:today, time, comment:e.address, waTime:e.msgTime||'', createdAt:Date.now() });
+        existingKeys.add(key); saved++;
       }
-
       let msg = `✅ Записано: ${saved}`;
-      if (skipped > 0) msg += `\n⚠️ Пропущено дублей: ${skipped}`;
+      if (skipped>0) msg += `\n⚠️ Пропущено дублей: ${skipped}`;
       window.showToast(msg);
-
       waEntries = [];
       document.getElementById('waInput').value = '';
       document.getElementById('waResult').style.display = 'none';
-    } catch(e) {
-      window.showToast('Ошибка: ' + e.message);
-    }
-
-    btn.textContent = '✅ Записать всё';
-    btn.disabled = false;
+    } catch(e) { window.showToast('Ошибка: ' + e.message); }
+    btn.textContent = '✅ Записать всё'; btn.disabled = false;
   };
 
-  // Обработка уведомлений от банков (вызывается из NotificationService -> MainActivity)
-  window.onNotificationReceived = function(title, text, app) {
-    console.log("Уведомление перехвачено:", title, text, app);
-    // Здесь логика парсинга SMS/уведомлений от банков
-  };
+  window.onNotificationReceived = function(title, text, app) { console.log("Уведомление:", title, text, app); };
 </script>
+
 <script>
   // PULL TO REFRESH
-  let ptrStartY = 0, ptrActive = false;
-  const PTR_THRESHOLD = 80;
-
-  document.addEventListener('touchstart', e => {
-    if (window.scrollY === 0) {
-      ptrStartY = e.touches[0].clientY;
-      ptrActive = true;
-    }
-  }, { passive: true });
-
-  document.addEventListener('touchmove', e => {
-    if (!ptrActive) return;
-    const dist = e.touches[0].clientY - ptrStartY;
-    if (dist > 10) {
-      const ind = document.getElementById('ptr-indicator');
-      const spinner = document.getElementById('ptr-spinner');
-      const txt = document.getElementById('ptr-text');
+  let ptrStartY=0, ptrActive=false;
+  const PTR_THRESHOLD=80;
+  document.addEventListener('touchstart',e=>{if(window.scrollY===0){ptrStartY=e.touches[0].clientY;ptrActive=true;}},{passive:true});
+  document.addEventListener('touchmove',e=>{
+    if(!ptrActive)return;
+    const dist=e.touches[0].clientY-ptrStartY;
+    if(dist>10){
+      const ind=document.getElementById('ptr-indicator'),spinner=document.getElementById('ptr-spinner'),txt=document.getElementById('ptr-text');
       ind.classList.add('visible');
-      if (dist > PTR_THRESHOLD) {
-        spinner.classList.add('spin');
-        txt.textContent = 'Отпустите для обновления';
-      } else {
-        spinner.classList.remove('spin');
-        txt.textContent = 'Потяните вниз для обновления';
-      }
+      if(dist>PTR_THRESHOLD){spinner.classList.add('spin');txt.textContent='Отпустите для обновления';}
+      else{spinner.classList.remove('spin');txt.textContent='Потяните вниз для обновления';}
     }
-  }, { passive: true });
-
-  document.addEventListener('touchend', e => {
-    if (!ptrActive) return;
-    ptrActive = false;
-    const dist = e.changedTouches[0].clientY - ptrStartY;
-    const ind = document.getElementById('ptr-indicator');
-    const spinner = document.getElementById('ptr-spinner');
-    if (dist > PTR_THRESHOLD) {
-      document.getElementById('ptr-text').textContent = 'Обновление...';
-      setTimeout(() => {
-        ind.classList.remove('visible');
-        spinner.classList.remove('spin');
-        // Перезапускаем initApp полностью — свежие данные из Firebase
-        if (window.fbUser && window.fbDB && window.fbMethods) {
-          if (window.resetApp) window.resetApp();
-          window.appStarted = false;
-          setTimeout(() => window.dispatchEvent(new Event("fbReady")), 50);
-        } else if (window.render) {
-          window.render();
-        }
-      }, 500);
-    } else {
-      ind.classList.remove('visible');
-      spinner.classList.remove('spin');
-    }
+  },{passive:true});
+  document.addEventListener('touchend',e=>{
+    if(!ptrActive)return; ptrActive=false;
+    const dist=e.changedTouches[0].clientY-ptrStartY;
+    const ind=document.getElementById('ptr-indicator'),spinner=document.getElementById('ptr-spinner');
+    if(dist>PTR_THRESHOLD){
+      document.getElementById('ptr-text').textContent='Обновление...';
+      setTimeout(()=>{
+        ind.classList.remove('visible');spinner.classList.remove('spin');
+        if(window.fbUser&&window.fbDB&&window.fbMethods){if(window.resetApp)window.resetApp();window.appStarted=false;setTimeout(()=>window.dispatchEvent(new Event("fbReady")),50);}
+        else if(window.render)window.render();
+      },500);
+    } else { ind.classList.remove('visible');spinner.classList.remove('spin'); }
   });
 </script>
+
 <script>
 // ══════════════════════════════════════════════
 // ИИ АГЕНТ — мульти-провайдер + function calling
@@ -1838,167 +1461,204 @@
 let aiHistory = [];
 let currentProvider = 'gemini';
 
-// ── Выбор провайдера ──
 window.selectProvider = (p) => {
   currentProvider = p;
   ['gemini','claude','openai'].forEach(x => {
-    const btn = document.getElementById('provBtn-'+x);
-    const setup = document.getElementById('provSetup-'+x);
-    const active = x === p;
-    btn.style.opacity = active ? '1' : '0.4';
-    btn.style.borderColor = active ? (x==='gemini'?'#4a9eff':x==='claude'?'#c084fc':'#65d48b') : '#2a2a2a';
-    if (setup) setup.style.display = active ? 'block' : 'none';
+    const btn=document.getElementById('provBtn-'+x), setup=document.getElementById('provSetup-'+x), active=x===p;
+    btn.style.opacity=active?'1':'0.4';
+    btn.style.borderColor=active?(x==='gemini'?'#4a9eff':x==='claude'?'#c084fc':'#65d48b'):'#2a2a2a';
+    if(setup)setup.style.display=active?'block':'none';
   });
 };
 
-// ── Загрузка моделей Gemini ──
 window.loadAiModels = async () => {
-  const key = document.getElementById('keyInput-gemini').value.trim();
-  if (!key) { window.showToast('Введи ключ Gemini'); return; }
-  const btn = document.getElementById('loadModelsBtn');
-  btn.textContent = '⏳ Загружаю...'; btn.disabled = true;
+  const key=document.getElementById('keyInput-gemini').value.trim();
+  if(!key){window.showToast('Введи ключ Gemini');return;}
+  const btn=document.getElementById('loadModelsBtn');
+  btn.textContent='⏳ Загружаю...'; btn.disabled=true;
   try {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
-    const data = await res.json();
-    if (data.error) throw new Error(data.error.message);
-    const models = (data.models||[]).filter(m => (m.supportedGenerationMethods||[]).includes('generateContent'));
-    const sel = document.getElementById('aiModelSelect');
-    const saved = localStorage.getItem('geminiModel')||'';
-    sel.innerHTML = models.map(m => {
-      const id = m.name.replace('models/','');
-      return `<option value="${id}" ${id===saved?'selected':''}>${m.displayName||id}</option>`;
-    }).join('');
-    sel.style.display = 'block';
-    btn.textContent = `✅ ${models.length} моделей`;
-  } catch(e) { btn.textContent = '❌ '+e.message; }
-  btn.disabled = false;
+    const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
+    const data=await res.json();
+    if(data.error)throw new Error(data.error.message);
+    const models=(data.models||[]).filter(m=>(m.supportedGenerationMethods||[]).includes('generateContent'));
+    const sel=document.getElementById('aiModelSelect');
+    const saved=localStorage.getItem('geminiModel')||'';
+    sel.innerHTML=models.map(m=>{const id=m.name.replace('models/','');return`<option value="${id}" ${id===saved?'selected':''}>${m.displayName||id}</option>`;}).join('');
+    sel.style.display='block';
+    btn.textContent=`✅ ${models.length} моделей`;
+  } catch(e){btn.textContent='❌ '+e.message;}
+  btn.disabled=false;
 };
 
-// ── Сохранение настроек ──
 window.saveAiSettings = () => {
-  const p = currentProvider;
-  if (p === 'gemini') {
-    const key = document.getElementById('keyInput-gemini').value.trim();
-    const sel = document.getElementById('aiModelSelect');
-    if (!key) { window.showToast('Введи ключ Gemini'); return; }
-    if (!sel.value) { window.showToast('Загрузи и выбери модель'); return; }
-    localStorage.setItem('geminiKey', key);
-    localStorage.setItem('geminiModel', sel.value);
-  } else if (p === 'claude') {
-    const key = document.getElementById('keyInput-claude').value.trim();
-    if (!key) { window.showToast('Введи ключ Claude'); return; }
-    localStorage.setItem('claudeKey', key);
-    localStorage.setItem('claudeModel', document.getElementById('modelSelect-claude').value);
-  } else if (p === 'openai') {
-    const key = document.getElementById('keyInput-openai').value.trim();
-    if (!key) { window.showToast('Введи ключ OpenAI'); return; }
-    localStorage.setItem('openaiKey', key);
-    localStorage.setItem('openaiModel', document.getElementById('modelSelect-openai').value);
-  }
-  localStorage.setItem('aiProvider', p);
-  document.getElementById('aiKeySetup').style.display = 'none';
-  const names = {gemini:'Gemini 🔵', claude:'Claude 🟣', openai:'OpenAI 🟢'};
+  const p=currentProvider;
+  if(p==='gemini'){const key=document.getElementById('keyInput-gemini').value.trim(),sel=document.getElementById('aiModelSelect');if(!key){window.showToast('Введи ключ Gemini');return;}if(!sel.value){window.showToast('Загрузи и выбери модель');return;}localStorage.setItem('geminiKey',key);localStorage.setItem('geminiModel',sel.value);}
+  else if(p==='claude'){const key=document.getElementById('keyInput-claude').value.trim();if(!key){window.showToast('Введи ключ Claude');return;}localStorage.setItem('claudeKey',key);localStorage.setItem('claudeModel',document.getElementById('modelSelect-claude').value);}
+  else if(p==='openai'){const key=document.getElementById('keyInput-openai').value.trim();if(!key){window.showToast('Введи ключ OpenAI');return;}localStorage.setItem('openaiKey',key);localStorage.setItem('openaiModel',document.getElementById('modelSelect-openai').value);}
+  localStorage.setItem('aiProvider',p);
+  document.getElementById('aiKeySetup').style.display='none';
+  const names={gemini:'Gemini 🔵',claude:'Claude 🟣',openai:'OpenAI 🟢'};
   showAgentStatus(names[p]);
-  if (!aiHistory.length) greetAgent();
+  if(!aiHistory.length)greetAgent();
 };
 
 window.resetAiKey = () => {
-  document.getElementById('aiKeySetup').style.display = 'block';
-  document.getElementById('aiAgentStatus').style.display = 'none';
-  const p = localStorage.getItem('aiProvider')||'gemini';
-  selectProvider(p);
-  // Подставляем сохранённые ключи
-  const gk = localStorage.getItem('geminiKey'); if(gk) document.getElementById('keyInput-gemini').value=gk;
-  const ck = localStorage.getItem('claudeKey'); if(ck) document.getElementById('keyInput-claude').value=ck;
-  const ok = localStorage.getItem('openaiKey'); if(ok) document.getElementById('keyInput-openai').value=ok;
-  const cm = localStorage.getItem('claudeModel'); if(cm) document.getElementById('modelSelect-claude').value=cm;
-  const om = localStorage.getItem('openaiModel'); if(om) document.getElementById('modelSelect-openai').value=om;
+  document.getElementById('aiKeySetup').style.display='block';
+  document.getElementById('aiAgentStatus').style.display='none';
+  const p=localStorage.getItem('aiProvider')||'gemini'; selectProvider(p);
+  const gk=localStorage.getItem('geminiKey');if(gk)document.getElementById('keyInput-gemini').value=gk;
+  const ck=localStorage.getItem('claudeKey');if(ck)document.getElementById('keyInput-claude').value=ck;
+  const ok=localStorage.getItem('openaiKey');if(ok)document.getElementById('keyInput-openai').value=ok;
+  const cm=localStorage.getItem('claudeModel');if(cm)document.getElementById('modelSelect-claude').value=cm;
+  const om=localStorage.getItem('openaiModel');if(om)document.getElementById('modelSelect-openai').value=om;
 };
 
 function showAgentStatus(name) {
-  const el = document.getElementById('aiAgentStatus');
-  el.style.display = 'flex';
-  document.getElementById('aiStatusText').textContent = `🟢 Агент: ${name}`;
+  const el=document.getElementById('aiAgentStatus');
+  el.style.display='flex';
+  document.getElementById('aiStatusText').textContent=`🟢 Агент: ${name}`;
 }
 
-// ── Контекст данных ──
+// ── ПОЛНЫЙ КОНТЕКСТ (все данные) ──
 function buildContext() {
   const tx = window.allTx || [];
   const today = (() => { const n=new Date(); if(n.getHours()<3)n.setDate(n.getDate()-1); return new Date(n-n.getTimezoneOffset()*60000).toISOString().split('T')[0]; })();
   const month = today.slice(0,7);
 
-  const todayTx = tx.filter(t=>t.date===today&&t.type==='income');
-  const todaySum = todayTx.reduce((s,t)=>s+t.amount,0);
-  const monthTx = tx.filter(t=>(t.date||'').startsWith(month)&&t.type==='income');
-  const monthSum = monthTx.reduce((s,t)=>s+t.amount,0);
-  const last5 = tx.slice(-5).map(t=>`${t.date} ${t.type==='income'?'+':'-'}${t.amount}₸ ${t.subcategory||t.categoryName}`).join('\n');
+  // Все доходы/расходы (без депозитных переводов)
+  const allIncome = tx.filter(t=>t.type==='income'&&!t.subcategory?.startsWith('← ')&&!t.subcategory?.startsWith('→ '));
+  const allExpense = tx.filter(t=>t.type==='expense'&&!t.subcategory?.startsWith('← ')&&!t.subcategory?.startsWith('→ '));
+  const totalInc = allIncome.reduce((s,t)=>s+t.amount,0);
+  const totalExp = allExpense.reduce((s,t)=>s+t.amount,0);
 
+  // Сегодня
+  const todayInc = allIncome.filter(t=>t.date===today).reduce((s,t)=>s+t.amount,0);
+  const todayExp = allExpense.filter(t=>t.date===today).reduce((s,t)=>s+t.amount,0);
+
+  // Текущий месяц
+  const monthInc = allIncome.filter(t=>(t.date||'').startsWith(month)).reduce((s,t)=>s+t.amount,0);
+  const monthExp = allExpense.filter(t=>(t.date||'').startsWith(month)).reduce((s,t)=>s+t.amount,0);
+
+  // По месяцам
+  const byMonth = {};
+  tx.forEach(t=>{
+    if(t.type!=='income'&&t.type!=='expense') return;
+    const m=(t.date||'').slice(0,7); if(!m) return;
+    if(!byMonth[m]) byMonth[m]={inc:0,exp:0,days:new Set()};
+    if(t.type==='income'&&!t.subcategory?.startsWith('← ')&&!t.subcategory?.startsWith('→ ')){byMonth[m].inc+=t.amount;byMonth[m].days.add(t.date);}
+    if(t.type==='expense'&&!t.subcategory?.startsWith('← ')&&!t.subcategory?.startsWith('→ '))byMonth[m].exp+=t.amount;
+  });
+  const fmtM=m=>{const mn=['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];const[y,mo]=m.split('-');return`${mn[parseInt(mo)-1]} ${y}`;};
+  const monthStats = Object.entries(byMonth).sort((a,b)=>b[0]>a[0]?1:-1)
+    .map(([m,d])=>`  ${fmtM(m)}: доход ${d.inc.toLocaleString()}₸, расход ${d.exp.toLocaleString()}₸, чистая ${(d.inc-d.exp).toLocaleString()}₸, дней ${d.days.size}, ср/день ${d.days.size>0?Math.round(d.inc/d.days.size).toLocaleString():0}₸`).join('\n');
+
+  // По точкам (всё время)
   const POINTS = ["F1","F2","F3","ALLEY PUB","Ночь"];
   const byPoint = {};
-  todayTx.forEach(t=>{ if(POINTS.includes(t.subcategory)){byPoint[t.subcategory]=(byPoint[t.subcategory]||0)+t.amount;} });
+  allIncome.forEach(t=>{
+    if(POINTS.includes(t.subcategory)){
+      if(!byPoint[t.subcategory])byPoint[t.subcategory]={sum:0,cnt:0,days:new Set()};
+      byPoint[t.subcategory].sum+=t.amount;byPoint[t.subcategory].cnt++;byPoint[t.subcategory].days.add(t.date);
+    }
+  });
+  const pointStats = Object.entries(byPoint)
+    .map(([p,d])=>`  ${p}: ${d.sum.toLocaleString()}₸ (${d.cnt} доставок, ${d.days.size} дней, ср/день ${Math.round(d.sum/d.days.size).toLocaleString()}₸)`).join('\n');
 
-  const cats = [...(window.DEFAULTS?.income||[]),...(window.DEFAULTS?.expense||[])];
-  const accs = (window.ACCOUNTS||[]).map(a=>a.name);
+  // По категориям расходов (всё время)
+  const byCat = {};
+  allExpense.forEach(t=>{const k=t.categoryName||'Прочее';if(!byCat[k])byCat[k]=0;byCat[k]+=t.amount;});
+  const expCats = Object.entries(byCat).sort((a,b)=>b[1]-a[1])
+    .map(([c,v])=>`  ${c}: ${v.toLocaleString()}₸`).join('\n');
 
-  return `ДАННЫЕ ПОЛЬЗОВАТЕЛЯ (${today}):
-Сегодня: ${todaySum.toLocaleString()}₸ | По точкам: ${Object.entries(byPoint).map(([k,v])=>`${k}:${v}`).join(', ')||'нет'}
-Месяц (${month}): ${monthSum.toLocaleString()}₸
-Последние 5 записей:
-${last5}
-Счета: ${accs.join(', ')||'нет'}
-Категории прихода: ${(window.DEFAULTS?.income||[]).map(c=>c.name+(c.sub&&c.sub.length?'('+c.sub.join(',')+'/)':'')).join(', ')||'нет'}
-Категории расхода: ${(window.DEFAULTS?.expense||[]).map(c=>c.name).join(', ')||'нет'}
-Всего транзакций в базе: ${tx.length}`;
+  // Депозиты
+  const DEP_START = '2026-03-19';
+  const DEP_RATES = [0.10, 0.20, 0.20];
+  const DEP_NAMES_DEP = ['Будущее (10%)', 'День рождения (20%)', 'Авто (20%)'];
+  const byDayDep = {};
+  allIncome.forEach(t=>{if(!t.date||t.date<DEP_START)return;byDayDep[t.date]=(byDayDep[t.date]||0)+t.amount;});
+  const depManual = tx.filter(t=>t.type==='dep_manual');
+  let totalDep = 0;
+  const depStats = DEP_NAMES_DEP.map((name,i)=>{
+    const auto=Object.values(byDayDep).reduce((s,v)=>s+Math.round(v*DEP_RATES[i]),0);
+    const manual=depManual.filter(t=>t.depIndex===i).reduce((s,t)=>s+t.amount,0);
+    const total=auto+manual; totalDep+=total;
+    return `  ${name}: ${total.toLocaleString()}₸ (авто: ${auto.toLocaleString()}₸, ручные: ${manual>=0?'+':''}${manual.toLocaleString()}₸)`;
+  }).join('\n');
+
+  // Балансы счетов
+  const accs = {};
+  (window.ACCOUNTS||[]).forEach(a=>{accs[a.name]=Number(a.initialBalance)||0;});
+  tx.forEach(t=>{
+    if(t.type==='transfer'){if(accs[t.fromAccount]!==undefined)accs[t.fromAccount]-=t.amount;if(accs[t.toAccount]!==undefined)accs[t.toAccount]+=t.amount;return;}
+    const acc=t.account&&t.account!=='undefined'&&t.account!==''&&t.account!=='Счет не выбран'?t.account:null;
+    if(!acc||accs[acc]===undefined)return;
+    if(t.subcategory?.startsWith('→ '))return;
+    accs[acc]+=(t.type==='income'?t.amount:-t.amount);
+  });
+  const nalichKey=Object.keys(accs).find(k=>k.toLowerCase().includes('налич'));
+  if(nalichKey)accs[nalichKey]-=totalDep;
+  const accStats=Object.entries(accs).filter(([n])=>n&&n!=='undefined').map(([n,v])=>`  ${n}: ${v.toLocaleString()}₸`).join('\n');
+
+  // Последние 30 записей с id
+  const last30=[...tx].filter(t=>t.type!=='dep_manual').sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)).slice(0,30)
+    .map(t=>`  [id:${t.id}] ${t.date} ${t.type==='income'?'+':t.type==='expense'?'-':'↔'}${t.amount}₸ ${t.subcategory||t.categoryName}${t.comment?' ('+t.comment+')':''} [${t.account||'—'}]`).join('\n');
+
+  // Категории
+  const incomeCats=(window.DEFAULTS?.income||[]).map(c=>c.name+(c.sub?.length?'['+c.sub.join(',')+']':'')).join(', ')||'нет';
+  const expenseCats=(window.DEFAULTS?.expense||[]).map(c=>c.name+(c.sub?.length?'['+c.sub.join(',')+']':'')).join(', ')||'нет';
+
+  return `═══ ПОЛНЫЙ ДОСТУП К ДАННЫМ ПРИЛОЖЕНИЯ (${today}) ═══
+
+📅 СЕГОДНЯ (${today}):
+  Доход: ${todayInc.toLocaleString()}₸ | Расход: ${todayExp.toLocaleString()}₸ | Чистая: ${(todayInc-todayExp).toLocaleString()}₸
+
+📆 ТЕКУЩИЙ МЕСЯЦ (${fmtM(month)}):
+  Доход: ${monthInc.toLocaleString()}₸ | Расход: ${monthExp.toLocaleString()}₸ | Чистая: ${(monthInc-monthExp).toLocaleString()}₸
+
+📊 ВСЁ ВРЕМЯ:
+  Доход: ${totalInc.toLocaleString()}₸ | Расход: ${totalExp.toLocaleString()}₸ | Чистая: ${(totalInc-totalExp).toLocaleString()}₸
+  Всего транзакций: ${tx.length}
+
+📈 СТАТИСТИКА ПО МЕСЯЦАМ:
+${monthStats||'  нет данных'}
+
+🚴 ПО ТОЧКАМ ДОСТАВКИ (всё время):
+${pointStats||'  нет данных'}
+
+💸 РАСХОДЫ ПО КАТЕГОРИЯМ (всё время):
+${expCats||'  нет данных'}
+
+💳 ТЕКУЩИЕ БАЛАНСЫ СЧЕТОВ:
+${accStats||'  нет данных'}
+
+🏦 ДЕПОЗИТЫ (накопления с ${DEP_START}):
+${depStats}
+  Итого отложено: ${totalDep.toLocaleString()}₸ (50% от дохода)
+
+🗂️ КАТЕГОРИИ ПОЛЬЗОВАТЕЛЯ:
+  Приход: ${incomeCats}
+  Расход: ${expenseCats}
+
+📋 ПОСЛЕДНИЕ 30 ЗАПИСЕЙ (с id для точного удаления):
+${last30||'  нет записей'}
+
+💡 ВОЗМОЖНОСТИ АГЕНТА:
+  - Записать транзакцию: укажи тип (income/expense), сумму, категорию
+  - Удалить запись: используй id из списка выше или скажи "последнюю"
+  - Статистика: за любой период
+  - Добавить категорию или счёт`;
 }
 
-// ── Инструменты агента ──
 const AGENT_TOOLS_GEMINI = [{
   functionDeclarations: [
-    {
-      name: 'add_transaction',
-      description: 'Записать транзакцию (доход или расход) в Firebase',
-      parameters: { type:'OBJECT', properties: {
-        type: { type:'STRING', description:'income или expense' },
-        amount: { type:'NUMBER', description:'Сумма в тенге' },
-        categoryName: { type:'STRING', description:'Название категории' },
-        subcategory: { type:'STRING', description:'Подкатегория или точка (F1,F2,F3,ALLEY PUB,Ночь)' },
-        account: { type:'STRING', description:'Счёт (Наличные и т.д.)' },
-        comment: { type:'STRING', description:'Примечание' }
-      }, required:['type','amount','categoryName'] }
-    },
-    {
-      name: 'delete_transaction',
-      description: 'Удалить транзакцию по id или последнюю',
-      parameters: { type:'OBJECT', properties: {
-        id: { type:'STRING', description:'ID транзакции или "last" для последней' }
-      }, required:['id'] }
-    },
-    {
-      name: 'get_stats',
-      description: 'Получить статистику за период',
-      parameters: { type:'OBJECT', properties: {
-        period: { type:'STRING', description:'today, week, month, all или дата YYYY-MM-DD' }
-      }, required:['period'] }
-    },
-    {
-      name: 'add_category',
-      description: 'Добавить новую категорию',
-      parameters: { type:'OBJECT', properties: {
-        name: { type:'STRING', description:'Название категории' },
-        catType: { type:'STRING', description:'income или expense' }
-      }, required:['name','catType'] }
-    },
-    {
-      name: 'add_account',
-      description: 'Добавить новый счёт',
-      parameters: { type:'OBJECT', properties: {
-        name: { type:'STRING', description:'Название счёта' }
-      }, required:['name'] }
-    }
+    { name:'add_transaction', description:'Записать транзакцию (доход или расход)', parameters:{ type:'OBJECT', properties:{ type:{type:'STRING',description:'income или expense'}, amount:{type:'NUMBER',description:'Сумма в тенге'}, categoryName:{type:'STRING',description:'Название категории'}, subcategory:{type:'STRING',description:'Подкатегория (F1,F2,F3,ALLEY PUB,Ночь и т.д.)'}, account:{type:'STRING',description:'Счёт'}, comment:{type:'STRING',description:'Примечание'}, date:{type:'STRING',description:'Дата YYYY-MM-DD (если не указано — сегодня)'} }, required:['type','amount','categoryName'] } },
+    { name:'delete_transaction', description:'Удалить транзакцию по id или последнюю', parameters:{ type:'OBJECT', properties:{ id:{type:'STRING',description:'ID транзакции из списка или "last" для последней'} }, required:['id'] } },
+    { name:'get_stats', description:'Статистика за период', parameters:{ type:'OBJECT', properties:{ period:{type:'STRING',description:'today, week, month, all или дата YYYY-MM-DD'} }, required:['period'] } },
+    { name:'add_category', description:'Добавить категорию', parameters:{ type:'OBJECT', properties:{ name:{type:'STRING'}, catType:{type:'STRING',description:'income или expense'} }, required:['name','catType'] } },
+    { name:'add_account', description:'Добавить счёт', parameters:{ type:'OBJECT', properties:{ name:{type:'STRING'} }, required:['name'] } }
   ]
 }];
 
-// ── Выполнение инструментов ──
 async function executeTool(name, args) {
   const { fbDB, fbMethods, fbUser } = window;
   const uid = fbUser?.uid;
@@ -2009,50 +1669,53 @@ async function executeTool(name, args) {
 
   if (name === 'add_transaction') {
     const acc = args.account || (window.ACCOUNTS||[]).find(a=>a.name.toLowerCase().includes('налич'))?.name || 'Наличные';
+    const txDate = args.date || today;
     await fbMethods.addDoc(fbMethods.collection(fbDB,'users',uid,'transactions'), {
-      type: args.type, amount: Number(args.amount),
-      categoryName: args.categoryName, subcategory: args.subcategory||'',
-      account: acc, date: today, time,
-      comment: args.comment||'(агент)', createdAt: Date.now()
+      type:args.type, amount:Number(args.amount), categoryName:args.categoryName,
+      subcategory:args.subcategory||'', account:acc, date:txDate, time,
+      comment:args.comment||'(агент)', createdAt:Date.now()
     });
-    return `✅ Записано: ${args.type==='income'?'+':'−'}${Number(args.amount).toLocaleString()}₸ · ${args.subcategory||args.categoryName}`;
+    return `✅ Записано: ${args.type==='income'?'+':'−'}${Number(args.amount).toLocaleString()}₸ · ${args.subcategory||args.categoryName} · ${txDate}`;
   }
 
   if (name === 'delete_transaction') {
-    const tx = window.allTx||[];
-    const target = args.id==='last' ? tx[tx.length-1] : tx.find(t=>t.id===args.id);
+    const txList = window.allTx||[];
+    const realTx = txList.filter(t=>t.type!=='dep_manual');
+    const target = args.id==='last' ? realTx.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0))[0] : txList.find(t=>t.id===args.id);
     if (!target) return '❌ Запись не найдена';
     await fbMethods.deleteDoc(fbMethods.doc(fbDB,'users',uid,'transactions',target.id));
-    return `✅ Удалено: ${target.amount.toLocaleString()}₸ · ${target.subcategory||target.categoryName}`;
+    return `✅ Удалено: ${target.date} ${target.amount.toLocaleString()}₸ · ${target.subcategory||target.categoryName}`;
   }
 
   if (name === 'get_stats') {
-    const tx = window.allTx||[];
-    let filtered = tx;
-    if (args.period==='today') filtered = tx.filter(t=>t.date===today);
-    else if (args.period==='month') filtered = tx.filter(t=>(t.date||'').startsWith(today.slice(0,7)));
-    else if (args.period==='week') { const w=new Date(); w.setDate(w.getDate()-7); const ws=new Date(w-w.getTimezoneOffset()*60000).toISOString().split('T')[0]; filtered=tx.filter(t=>t.date>=ws); }
-    const inc = filtered.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
-    const exp = filtered.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
-    return `Период: ${args.period} | Доход: ${inc.toLocaleString()}₸ | Расход: ${exp.toLocaleString()}₸ | Чистая: ${(inc-exp).toLocaleString()}₸ | Записей: ${filtered.length}`;
+    const txList = window.allTx||[];
+    let filtered = txList;
+    const now = new Date();
+    if (args.period==='today') { filtered=txList.filter(t=>t.date===today); }
+    else if (args.period==='month') { filtered=txList.filter(t=>(t.date||'').startsWith(today.slice(0,7))); }
+    else if (args.period==='week') { const w=new Date(now-7*86400000); const ws=new Date(w-w.getTimezoneOffset()*60000).toISOString().split('T')[0]; filtered=txList.filter(t=>t.date>=ws); }
+    else if (args.period.match(/^\d{4}-\d{2}-\d{2}$/)) { filtered=txList.filter(t=>t.date===args.period); }
+    const inc=filtered.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+    const exp=filtered.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+    const byPt={};
+    filtered.filter(t=>t.type==='income').forEach(t=>{const k=t.subcategory||t.categoryName;if(!byPt[k])byPt[k]=0;byPt[k]+=t.amount;});
+    const ptStr=Object.entries(byPt).map(([k,v])=>`${k}:${v.toLocaleString()}₸`).join(', ');
+    return `📊 Период: ${args.period}\nДоход: ${inc.toLocaleString()}₸ | Расход: ${exp.toLocaleString()}₸ | Чистая: ${(inc-exp).toLocaleString()}₸\nЗаписей: ${filtered.length}\nПо точкам: ${ptStr||'нет'}`;
   }
 
   if (name === 'add_category') {
-    const setRef = fbMethods.collection(fbDB,'users',uid,'settings');
-    await fbMethods.addDoc(setRef, { type:'category', name:args.name, catType:args.catType, sub:[] });
+    await fbMethods.addDoc(fbMethods.collection(fbDB,'users',uid,'settings'), { type:'category', name:args.name, catType:args.catType, sub:[] });
     return `✅ Категория "${args.name}" добавлена`;
   }
 
   if (name === 'add_account') {
-    const setRef = fbMethods.collection(fbDB,'users',uid,'settings');
-    await fbMethods.addDoc(setRef, { type:'account', name:args.name, initialBalance:0 });
+    await fbMethods.addDoc(fbMethods.collection(fbDB,'users',uid,'settings'), { type:'account', name:args.name, initialBalance:0 });
     return `✅ Счёт "${args.name}" добавлен`;
   }
 
   return '❌ Неизвестный инструмент: ' + name;
 }
 
-// ── Отображение сообщений ──
 function appendAiMsg(role, text) {
   const el = document.getElementById('aiMessages');
   const div = document.createElement('div');
@@ -2066,214 +1729,158 @@ function appendAiMsg(role, text) {
 function greetAgent() {
   const p = localStorage.getItem('aiProvider')||'gemini';
   const names = {gemini:'Gemini', claude:'Claude', openai:'ChatGPT'};
-  appendAiMsg('bot', `👋 Привет! Я ИИ-агент на базе ${names[p]}. Имею полный доступ к твоим данным и могу:\n• Записывать/удалять транзакции\n• Показывать статистику\n• Добавлять категории и счета\n• Отвечать на любые вопросы\n\nЧто делаем?`);
+  appendAiMsg('bot', `👋 Привет! Я ИИ-агент на базе ${names[p]}.\n\nУ меня полный доступ ко всем твоим данным:\n• Все транзакции за любой период\n• Статистика по точкам и месяцам\n• Депозиты и балансы счетов\n• Могу записывать, удалять записи\n• Добавлять категории и счета\n\nЧто хочешь узнать или сделать?`);
 }
 
-// ── Отправка сообщения ──
 window.sendAiMsg = async () => {
   const input = document.getElementById('aiInput');
   const text = input.value.trim();
   if (!text) return;
-
   const provider = localStorage.getItem('aiProvider');
   if (!provider) { window.showToast('Настрой агента сначала'); return; }
-
   input.value = '';
   appendAiMsg('user', text);
   const typing = appendAiMsg('bot', '...');
   typing.classList.add('typing');
 
   const context = buildContext();
-  const systemPrompt = `Ты ИИ-агент приложения "Учёт Курьера Pro". У тебя полный доступ к данным пользователя.
+  const systemPrompt = `Ты ИИ-агент приложения "Учёт Курьера Pro". У тебя ПОЛНЫЙ доступ ко всем данным пользователя.
+
 ${context}
 
-Ты можешь выполнять действия через инструменты: записывать транзакции, удалять, показывать статистику, добавлять категории и счета.
-Отвечай кратко на русском языке. При выполнении действий — подтверди что сделал.`;
+ИНСТРУКЦИИ:
+- Отвечай кратко и по делу на русском языке
+- При выполнении действий — подтверди что сделал
+- Можешь анализировать данные за любой период — вся история доступна
+- При вопросах о конкретных записях — используй id из списка последних 30
+- Умей считать: средний доход, лучший день, тренды по месяцам и т.д.
+- Депозиты = автоматические накопления: 10% Будущее, 20% День рождения, 20% Авто`;
 
   try {
     let reply = '';
-
-    if (provider === 'gemini') {
-      reply = await sendGemini(systemPrompt, text, typing);
-    } else if (provider === 'claude') {
-      reply = await sendClaude(systemPrompt, text, typing);
-    } else if (provider === 'openai') {
-      reply = await sendOpenAI(systemPrompt, text, typing);
-    }
-
+    if (provider==='gemini') reply = await sendGemini(systemPrompt, text, typing);
+    else if (provider==='claude') reply = await sendClaude(systemPrompt, text, typing);
+    else if (provider==='openai') reply = await sendOpenAI(systemPrompt, text, typing);
     typing.textContent = reply;
     typing.classList.remove('typing');
-    aiHistory.push({role:'user', content: text});
-    aiHistory.push({role:'assistant', content: reply});
-    if (aiHistory.length > 30) aiHistory = aiHistory.slice(-30);
-
+    aiHistory.push({role:'user',content:text});
+    aiHistory.push({role:'assistant',content:reply});
+    if(aiHistory.length>30) aiHistory=aiHistory.slice(-30);
   } catch(e) {
     typing.textContent = '❌ Ошибка: ' + e.message;
     typing.classList.remove('typing');
   }
 };
 
-// ── Gemini с function calling ──
 async function sendGemini(systemPrompt, text, typing) {
-  const key = localStorage.getItem('geminiKey');
-  const model = localStorage.getItem('geminiModel')||'gemini-2.5-flash';
-  if (!key) throw new Error('Нет ключа Gemini');
-
-  const contents = [
-    ...aiHistory.map(m => ({
-      role: m.role==='assistant'?'model':'user',
-      parts:[{text:m.content}]
-    })),
-    { role:'user', parts:[{text}] }
+  const key=localStorage.getItem('geminiKey'), model=localStorage.getItem('geminiModel')||'gemini-2.5-flash';
+  if(!key) throw new Error('Нет ключа Gemini');
+  const contents=[
+    ...aiHistory.map(m=>({role:m.role==='assistant'?'model':'user',parts:[{text:m.content}]})),
+    {role:'user',parts:[{text}]}
   ];
-
-  let res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`, {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ system_instruction:{parts:[{text:systemPrompt}]}, contents, tools: AGENT_TOOLS_GEMINI })
-  });
-  let data = await res.json();
-  if (data.error) throw new Error(data.error.message);
-
-  // Обработка function call
-  const part = data.candidates?.[0]?.content?.parts?.[0];
-  if (part?.functionCall) {
-    const { name, args } = part.functionCall;
-    typing.textContent = `⚙️ Выполняю: ${name}...`;
-    const toolResult = await executeTool(name, args);
-
-    // Второй запрос с результатом инструмента
-    contents.push({ role:'model', parts:[{functionCall:{name,args}}] });
-    contents.push({ role:'user', parts:[{functionResponse:{name, response:{result:toolResult}}}] });
-
-    res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`, {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ system_instruction:{parts:[{text:systemPrompt}]}, contents, tools: AGENT_TOOLS_GEMINI })
-    });
-    data = await res.json();
-    if (data.error) throw new Error(data.error.message);
+  let res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system_instruction:{parts:[{text:systemPrompt}]},contents,tools:AGENT_TOOLS_GEMINI})});
+  let data=await res.json();
+  if(data.error) throw new Error(data.error.message);
+  const part=data.candidates?.[0]?.content?.parts?.[0];
+  if(part?.functionCall){
+    const{name,args}=part.functionCall;
+    typing.textContent=`⚙️ Выполняю: ${name}...`;
+    const toolResult=await executeTool(name,args);
+    contents.push({role:'model',parts:[{functionCall:{name,args}}]});
+    contents.push({role:'user',parts:[{functionResponse:{name,response:{result:toolResult}}}]});
+    res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system_instruction:{parts:[{text:systemPrompt}]},contents,tools:AGENT_TOOLS_GEMINI})});
+    data=await res.json();
+    if(data.error) throw new Error(data.error.message);
   }
-
-  return data.candidates?.[0]?.content?.parts?.[0]?.text || '(нет ответа)';
+  return data.candidates?.[0]?.content?.parts?.[0]?.text||'(нет ответа)';
 }
 
-// ── Claude с tool use ──
 async function sendClaude(systemPrompt, text, typing) {
-  const key = localStorage.getItem('claudeKey');
-  const model = localStorage.getItem('claudeModel')||'claude-haiku-4-5';
-  if (!key) throw new Error('Нет ключа Claude');
-
-  const tools = [
-    { name:'add_transaction', description:'Записать транзакцию', input_schema:{ type:'object', properties:{ type:{type:'string'}, amount:{type:'number'}, categoryName:{type:'string'}, subcategory:{type:'string'}, account:{type:'string'}, comment:{type:'string'} }, required:['type','amount','categoryName'] } },
-    { name:'delete_transaction', description:'Удалить транзакцию', input_schema:{ type:'object', properties:{ id:{type:'string'} }, required:['id'] } },
-    { name:'get_stats', description:'Статистика за период', input_schema:{ type:'object', properties:{ period:{type:'string'} }, required:['period'] } },
-    { name:'add_category', description:'Добавить категорию', input_schema:{ type:'object', properties:{ name:{type:'string'}, catType:{type:'string'} }, required:['name','catType'] } },
-    { name:'add_account', description:'Добавить счёт', input_schema:{ type:'object', properties:{ name:{type:'string'} }, required:['name'] } }
+  const key=localStorage.getItem('claudeKey'), model=localStorage.getItem('claudeModel')||'claude-haiku-4-5';
+  if(!key) throw new Error('Нет ключа Claude');
+  const tools=[
+    {name:'add_transaction',description:'Записать транзакцию',input_schema:{type:'object',properties:{type:{type:'string'},amount:{type:'number'},categoryName:{type:'string'},subcategory:{type:'string'},account:{type:'string'},comment:{type:'string'},date:{type:'string',description:'YYYY-MM-DD'}},required:['type','amount','categoryName']}},
+    {name:'delete_transaction',description:'Удалить транзакцию',input_schema:{type:'object',properties:{id:{type:'string'}},required:['id']}},
+    {name:'get_stats',description:'Статистика за период',input_schema:{type:'object',properties:{period:{type:'string'}},required:['period']}},
+    {name:'add_category',description:'Добавить категорию',input_schema:{type:'object',properties:{name:{type:'string'},catType:{type:'string'}},required:['name','catType']}},
+    {name:'add_account',description:'Добавить счёт',input_schema:{type:'object',properties:{name:{type:'string'}},required:['name']}}
   ];
-
-  const messages = [
-    ...aiHistory.map(m=>({role:m.role==='assistant'?'assistant':'user', content:m.content})),
-    { role:'user', content: text }
+  const messages=[
+    ...aiHistory.map(m=>({role:m.role==='assistant'?'assistant':'user',content:m.content})),
+    {role:'user',content:text}
   ];
-
-  let res = await fetch('https://api.anthropic.com/v1/messages', {
-    method:'POST',
-    headers:{ 'Content-Type':'application/json', 'x-api-key':key, 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
-    body: JSON.stringify({ model, max_tokens:1024, system:systemPrompt, tools, messages })
-  });
-  let data = await res.json();
-  if (data.error) throw new Error(data.error.message||data.error);
-
-  // Обработка tool_use
-  if (data.stop_reason === 'tool_use') {
-    const toolUse = data.content.find(b=>b.type==='tool_use');
-    if (toolUse) {
-      typing.textContent = `⚙️ Выполняю: ${toolUse.name}...`;
-      const toolResult = await executeTool(toolUse.name, toolUse.input);
-      messages.push({ role:'assistant', content: data.content });
-      messages.push({ role:'user', content:[{ type:'tool_result', tool_use_id:toolUse.id, content:toolResult }] });
-      res = await fetch('https://api.anthropic.com/v1/messages', {
-        method:'POST',
-        headers:{ 'Content-Type':'application/json', 'x-api-key':key, 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
-        body: JSON.stringify({ model, max_tokens:1024, system:systemPrompt, tools, messages })
-      });
-      data = await res.json();
-      if (data.error) throw new Error(data.error.message||data.error);
+  let res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model,max_tokens:1024,system:systemPrompt,tools,messages})});
+  let data=await res.json();
+  if(data.error) throw new Error(data.error.message||data.error);
+  if(data.stop_reason==='tool_use'){
+    const toolUse=data.content.find(b=>b.type==='tool_use');
+    if(toolUse){
+      typing.textContent=`⚙️ Выполняю: ${toolUse.name}...`;
+      const toolResult=await executeTool(toolUse.name,toolUse.input);
+      messages.push({role:'assistant',content:data.content});
+      messages.push({role:'user',content:[{type:'tool_result',tool_use_id:toolUse.id,content:toolResult}]});
+      res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model,max_tokens:1024,system:systemPrompt,tools,messages})});
+      data=await res.json();
+      if(data.error) throw new Error(data.error.message||data.error);
     }
   }
-
-  return data.content?.find(b=>b.type==='text')?.text || '(нет ответа)';
+  return data.content?.find(b=>b.type==='text')?.text||'(нет ответа)';
 }
 
-// ── OpenAI с function calling ──
 async function sendOpenAI(systemPrompt, text, typing) {
-  const key = localStorage.getItem('openaiKey');
-  const model = localStorage.getItem('openaiModel')||'gpt-4o-mini';
-  if (!key) throw new Error('Нет ключа OpenAI');
-
-  const tools = [
-    { type:'function', function:{ name:'add_transaction', description:'Записать транзакцию', parameters:{ type:'object', properties:{ type:{type:'string'}, amount:{type:'number'}, categoryName:{type:'string'}, subcategory:{type:'string'}, account:{type:'string'}, comment:{type:'string'} }, required:['type','amount','categoryName'] } } },
-    { type:'function', function:{ name:'delete_transaction', description:'Удалить транзакцию', parameters:{ type:'object', properties:{ id:{type:'string'} }, required:['id'] } } },
-    { type:'function', function:{ name:'get_stats', description:'Статистика', parameters:{ type:'object', properties:{ period:{type:'string'} }, required:['period'] } } },
-    { type:'function', function:{ name:'add_category', description:'Добавить категорию', parameters:{ type:'object', properties:{ name:{type:'string'}, catType:{type:'string'} }, required:['name','catType'] } } },
-    { type:'function', function:{ name:'add_account', description:'Добавить счёт', parameters:{ type:'object', properties:{ name:{type:'string'} }, required:['name'] } } }
+  const key=localStorage.getItem('openaiKey'), model=localStorage.getItem('openaiModel')||'gpt-4o-mini';
+  if(!key) throw new Error('Нет ключа OpenAI');
+  const tools=[
+    {type:'function',function:{name:'add_transaction',description:'Записать транзакцию',parameters:{type:'object',properties:{type:{type:'string'},amount:{type:'number'},categoryName:{type:'string'},subcategory:{type:'string'},account:{type:'string'},comment:{type:'string'},date:{type:'string'}},required:['type','amount','categoryName']}}},
+    {type:'function',function:{name:'delete_transaction',description:'Удалить транзакцию',parameters:{type:'object',properties:{id:{type:'string'}},required:['id']}}},
+    {type:'function',function:{name:'get_stats',description:'Статистика',parameters:{type:'object',properties:{period:{type:'string'}},required:['period']}}},
+    {type:'function',function:{name:'add_category',description:'Добавить категорию',parameters:{type:'object',properties:{name:{type:'string'},catType:{type:'string'}},required:['name','catType']}}},
+    {type:'function',function:{name:'add_account',description:'Добавить счёт',parameters:{type:'object',properties:{name:{type:'string'}},required:['name']}}}
   ];
-
-  const messages = [
-    { role:'system', content: systemPrompt },
-    ...aiHistory.map(m=>({role:m.role==='assistant'?'assistant':'user', content:m.content})),
-    { role:'user', content: text }
+  const messages=[
+    {role:'system',content:systemPrompt},
+    ...aiHistory.map(m=>({role:m.role==='assistant'?'assistant':'user',content:m.content})),
+    {role:'user',content:text}
   ];
-
-  let res = await fetch('https://api.openai.com/v1/chat/completions', {
-    method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+key },
-    body: JSON.stringify({ model, messages, tools, tool_choice:'auto', max_tokens:1024 })
-  });
-  let data = await res.json();
-  if (data.error) throw new Error(data.error.message);
-
-  const msg = data.choices?.[0]?.message;
-  if (msg?.tool_calls?.length) {
-    const tc = msg.tool_calls[0];
-    typing.textContent = `⚙️ Выполняю: ${tc.function.name}...`;
-    const args = JSON.parse(tc.function.arguments);
-    const toolResult = await executeTool(tc.function.name, args);
+  let res=await fetch('https://api.openai.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model,messages,tools,tool_choice:'auto',max_tokens:1024})});
+  let data=await res.json();
+  if(data.error) throw new Error(data.error.message);
+  const msg=data.choices?.[0]?.message;
+  if(msg?.tool_calls?.length){
+    const tc=msg.tool_calls[0];
+    typing.textContent=`⚙️ Выполняю: ${tc.function.name}...`;
+    const args=JSON.parse(tc.function.arguments);
+    const toolResult=await executeTool(tc.function.name,args);
     messages.push(msg);
-    messages.push({ role:'tool', tool_call_id:tc.id, content:toolResult });
-    res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+key },
-      body: JSON.stringify({ model, messages, tools, max_tokens:1024 })
-    });
-    data = await res.json();
-    if (data.error) throw new Error(data.error.message);
+    messages.push({role:'tool',tool_call_id:tc.id,content:toolResult});
+    res=await fetch('https://api.openai.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model,messages,tools,max_tokens:1024})});
+    data=await res.json();
+    if(data.error) throw new Error(data.error.message);
   }
-
-  return data.choices?.[0]?.message?.content || '(нет ответа)';
+  return data.choices?.[0]?.message?.content||'(нет ответа)';
 }
 
-// ── Инициализация вкладки ──
 function initAiTab() {
-  const p = localStorage.getItem('aiProvider');
+  const p=localStorage.getItem('aiProvider');
   selectProvider(p||'gemini');
-  if (p) {
-    const hasKey = (p==='gemini'&&localStorage.getItem('geminiKey')) ||
-                   (p==='claude'&&localStorage.getItem('claudeKey')) ||
-                   (p==='openai'&&localStorage.getItem('openaiKey'));
-    if (hasKey) {
-      document.getElementById('aiKeySetup').style.display = 'none';
-      const names = {gemini:'Gemini 🔵', claude:'Claude 🟣', openai:'OpenAI 🟢'};
+  if(p){
+    const hasKey=(p==='gemini'&&localStorage.getItem('geminiKey'))||(p==='claude'&&localStorage.getItem('claudeKey'))||(p==='openai'&&localStorage.getItem('openaiKey'));
+    if(hasKey){
+      document.getElementById('aiKeySetup').style.display='none';
+      const names={gemini:'Gemini 🔵',claude:'Claude 🟣',openai:'OpenAI 🟢'};
       showAgentStatus(names[p]);
-      if (!aiHistory.length) greetAgent();
+      if(!aiHistory.length) greetAgent();
     }
   }
 }
 
-// ── Переключение вкладок ──
 const origSwitchTab = window.switchTab;
 window.switchTab = (tab) => {
-  if (origSwitchTab) origSwitchTab(tab);
-  const bar = document.getElementById('aiInputBar');
-  if (bar) bar.style.display = tab==='ai' ? 'block' : 'none';
-  if (tab==='ai') initAiTab();
+  if(origSwitchTab) origSwitchTab(tab);
+  const bar=document.getElementById('aiInputBar');
+  if(bar) bar.style.display=tab==='ai'?'block':'none';
+  if(tab==='ai') initAiTab();
 };
 </script>
 </body>
