@@ -1102,7 +1102,7 @@
       if (parentId && subName) await fbMethods.updateDoc(fbMethods.doc(fbDB,"users",window.fbUser.uid,"settings",parentId), { sub: fbMethods.arrayUnion(subName) });
       document.getElementById("setSubName").value = "";
     };
-    window.deleteSet = async (id) => { if (confirm("Удалить?")) await fbMethods.deleteDoc(fbMethods.doc(fbDB,"users",window.fbUser.uid,"settings",id)); };
+    window.deleteSet = (id) => { showConfirm("Удалить?", async () => { await fbMethods.deleteDoc(fbMethods.doc(fbDB,"users",window.fbUser.uid,"settings",id)); }); };
 
     // Настройка значений по умолчанию
     window.updateDefCats = () => {
@@ -1163,7 +1163,7 @@
       }, 100);
     };
     window.deleteSub = async (catId, subName) => {
-      if (confirm(`Удалить "${subName}"?`)) {
+      showConfirm(`Удалить "${subName}"?`, async () => {
         const cat = [...DEFAULTS.income,...DEFAULTS.expense].find(c=>c.id===catId);
         if (!cat) return;
         await fbMethods.updateDoc(fbMethods.doc(fbDB,"users",window.fbUser.uid,"settings",catId), { sub:(cat.sub||[]).filter(s=>s!==subName) });
@@ -1508,7 +1508,7 @@
   }
 
   window.deleteTx = async (id) => {
-    if(confirm("Удалить?")) await window.fbMethods.deleteDoc(window.fbMethods.doc(window.fbDB,"users",window.fbUser.uid,"transactions",id));
+    showConfirm("Удалить?", async () => { await window.fbMethods.deleteDoc(window.fbMethods.doc(window.fbDB,"users",window.fbUser.uid,"transactions",id)); });
   };
 
   // ── WHATSAPP ПАРСЕР ────────────────────────────────────────────
