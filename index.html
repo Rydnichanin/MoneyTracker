@@ -69,7 +69,7 @@
     .gain-box { background: #0a1f10; padding: 13px; border-radius: 12px; border: 1px solid var(--pos); margin-top: 12px; display: flex; justify-content: space-between; font-weight: bold; font-size: 17px; }
 
     .hist-item { display: flex; justify-content: space-between; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid #1a1a1a; }
-    .hist-del { background: none; border: none; color: #ff6b6b; padding: 8px; cursor: pointer; font-size: 18px; opacity: 0.7; }
+    .hist-del { background: none; border: none; color: #222; padding: 8px; cursor: pointer; font-size: 16px; }
 
     .bw-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 4px; }
     .bw-card { border-radius: 12px; padding: 12px; text-align: center; }
@@ -88,20 +88,6 @@
     .sec-title { font-size: 11px; color: #444; text-transform: uppercase; letter-spacing: 1px; margin: 14px 0 8px; }
     .chart-wrap { overflow-x: scroll; -webkit-overflow-scrolling: touch; }
 
-
-    /* ЧАТ ИИ */
-    .ai-messages { display:flex; flex-direction:column; gap:10px; padding-bottom:8px; }
-    .ai-msg { max-width:85%; padding:10px 14px; border-radius:16px; font-size:14px; line-height:1.5; word-break:break-word; }
-    .ai-msg.user { background:#1a3a1a; color:#fff; align-self:flex-end; border-bottom-right-radius:4px; }
-    .ai-msg.bot  { background:#1c1c1e; color:#ddd; align-self:flex-start; border-bottom-left-radius:4px; border:1px solid #2a2a2a; }
-    .ai-msg.typing { color:#555; font-style:italic; }
-    .ai-input-row { display:flex; gap:8px; padding:10px 12px; background:#000; border-top:1px solid #111; position:fixed; bottom:65px; left:0; right:0; max-width:500px; margin:0 auto; box-sizing:border-box; z-index:150; }
-    .ai-input { flex:1; padding:11px 14px; border-radius:24px; border:1px solid #2a2a2a; background:#1c1c1e; color:#fff; font-size:15px; outline:none; }
-    .ai-send { background:#65d48b; border:none; border-radius:50%; width:44px; height:44px; color:#000; font-size:20px; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
-    .ai-key-setup { background:#1c1c1e; border-radius:14px; padding:16px; border:1px solid #2a2a2a; margin-bottom:12px; }
-
-    .toast { position:fixed; bottom:90px; left:50%; transform:translateX(-50%); background:#1c1c1e; color:#fff; padding:12px 20px; border-radius:12px; font-size:14px; z-index:9999; border:1px solid #333; max-width:300px; text-align:center; opacity:0; transition:opacity 0.2s; pointer-events:none; }
-    .toast.show { opacity:1; }
     .pos { color: var(--pos); } .neg { color: var(--neg); } .muted { color: #444; }
     .hidden { display: none; }
 
@@ -206,11 +192,22 @@
       box-shadow: 0 4px 15px rgba(255,255,255,0.2);
     }
     .login-btn:active { transform: scale(0.98); }
+
+    /* ИИ АГЕНТ */
+    .ai-messages { display:flex; flex-direction:column; gap:10px; padding-bottom:8px; }
+    .ai-msg { max-width:85%; padding:10px 14px; border-radius:16px; font-size:14px; line-height:1.5; word-break:break-word; }
+    .ai-msg.user { background:#1a3a1a; color:#fff; align-self:flex-end; border-bottom-right-radius:4px; }
+    .ai-msg.bot  { background:#1c1c1e; color:#ddd; align-self:flex-start; border-bottom-left-radius:4px; border:1px solid #2a2a2a; }
+    .ai-msg.typing { color:#555; font-style:italic; }
+    .ai-input-row { display:flex; gap:8px; padding:10px 12px; background:#000; border-top:1px solid #111; position:fixed; bottom:65px; left:0; right:0; max-width:500px; margin:0 auto; box-sizing:border-box; z-index:150; }
+    .ai-input { flex:1; padding:11px 14px; border-radius:24px; border:1px solid #2a2a2a; background:#1c1c1e; color:#fff; font-size:15px; outline:none; }
+    .ai-send { background:#65d48b; border:none; border-radius:50%; width:44px; height:44px; color:#000; font-size:20px; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
+    .ai-key-setup { background:#1c1c1e; border-radius:14px; padding:16px; border:1px solid #2a2a2a; margin-bottom:12px; }
   </style>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc, arrayUnion, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
     import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithCredential, signOut, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
     const app = initializeApp({
@@ -223,7 +220,7 @@
     });
 
     window.fbDB = getFirestore(app);
-    window.fbMethods = { collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc, arrayUnion, getDoc };
+    window.fbMethods = { collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc, arrayUnion };
     const auth = getAuth(app);
     const provider = new GoogleAuthProvider();
 
@@ -278,7 +275,7 @@
       try {
         await signInWithPopup(auth, provider);
       } catch(e) {
-        if (e?.code !== "auth/popup-closed-by-user") window.showToast("Ошибка входа: " + (e?.message || e));
+        if (e?.code !== "auth/popup-closed-by-user") alert("Ошибка входа: " + (e?.message || e));
       }
     };
 
@@ -290,7 +287,7 @@
       try {
         await sendPasswordResetEmail(auth, email);
         showError('');
-        window.showToast('✅ Письмо отправлено на ' + email + '. Проверь почту.');
+        alert('✅ Письмо отправлено на ' + email + '. Проверь почту.');
       } catch(e) {
         const msgs = {
           'auth/user-not-found': 'Пользователь не найден',
@@ -347,17 +344,6 @@
   </script>
 </head>
 <body>
-<script>
-  window.showToast = (msg, duration=2500) => {
-    let t = document.getElementById('appToast');
-    if (!t) { t = document.createElement('div'); t.id='appToast'; t.className='toast'; document.body.appendChild(t); }
-    t.textContent = msg;
-    t.classList.add('show');
-    clearTimeout(t._timer);
-    t._timer = setTimeout(() => t.classList.remove('show'), duration);
-  };
-</script>
-
 
 <!-- ЛОГИН -->
 <!-- PULL TO REFRESH -->
@@ -651,6 +637,9 @@
       </div>
     </div>
 
+  </div>
+
+
     <!-- 6. ИИ АГЕНТ -->
     <div class="tab" id="tab-ai">
 
@@ -720,16 +709,6 @@
       <div id="aiMessages" class="ai-messages"></div>
       <div style="height:80px;"></div>
     </div>
-
-  </div>
-
-  <!-- ПОЛЕ ВВОДА ЧАТ ИИ -->
-  <div id="aiInputBar" style="display:none;">
-    <div class="ai-input-row">
-      <input id="aiInput" class="ai-input" type="text" placeholder="Спроси что-нибудь..." onkeydown="if(event.key==='Enter')sendAiMsg()" />
-      <button class="ai-send" onclick="sendAiMsg()">➤</button>
-    </div>
-  </div>
 
   <!-- НИЖНЯЯ НАВИГАЦИЯ -->
   <nav class="nav-bar">
@@ -809,6 +788,14 @@
 
   </div>
 </div>
+
+
+<div id="aiInputBar" style="display:none;">
+    <div class="ai-input-row">
+      <input id="aiInput" class="ai-input" type="text" placeholder="Спроси что-нибудь..." onkeydown="if(event.key==='Enter')sendAiMsg()" />
+      <button class="ai-send" onclick="sendAiMsg()">➤</button>
+    </div>
+  </div>
 
 </div><!-- /appScreen -->
 
@@ -1107,7 +1094,7 @@
       if (!accId || isNaN(val)) return;
       await fbMethods.updateDoc(fbMethods.doc(fbDB,"users",window.fbUser.uid,"settings",accId), { initialBalance: val });
       document.getElementById("setBalanceVal").value = "";
-      window.showToast("Начальный баланс установлен!");
+      alert("Начальный баланс установлен!");
     };
     window.addSub = async () => {
       const parentId = document.getElementById("setParentCat").value;
@@ -1145,7 +1132,7 @@
       localStorage.setItem('lastType', type);
       localStorage.setItem('lastCat', cat);
       localStorage.setItem('lastSub', sub);
-      window.showToast('✅ Сохранено! Теперь форма будет открываться с этими значениями.');
+      alert('✅ Сохранено! Теперь форма будет открываться с этими значениями.');
     };
 
     // Инициализируем селекты в настройках когда они открываются
@@ -1267,9 +1254,9 @@
   window.doTransfer = async () => {
     const from=document.getElementById("transferFrom").value, to=document.getElementById("transferTo").value;
     const amt=Number(document.getElementById("transferAmount").value), date=document.getElementById("transferDate").value;
-    if(!amt||amt<=0) return window.showToast("Введите сумму");
-    if(from===to) return window.showToast("Счета должны быть разными");
-    if(!date) return window.showToast("Выберите дату");
+    if(!amt||amt<=0) return alert("Введите сумму");
+    if(from===to) return alert("Счета должны быть разными");
+    if(!date) return alert("Выберите дату");
     await window.fbMethods.addDoc(window.fbMethods.collection(window.fbDB,"users",window.fbUser.uid,"transactions"),{
       type:'transfer',amount:amt,fromAccount:from,toAccount:to,account:from,
       categoryName:`Перевод → ${to}`,subcategory:'',date,
@@ -1277,7 +1264,7 @@
       createdAt:Date.now(),comment:`${from} → ${to}`
     });
     document.getElementById("transferAmount").value="";
-    window.showToast(`Переведено ${amt.toLocaleString()} ₸`);
+    alert(`Переведено ${amt.toLocaleString()} ₸`);
   };
 
   function render() {
@@ -1449,8 +1436,7 @@
     });
     const days=Object.entries(byDay).filter(([d])=>d);
     let bestDay=null,worstDay=null;
-    const delivDays=Object.entries(byDayDeliv).filter(([d])=>d);
-    if(delivDays.length>0){bestDay=delivDays.reduce((a,b)=>b[1]>a[1]?b:a);worstDay=delivDays.reduce((a,b)=>b[1]<a[1]?b:a);}
+    if(days.length>0){bestDay=days.reduce((a,b)=>b[1]>a[1]?b:a);const dl=days.filter(([d])=>deliveryDays.has(d));if(dl.length>0)worstDay=dl.reduce((a,b)=>b[1]<a[1]?b:a);}
     const fmtD=d=>{if(!d)return'—';const[y,mo,day]=d.split('-');return`${day}.${mo}.${y}`;};
     const fmtM=m=>{if(!m)return'—';const mn=['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];const[y,mo]=m.split('-');return`${mn[parseInt(mo)-1]} ${y}`;};
     const from=document.getElementById("fromDate").value,to=document.getElementById("toDate").value;
@@ -1461,16 +1447,20 @@
       chartData={filteredDays,maxVal,W,H,pad};
       chartHtml=`<div class="sec-title">График дохода по дням</div><div style="text-align:center;height:24px;display:flex;align-items:center;justify-content:center;gap:8px;"><span id="chartTipDate" style="font-size:11px;color:#444;"></span><span id="chartTipVal" style="font-size:15px;font-weight:bold;color:#a78bfa;"></span></div><div class="chart-wrap"><canvas id="incomeChart" width="${W}" height="${H+20}" style="display:block;"></canvas></div>`;
     }
-    const bwHtml=bestDay?`<div class="sec-title">Лучший и худший день (по точкам)</div><div class="bw-grid">
+    const bestDeliv=bestDay?byDayDeliv[bestDay[0]]||0:0;
+    const worstDeliv=worstDay?byDayDeliv[worstDay[0]]||0:0;
+    const bwHtml=bestDay?`<div class="sec-title">Лучший и худший день</div><div class="bw-grid">
       <div class="bw-card best">
         <div class="bw-label">🏆 Лучший</div>
         <div class="bw-val pos">${bestDay[1].toLocaleString()} ₸</div>
         <div class="bw-date">${fmtD(bestDay[0])}</div>
+        ${bestDeliv>0?`<div style="margin-top:6px;padding-top:6px;border-top:1px solid #1a3a1a;font-size:10px;color:#555;">🚴 по точкам</div><div style="font-size:13px;font-weight:bold;color:#ffd166;">${bestDeliv.toLocaleString()} ₸</div>`:''}
       </div>
       <div class="bw-card worst">
         <div class="bw-label">📉 Худший</div>
         <div class="bw-val neg">${worstDay?worstDay[1].toLocaleString():'—'} ₸</div>
         <div class="bw-date">${worstDay?fmtD(worstDay[0]):'—'}</div>
+        ${worstDeliv>0?`<div style="margin-top:6px;padding-top:6px;border-top:1px solid #3a1a1a;font-size:10px;color:#555;">🚴 по точкам</div><div style="font-size:13px;font-weight:bold;color:#ffd166;">${worstDeliv.toLocaleString()} ₸</div>`:''}
       </div>
     </div>`:'';
     const DELIVERY_POINTS=["F1","F2","F3","ALLEY PUB","Ночь"];
@@ -1517,25 +1507,8 @@
     }
   }
 
-  window.deleteTx = (id) => {
-    const overlay = document.createElement('div');
-    overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;';
-    overlay.innerHTML = `
-      <div style="background:#1c1c1e;border-radius:16px;padding:24px 20px;width:280px;text-align:center;border:1px solid #333;">
-        <div style="font-size:16px;font-weight:600;margin-bottom:8px;">Удалить запись?</div>
-        <div style="font-size:13px;color:#666;margin-bottom:20px;">Это действие нельзя отменить</div>
-        <div style="display:flex;gap:10px;">
-          <button id="delCancel" style="flex:1;padding:12px;border-radius:10px;border:none;background:#2c2c2e;color:#fff;font-size:15px;cursor:pointer;">Отмена</button>
-          <button id="delConfirm" style="flex:1;padding:12px;border-radius:10px;border:none;background:#ff6b6b;color:#fff;font-size:15px;font-weight:bold;cursor:pointer;">Удалить</button>
-        </div>
-      </div>`;
-    document.body.appendChild(overlay);
-    document.getElementById('delCancel').onclick = () => overlay.remove();
-    document.getElementById('delConfirm').onclick = async () => {
-      overlay.remove();
-      await window.fbMethods.deleteDoc(window.fbMethods.doc(window.fbDB,"users",window.fbUser.uid,"transactions",id));
-      if(window.render) window.render();
-    };
+  window.deleteTx = async (id) => {
+    if(confirm("Удалить?")) await window.fbMethods.deleteDoc(window.fbMethods.doc(window.fbDB,"users",window.fbUser.uid,"transactions",id));
   };
 
   // ── WHATSAPP ПАРСЕР ────────────────────────────────────────────
@@ -1559,7 +1532,7 @@
 
   window.parseWA = async () => {
     const text = document.getElementById('waInput').value.trim();
-    if (!text) return window.showToast('Вставь текст из WhatsApp');
+    if (!text) return alert('Вставь текст из WhatsApp');
 
     const btn = document.querySelector('#tab-wa .card button');
     btn.textContent = '⏳ Анализирую...';
@@ -1655,14 +1628,14 @@
         isUnder = false; // явно квартира
       } else if (/^[а-яё]/i.test(a)) {
         isUnder = true; // начинается с буквы — спецадрес (Магазин, Баня и т.п.)
-      } else if (/^\d+[а-я]?[-–]\d+[-–](\d+п|пп?)$/i.test(a)) {
-        isUnder = true; // три сегмента, последний = п/пп/1п — до подъезда (1-22-1п, 1-22-пп)
-      } else if (/^\d+[а-я]?[-–]\d+[-–]\d+[а-яёa-z]?$/i.test(a)) {
-        isUnder = false; // три сегмента — квартира
-      } else if (/^\d+[а-я]?[-–]\d+$/i.test(a)) {
-        isUnder = true; // два сегмента — подъезд
       } else if (/[а-яё]п$/i.test(a) && !/кв/.test(a)) {
         isUnder = true; // заканчивается на п
+      } else if (/^\d+[а-я]?[-–]\d+[-–]\d+[а-я]?$/i.test(a)) {
+        isUnder = false; // три сегмента цифр — квартира
+      } else if (/^\d+[а-я]?[-–]\d+$/i.test(a)) {
+        isUnder = true; // два сегмента — подъезд
+      } else if (/[-–]\d+[а-я]$/i.test(a) && !/п$/i.test(a)) {
+        isUnder = false; // три сегмента, последний с буквой не п — квартира
       } else {
         isUnder = false;
       }
@@ -1768,13 +1741,13 @@
 
       let msg = `✅ Записано: ${saved}`;
       if (skipped > 0) msg += `\n⚠️ Пропущено дублей: ${skipped}`;
-      window.showToast(msg);
+      alert(msg);
 
       waEntries = [];
       document.getElementById('waInput').value = '';
       document.getElementById('waResult').style.display = 'none';
     } catch(e) {
-      window.showToast('Ошибка: ' + e.message);
+      alert('Ошибка: ' + e.message);
     }
 
     btn.textContent = '✅ Записать всё';
@@ -2369,9 +2342,8 @@ window.switchTab = (tab) => {
   if (tab==='ai') initAiTab();
 };
 </script>
-</body>
-</html>
 
+<script>
 // ── Выбор провайдера ──
 window.selectProvider = (p) => {
   currentProvider = p;
