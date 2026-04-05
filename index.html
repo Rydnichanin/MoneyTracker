@@ -800,6 +800,28 @@
 </div><!-- /appScreen -->
 
 <script>
+  // Универсальный диалог подтверждения (confirm() не работает в Android WebView)
+  window.showConfirm = function(message, onConfirm) {
+    const old = document.getElementById('_confirmDialog');
+    if (old) old.remove();
+    const div = document.createElement('div');
+    div.id = '_confirmDialog';
+    div.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;';
+    div.innerHTML = '<div style="background:#1c1c1e;border-radius:16px;padding:24px;width:100%;max-width:320px;border:1px solid #2a2a2a;text-align:center;">' +
+      '<div style="font-size:15px;color:#fff;margin-bottom:20px;">' + message + '</div>' +
+      '<div style="display:flex;gap:10px;">' +
+      '<button onclick="document.getElementById('_confirmDialog').remove()" style="flex:1;padding:12px;border-radius:10px;border:1px solid #333;background:none;color:#888;font-size:14px;cursor:pointer;">Отмена</button>' +
+      '<button id="_confirmOk" style="flex:1;padding:12px;border-radius:10px;border:none;background:#ff6b6b;color:#fff;font-size:14px;font-weight:bold;cursor:pointer;">Удалить</button>' +
+      '</div></div>';
+    document.body.appendChild(div);
+    document.getElementById('_confirmOk').onclick = function() {
+      div.remove();
+      onConfirm();
+    };
+  };
+  // Псевдоним без window. для вызова внутри скриптов
+  function showConfirm(msg, cb) { window.showConfirm(msg, cb); }
+
   // DRAWER
   window.openDrawer = () => {
     document.getElementById('drawer').classList.add('open');
