@@ -818,87 +818,61 @@
   </div>
 </div>
 
-<!-- ЭКРАН НАСТРОЕК ЦЕН -->
+<!-- ЭКРАН СПРАВОЧНИКА АДРЕСОВ -->
 <div class="prices-screen" id="pricesScreen">
   <div class="prices-topbar">
     <button class="back-btn" onclick="closePricesScreen()">‹</button>
-    <span style="font-size:16px;font-weight:600;">⚙️ Настройки цен</span>
+    <span style="font-size:16px;font-weight:600;">📋 Справочник адресов</span>
   </div>
-  <div style="padding:12px 0 0;">
-    <div style="font-size:12px;color:#444;text-align:center;padding:0 12px 12px;">
-      Цены применяются при разборе сообщений WhatsApp
+  <div style="padding:12px;">
+
+    <!-- Инфо -->
+    <div style="background:#111;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:#444;line-height:1.5;">
+      Добавь адрес → выбери тип → при разборе WhatsApp он будет использоваться автоматически.<br>
+      <span style="color:#2a2a2a;">Стандартные цены: подъезд 150/600 ₸ · квартира 300/900 ₸</span>
     </div>
 
-    <!-- F1 -->
-    <div class="price-card">
-      <div class="price-card-title">🏢 F1</div>
-      <div class="price-point-row">
-        <div><div class="price-point-name">До подъезда</div></div>
-        <div><input class="price-input" id="p-F1-under" type="number" inputmode="decimal" /><div class="price-label-small">₸</div></div>
+    <!-- Форма добавления -->
+    <div class="price-card" style="margin:0 0 12px;">
+      <div class="price-card-title">➕ Новый адрес</div>
+      <input id="addrInput" type="text" placeholder="Адрес (напр: 6а-1-20, Магазин Ак)" 
+        style="width:100%;padding:11px 12px;border-radius:10px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:15px;outline:none;box-sizing:border-box;margin-bottom:8px;" />
+      
+      <!-- Тип адреса -->
+      <div style="display:flex;gap:6px;margin-bottom:8px;" id="addrTypeRow">
+        <button onclick="selectAddrType('under')" id="addrType-under"
+          style="flex:1;padding:9px 4px;border-radius:8px;border:2px solid #2a2a2a;background:#1c1c1e;color:#888;font-size:12px;font-weight:600;cursor:pointer;">
+          🏠 Подъезд
+        </button>
+        <button onclick="selectAddrType('flat')" id="addrType-flat"
+          style="flex:1;padding:9px 4px;border-radius:8px;border:2px solid #2a2a2a;background:#1c1c1e;color:#888;font-size:12px;font-weight:600;cursor:pointer;">
+          🏢 Квартира
+        </button>
+        <button onclick="selectAddrType('other')" id="addrType-other"
+          style="flex:1;padding:9px 4px;border-radius:8px;border:2px solid #2a2a2a;background:#1c1c1e;color:#888;font-size:12px;font-weight:600;cursor:pointer;">
+          📍 Другое
+        </button>
       </div>
-      <div class="price-point-row">
-        <div><div class="price-point-name">До квартиры</div></div>
-        <div><input class="price-input" id="p-F1-flat" type="number" inputmode="decimal" /><div class="price-label-small">₸</div></div>
+
+      <!-- Сумма — только для "другое" -->
+      <div id="addrPriceRow" style="display:none;margin-bottom:8px;">
+        <input id="addrPriceInput" type="number" inputmode="decimal" placeholder="Сумма ₸"
+          style="width:100%;padding:11px 12px;border-radius:10px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:15px;outline:none;box-sizing:border-box;" />
       </div>
-      <div class="price-point-row">
-        <div><div class="price-point-name">Другие</div><div style="font-size:11px;color:#444;margin-top:2px;">магазин, баня и т.п.</div></div>
-        <div><input class="price-input" id="p-F1-other" type="number" inputmode="decimal" /><div class="price-label-small">₸</div></div>
-      </div>
+
+      <button onclick="addCustomAddr()"
+        style="width:100%;padding:12px;border-radius:10px;border:none;background:#65d48b;color:#000;font-weight:bold;font-size:14px;cursor:pointer;">
+        Добавить
+      </button>
     </div>
 
-    <!-- F2 -->
-    <div class="price-card">
-      <div class="price-card-title">🏢 F2</div>
-      <div class="price-point-row">
-        <div><div class="price-point-name">До подъезда</div></div>
-        <div><input class="price-input" id="p-F2-under" type="number" inputmode="decimal" /><div class="price-label-small">₸</div></div>
-      </div>
-      <div class="price-point-row">
-        <div><div class="price-point-name">До квартиры</div></div>
-        <div><input class="price-input" id="p-F2-flat" type="number" inputmode="decimal" /><div class="price-label-small">₸</div></div>
-      </div>
-      <div class="price-point-row">
-        <div><div class="price-point-name">Другие</div></div>
-        <div><input class="price-input" id="p-F2-other" type="number" inputmode="decimal" /><div class="price-label-small">₸</div></div>
-      </div>
+    <!-- Список адресов -->
+    <div class="price-card" style="margin:0;">
+      <div class="price-card-title">Сохранённые адреса</div>
+      <div id="addrList"><div style="color:#333;font-size:13px;padding:4px 0;">Нет адресов</div></div>
     </div>
 
-    <!-- F3 -->
-    <div class="price-card">
-      <div class="price-card-title">🏢 F3</div>
-      <div class="price-point-row">
-        <div><div class="price-point-name">До подъезда</div></div>
-        <div><input class="price-input" id="p-F3-under" type="number" inputmode="decimal" /><div class="price-label-small">₸</div></div>
-      </div>
-      <div class="price-point-row">
-        <div><div class="price-point-name">До квартиры</div></div>
-        <div><input class="price-input" id="p-F3-flat" type="number" inputmode="decimal" /><div class="price-label-small">₸</div></div>
-      </div>
-      <div class="price-point-row">
-        <div><div class="price-point-name">Другие</div></div>
-        <div><input class="price-input" id="p-F3-other" type="number" inputmode="decimal" /><div class="price-label-small">₸</div></div>
-      </div>
-    </div>
-
-    <!-- ALLEY PUB -->
-    <div class="price-card">
-      <div class="price-card-title">🍺 ALLEY PUB</div>
-      <div class="price-point-row">
-        <div><div class="price-point-name">До подъезда</div></div>
-        <div><input class="price-input" id="p-ALLEY-under" type="number" inputmode="decimal" /><div class="price-label-small">₸</div></div>
-      </div>
-      <div class="price-point-row">
-        <div><div class="price-point-name">До квартиры</div></div>
-        <div><input class="price-input" id="p-ALLEY-flat" type="number" inputmode="decimal" /><div class="price-label-small">₸</div></div>
-      </div>
-      <div class="price-point-row">
-        <div><div class="price-point-name">Другие</div></div>
-        <div><input class="price-input" id="p-ALLEY-other" type="number" inputmode="decimal" /><div class="price-label-small">₸</div></div>
-      </div>
-    </div>
-
-    <button class="price-save-btn" onclick="savePrices()">✅ Сохранить</button>
-    <div style="height:20px;"></div>
+    <div style="height:30px;"></div>
   </div>
 </div>
 
@@ -934,67 +908,99 @@
   // Псевдоним без window. для вызова внутри скриптов
   function showConfirm(msg, cb) { window.showConfirm(msg, cb); }
 
-  // ── НАСТРОЙКИ ЦЕН ──────────────────────────────────────────────
-  const PRICE_POINTS = ['F1','F2','F3','ALLEY'];
-  const PRICE_DEFAULTS = {
-    'F1':   { under: 150, flat: 300, other: 300 },
-    'F2':   { under: 150, flat: 300, other: 300 },
-    'F3':   { under: 150, flat: 300, other: 300 },
-    'ALLEY':{ under: 600, flat: 900, other: 900 },
+  // ── СПРАВОЧНИК АДРЕСОВ ─────────────────────────────────────────
+  // Фиксированные цены
+  const FIXED_PRICES = {
+    'F1':      { under: 150, flat: 300 },
+    'F2':      { under: 150, flat: 300 },
+    'F3':      { under: 150, flat: 300 },
+    'ALLEY PUB': { under: 600, flat: 900 },
   };
 
-  function loadPrices() {
-    const saved = localStorage.getItem('waPointPrices');
-    if (saved) {
-      try { return JSON.parse(saved); } catch(e) {}
-    }
-    return JSON.parse(JSON.stringify(PRICE_DEFAULTS));
+  function loadCustomAddresses() {
+    try { return JSON.parse(localStorage.getItem('waCustomAddrs') || '[]'); } catch(e) { return []; }
+  }
+  function saveCustomAddresses(arr) {
+    localStorage.setItem('waCustomAddrs', JSON.stringify(arr));
   }
 
-  function getPrices() { return loadPrices(); }
+  let _selectedAddrType = 'flat';
 
-  window.openPricesScreen = () => {
-    const prices = loadPrices();
-    PRICE_POINTS.forEach(p => {
-      const d = prices[p] || PRICE_DEFAULTS[p];
-      const uEl = document.getElementById('p-'+p+'-under');
-      const fEl = document.getElementById('p-'+p+'-flat');
-      const oEl = document.getElementById('p-'+p+'-other');
-      if (uEl) uEl.value = d.under;
-      if (fEl) fEl.value = d.flat;
-      if (oEl) oEl.value = d.other;
+  window.selectAddrType = (type) => {
+    _selectedAddrType = type;
+    ['under','flat','other'].forEach(t => {
+      const btn = document.getElementById('addrType-'+t);
+      if (!btn) return;
+      const colors = { under:'#4a9eff', flat:'#65d48b', other:'#ffd166' };
+      const active = t === type;
+      btn.style.borderColor = active ? colors[t] : '#2a2a2a';
+      btn.style.color = active ? colors[t] : '#888';
+      btn.style.background = active ? (t==='under'?'#0a1020':t==='flat'?'#0a1a0a':'#1a1500') : '#1c1c1e';
     });
-    document.getElementById('pricesScreen').classList.add('open');
+    document.getElementById('addrPriceRow').style.display = type === 'other' ? 'block' : 'none';
   };
 
+  window.addCustomAddr = () => {
+    const addr = document.getElementById('addrInput').value.trim();
+    if (!addr) { document.getElementById('addrInput').style.borderColor='#ff6b6b'; return; }
+    document.getElementById('addrInput').style.borderColor='#2a2a2a';
+    const type = _selectedAddrType;
+    const price = type === 'other' ? Number(document.getElementById('addrPriceInput').value) || 0 : 0;
+    const list = loadCustomAddresses();
+    // Обновляем если уже есть
+    const existing = list.findIndex(a => a.addr.toLowerCase() === addr.toLowerCase());
+    const entry = { addr, type, price };
+    if (existing >= 0) list[existing] = entry; else list.push(entry);
+    saveCustomAddresses(list);
+    document.getElementById('addrInput').value = '';
+    document.getElementById('addrPriceInput').value = '';
+    selectAddrType('flat');
+    renderAddrList();
+    updatePricesSummary();
+  };
+
+  window.deleteCustomAddr = (idx) => {
+    const list = loadCustomAddresses();
+    list.splice(idx, 1);
+    saveCustomAddresses(list);
+    renderAddrList();
+    updatePricesSummary();
+  };
+
+  function renderAddrList() {
+    const list = loadCustomAddresses();
+    const el = document.getElementById('addrList');
+    if (!el) return;
+    if (!list.length) { el.innerHTML = '<div style="color:#333;font-size:13px;padding:4px 0;">Нет адресов</div>'; return; }
+    const typeLabel = { under:'🏠 Подъезд', flat:'🏢 Квартира', other:'📍 Другое' };
+    const typeColor = { under:'#4a9eff', flat:'#65d48b', other:'#ffd166' };
+    el.innerHTML = list.map((a, i) => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #111;">
+        <div>
+          <div style="font-size:14px;font-weight:600;">${a.addr}</div>
+          <div style="font-size:11px;color:${typeColor[a.type]||'#888'};margin-top:2px;">
+            ${typeLabel[a.type]||a.type}${a.type==='other'&&a.price?' · '+a.price.toLocaleString()+' ₸':''}
+          </div>
+        </div>
+        <button onclick="deleteCustomAddr(${i})" style="background:none;border:none;color:#ff6b6b;font-size:20px;cursor:pointer;padding:6px;">✕</button>
+      </div>`).join('');
+  }
+
+  window.openPricesScreen = () => {
+    selectAddrType('flat');
+    renderAddrList();
+    document.getElementById('pricesScreen').classList.add('open');
+  };
   window.closePricesScreen = () => {
     document.getElementById('pricesScreen').classList.remove('open');
   };
 
-  window.savePrices = () => {
-    const prices = {};
-    PRICE_POINTS.forEach(p => {
-      prices[p] = {
-        under: Number(document.getElementById('p-'+p+'-under').value) || PRICE_DEFAULTS[p].under,
-        flat:  Number(document.getElementById('p-'+p+'-flat').value)  || PRICE_DEFAULTS[p].flat,
-        other: Number(document.getElementById('p-'+p+'-other').value) || PRICE_DEFAULTS[p].other,
-      };
-    });
-    localStorage.setItem('waPointPrices', JSON.stringify(prices));
-    updatePricesSummary(prices);
-    closePricesScreen();
-    window.showToast && window.showToast('✅ Цены сохранены');
-  };
-
-  function updatePricesSummary(prices) {
-    const p = prices || loadPrices();
-    const f1 = p['F1'] || PRICE_DEFAULTS['F1'];
+  // Обновляем подпись кнопки
+  function updatePricesSummary() {
+    const list = loadCustomAddresses();
     const el = document.getElementById('pricesSummary');
-    if (el) el.textContent = `F1/F2/F3: ${f1.under}/${f1.flat} ₸`;
+    if (el) el.textContent = list.length ? `${list.length} адр. в справочнике` : 'Справочник пуст';
   }
-
-  // Инициализация summary при загрузке
-  document.addEventListener('DOMContentLoaded', () => updatePricesSummary());
   setTimeout(() => updatePricesSummary(), 300);
 
   // DRAWER
@@ -1755,23 +1761,19 @@
       return;
     }
 
-    // Правила парсинга
-    const POINTS_MAP = {
-      'F1': 'F1', 'F2': 'F2', 'F3': 'F3',
-      'ALLEY': 'ALLEY PUB', 'ALLEY PUB': 'ALLEY PUB'
+    // Фиксированные цены
+    const POINTS = {
+      'F1':        { under: 150, flat: 300 },
+      'F2':        { under: 150, flat: 300 },
+      'F3':        { under: 150, flat: 300 },
+      'ALLEY PUB': { under: 600, flat: 900 },
     };
 
-    const savedPrices = loadPrices();
-    const POINTS = {
-      'F1':      savedPrices['F1']    || { under: 150, flat: 300, other: 300 },
-      'F2':      savedPrices['F2']    || { under: 150, flat: 300, other: 300 },
-      'F3':      savedPrices['F3']    || { under: 150, flat: 300, other: 300 },
-      'ALLEY PUB': savedPrices['ALLEY'] || { under: 600, flat: 900, other: 900 },
-    };
+    // Справочник пользовательских адресов [{ addr, type, price }]
+    const customAddrs = loadCustomAddresses();
 
     // Парсим локально без ИИ — по шаблону
     const entries = [];
-    // Разбиваем вместе с временными метками
     const rawBlocks = text.split(/(\[\d+\.\d+,\s*\d+:\d+\])/);
     const blocks = [];
     for (let i = 1; i < rawBlocks.length; i += 2) {
@@ -1782,10 +1784,19 @@
       blocks.push({ body: body.trim(), msgTime });
     }
 
-    const isPhone = s => /^[\+\d8]/.test(s.trim()) && /[\d\s\-\(\)]{7,}/.test(s);
-    const cleanPhone = s => s.replace(/(?:^|\s)[\+8]?[\d][\d\s\-\(\)]{8,}/g, '').trim();
-    const skipLine = s => /через|забрать|звонить|код|готов|мкрн|гараж|подъезд\s|этаж\s|кв\s*$/i.test(s) === false
-      ? false : true;
+    const isPhone = s => {
+      const cleaned = s.trim().replace(/[\s\-\(\)]/g, '');
+      return /^(\+7|8|7)\d{10}$/.test(cleaned) || /^\d{11}$/.test(cleaned);
+    };
+
+    // Убираем телефон из строки, не трогая адрес
+    const stripPhone = s => s
+      .replace(/(?<![0-9])(\+7|8)[\s\-]?\(?\d{3}\)?[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}/g, '')
+      .replace(/(?<![0-9])\+77\d{9}/g, '')
+      .replace(/(?<![0-9])87\d{9}/g, '')
+      .replace(/(?<![0-9])77\d{9}/g, '')
+      .replace(/,\s*$/, '')
+      .trim();
 
     for (const block of blocks) {
       const lines = block.body.split('\n').filter(l => l.trim());
@@ -1802,77 +1813,76 @@
       else if (/F\s*1/.test(fl)) point = 'F1';
       if (!point) continue;
 
-      // Извлекаем часть после названия точки и двоеточия
-      let afterColon = firstLine.replace(/^.*?(?:ALLEY\s*PUB|F\s*[123])\s*:/i, '').trim();
-      // Убираем телефон из afterColon — только отдельно стоящие номера (не часть адреса)
-      // Телефон: начинается с +7, 8 или 7 и содержит 10+ цифр, стоит отдельно
-      afterColon = afterColon.replace(/(?:^|\s)(?:\+7|8|7)[\d\s\-\(\)]{9,}/g, '').replace(/,\s*$/, '').trim();
+      // Всё что идёт после "F1:" / "ALLEY PUB:" — потенциальный адрес
+      let afterColon = firstLine.replace(/^.*?(?:ALLEY\s*PUB|F\s*[123])\s*[:\-\s]/i, '').trim();
+      afterColon = stripPhone(afterColon);
 
       let address = '';
 
-      // 1. Адрес в первой строке после двоеточия (не телефон, есть содержимое)
-      if (afterColon && !isPhone(afterColon) && afterColon.length > 1) {
+      // 1. Если после двоеточия что-то осталось (не пустое, не просто телефон)
+      if (afterColon && afterColon.length > 1 && !isPhone(afterColon)) {
         address = afterColon;
       }
 
-      // 2. Ищем в остальных строках
+      // 2. Ищем адрес в следующих строках
       if (!address) {
         for (const line of lines.slice(1)) {
-          if (isPhone(line)) continue;
-          if (/^(через|забрать|звонить|код|готов|с гаража)/i.test(line)) continue;
-          const cleaned = line.replace(/(?:^|\s)(?:\+7|8|7)[\d\s\-\(\)]{9,}/g, '').replace(/,\s*$/, '').trim();
-          if (cleaned.length > 1) { address = cleaned; break; }
+          const stripped = stripPhone(line).trim();
+          if (!stripped || stripped.length < 2) continue;
+          if (isPhone(stripped)) continue;
+          if (/^(через|забрать|звонить|код|готов|с гаража|не|да$|нет$)/i.test(stripped)) continue;
+          address = stripped;
+          break;
         }
       }
 
       if (!address) continue;
 
-      // Классифицируем адрес
+      const prices = POINTS[point] || { under: 150, flat: 300 };
       const a = address.toLowerCase().trim();
-      let addrType = 'flat'; // 'under' | 'flat' | 'other'
 
-      // Спецадреса (начинается с буквы, не цифры) — "другие"
-      if (/^[а-яёa-z]/i.test(a) && !/^\d/.test(a)) {
-        addrType = 'other';
-      }
-      // п.п или пп в конце → подъезд
-      else if (/п\.п\.?$|пп$/.test(a)) {
-        addrType = 'under';
-      }
-      // последний подъезд → подъезд
-      else if (/последний\s+подъезд/.test(a)) {
-        addrType = 'under';
-      }
-      // явно квартира: кв в середине (4-10-114кв, 2-6-66кв)
-      else if (/\d+кв$/.test(a) || /кв\.?\s*\d+/i.test(a)) {
-        addrType = 'flat';
-      }
-      // три сегмента цифр с буквой кв или без — квартира (4-10-114, 2-6-66)
-      else if (/^\d+[а-яё]?[-–]\d+[-–]\d+[а-яё]?$/.test(a)) {
-        // три сегмента — смотрим последний
-        const lastSeg = a.split(/[-–]/).pop();
-        // если последний сегмент заканчивается на п — подъезд
-        if (/п$/.test(lastSeg) && !/кв/.test(a)) {
-          addrType = 'under';
-        } else {
-          addrType = 'flat';
+      // 1. Проверяем справочник адресов (приоритет)
+      let amount = null;
+      let type = null;
+      for (const entry of customAddrs) {
+        if (a === entry.addr.toLowerCase() || a.includes(entry.addr.toLowerCase()) || entry.addr.toLowerCase().includes(a)) {
+          const typeLabel = { under: 'до подъезда', flat: 'до квартиры', other: 'другое' };
+          type = typeLabel[entry.type] || entry.type;
+          // Для подъезда/квартиры берём фиксированную цену, для "другое" — цену из справочника
+          if (entry.type === 'under') amount = prices.under;
+          else if (entry.type === 'flat') amount = prices.flat;
+          else amount = entry.price || prices.flat;
+          break;
         }
       }
-      // два сегмента (1-22, 3а-5) → подъезд
-      else if (/^\d+[а-яё]?[-–]\d+[а-яё]?$/.test(a)) {
-        addrType = 'under';
-      }
-      // заканчивается на п (не кв, не пп уже проверили) → подъезд
-      else if (/[а-яё]?п$/.test(a) && !/кв/.test(a)) {
-        addrType = 'under';
-      }
-      else {
-        addrType = 'flat';
-      }
 
-      const prices = POINTS[point] || { under: 150, flat: 300, other: 300 };
-      const amount = addrType === 'under' ? prices.under : addrType === 'other' ? prices.other : prices.flat;
-      const type = addrType === 'under' ? 'до подъезда' : addrType === 'other' ? 'другое' : 'до квартиры';
+      // 2. Если не в справочнике — авто-определение по паттерну
+      if (amount === null) {
+        let addrType = 'flat';
+
+        if (/п\.п\.?$|пп$/i.test(a) || /последний\s*подъезд/i.test(a)) {
+          addrType = 'under';
+        } else if (/\d+кв$/i.test(a) || /кв\.?\s*\d+/i.test(a)) {
+          addrType = 'flat';
+        } else if (/^[а-яёa-z]/i.test(a) && !/^\d/.test(a)) {
+          // начинается с буквы — спецадрес, по умолчанию как квартира
+          addrType = 'flat';
+        } else {
+          const segs = a.split(/[-–]/).map(s => s.trim());
+          if (segs.length >= 3) {
+            const last = segs[segs.length - 1];
+            addrType = /^\d*п$/i.test(last) && !/кв/i.test(a) ? 'under' : 'flat';
+          } else if (segs.length === 2) {
+            const last = segs[1];
+            if (/^\d*п$/i.test(last)) addrType = 'under';
+            else if (/^\d+$/.test(last) && Number(last) <= 20) addrType = 'under';
+            else addrType = 'flat';
+          }
+        }
+
+        amount = addrType === 'under' ? prices.under : prices.flat;
+        type = addrType === 'under' ? 'до подъезда' : 'до квартиры';
+      }
 
       entries.push({ point, amount, address, type, msgTime });
     }
