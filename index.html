@@ -873,6 +873,22 @@
       <div class="hf-chip" data-type="expense" onclick="toggleHistFilter(this,'type')">🔴 Расход</div>
       <div class="hf-chip" data-type="transfer" onclick="toggleHistFilter(this,'type')">↔ Перевод</div>
     </div>
+    <!-- Быстрые фильтры по дате -->
+    <div class="history-filters" id="histDateFilters" style="padding-top:0;">
+      <div class="hf-chip on" data-period="all" onclick="toggleHistFilter(this,'period')">За всё время</div>
+      <div class="hf-chip" data-period="today" onclick="toggleHistFilter(this,'period')">Сегодня</div>
+      <div class="hf-chip" data-period="yesterday" onclick="toggleHistFilter(this,'period')">Вчера</div>
+      <div class="hf-chip" data-period="week" onclick="toggleHistFilter(this,'period')">7 дней</div>
+      <div class="hf-chip" data-period="month" onclick="toggleHistFilter(this,'period')">Месяц</div>
+      <div class="hf-chip" data-period="custom" onclick="toggleHistFilter(this,'period')">📅 Период</div>
+    </div>
+    <!-- Кастомный период (скрыт по умолчанию) -->
+    <div id="histCustomDateRow" style="display:none;gap:6px;padding-bottom:8px;display:none;">
+      <div style="display:flex;gap:6px;">
+        <input type="date" id="histFromDate" style="flex:1;padding:7px;border-radius:8px;border:1px solid #2a2a2a;background:#1c1c1e;color:#fff;font-size:13px;" oninput="renderHistorySheet()" />
+        <input type="date" id="histToDate" style="flex:1;padding:7px;border-radius:8px;border:1px solid #2a2a2a;background:#1c1c1e;color:#fff;font-size:13px;" oninput="renderHistorySheet()" />
+      </div>
+    </div>
     <!-- Фильтры категория/точка -->
     <div class="history-filters" id="histCatFilters" style="padding-top:0;padding-bottom:10px;"></div>
   </div>
@@ -1686,11 +1702,17 @@
   window.render = render;
 
   // ── ИСТОРИЯ (всплывающий экран) ────────────────────────────────
-  let _histTypeFilter = 'all';
-  let _histCatFilter  = 'all';
+  let _histTypeFilter   = 'all';
+  let _histCatFilter    = 'all';
+  let _histPeriodFilter = 'all';
+
+  const _getHistToday = () => {
+    const n = new Date();
+    if (n.getHours() < 3) n.setDate(n.getDate() - 1);
+    return new Date(n - n.getTimezoneOffset()*60000).toISOString().split('T')[0];
+  };
 
   window.openHistorySheet = () => {
-    // Собираем уникальные категории/точки
     const cats = new Set();
     (window.allTx||[]).forEach(t => {
       if (t.type === 'transfer') return;
@@ -1702,10 +1724,14 @@
       [...cats].sort().map(c =>
         `<div class="hf-chip" data-cat="${c}" onclick="toggleHistFilter(this,'cat')">${c}</div>`
       ).join('');
-    _histTypeFilter = 'all';
-    _histCatFilter  = 'all';
+    _histTypeFilter   = 'all';
+    _histCatFilter    = 'all';
+    _histPeriodFilter = 'all';
     document.querySelectorAll('#histTypeFilters .hf-chip').forEach(c => c.classList.remove('on','red','blue'));
     document.querySelector('#histTypeFilters .hf-chip[data-type="all"]').classList.add('on');
+    document.querySelectorAll('#histDateFilters .hf-chip').forEach(c => c.classList.remove('on'));
+    document.querySelector('#histDateFilters .hf-chip[data-period="all"]').classList.add('on');
+    document.getElementById('histCustomDateRow').style.display = 'none';
     document.getElementById('histSearch').value = '';
     renderHistorySheet();
     document.getElementById('historySheet').classList.add('open');
@@ -1719,10 +1745,15 @@
     if (group === 'type') {
       document.querySelectorAll('#histTypeFilters .hf-chip').forEach(c => c.classList.remove('on','red','blue'));
       el.classList.add('on');
-      const t = el.dataset.type;
-      if (t === 'expense') el.classList.add('red');
-      if (t === 'transfer') el.classList.add('blue');
-      _histTypeFilter = t;
+      if (el.dataset.type === 'expense') el.classList.add('red');
+      if (el.dataset.type === 'transfer') el.classList.add('blue');
+      _histTypeFilter = el.dataset.type;
+    } else if (group === 'period') {
+      document.querySelectorAll('#histDateFilters .hf-chip').forEach(c => c.classList.remove('on'));
+      el.classList.add('on');
+      _histPeriodFilter = el.dataset.period;
+      document.getElementById('histCustomDateRow').style.display =
+        _histPeriodFilter === 'custom' ? 'block' : 'none';
     } else {
       document.querySelectorAll('#histCatFilters .hf-chip').forEach(c => c.classList.remove('on'));
       el.classList.add('on');
@@ -1737,33 +1768,53 @@
 
     // Тип
     if (_histTypeFilter !== 'all') list = list.filter(t => t.type === _histTypeFilter);
+
+    // Период
+    const today = _getHistToday();
+    if (_histPeriodFilter === 'today') {
+      list = list.filter(t => t.date === today);
+    } else if (_histPeriodFilter === 'yesterday') {
+      const d = new Date(); d.setDate(d.getDate()-1);
+      const ys = new Date(d - d.getTimezoneOffset()*60000).toISOString().split('T')[0];
+      list = list.filter(t => t.date === ys);
+    } else if (_histPeriodFilter === 'week') {
+      const d = new Date(); d.setDate(d.getDate()-7);
+      const ws = new Date(d - d.getTimezoneOffset()*60000).toISOString().split('T')[0];
+      list = list.filter(t => t.date >= ws);
+    } else if (_histPeriodFilter === 'month') {
+      list = list.filter(t => (t.date||'').startsWith(today.slice(0,7)));
+    } else if (_histPeriodFilter === 'custom') {
+      const from = document.getElementById('histFromDate').value;
+      const to   = document.getElementById('histToDate').value;
+      if (from) list = list.filter(t => t.date >= from);
+      if (to)   list = list.filter(t => t.date <= to);
+    }
+
     // Категория
     if (_histCatFilter !== 'all') list = list.filter(t =>
       (t.subcategory||t.categoryName||'') === _histCatFilter
     );
+
     // Поиск
     if (search) list = list.filter(t => {
       const cat = (t.subcategory||t.categoryName||'').toLowerCase();
       const comment = (t.comment||'').toLowerCase();
       const amt = String(t.amount);
       const acc = (t.account||'').toLowerCase();
-      return cat.includes(search) || comment.includes(search) || amt.includes(search) || acc.includes(search);
+      return cat.includes(search)||comment.includes(search)||amt.includes(search)||acc.includes(search);
     });
 
-    // Сортировка: новые сверху
     list.sort((a,b) => {
       if (b.date !== a.date) return b.date > a.date ? 1 : -1;
       return (b.createdAt||0) - (a.createdAt||0);
     });
 
-    // Сводка
     const inc = list.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
     const exp = list.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
     document.getElementById('histSummary').innerHTML =
       `<span>${list.length} записей</span>` +
       `<span><span class="pos">+${inc.toLocaleString()}</span> / <span class="neg">-${exp.toLocaleString()}</span> ₸</span>`;
 
-    // Список
     document.getElementById('histList').innerHTML = list.map(t => {
       const acc = t.account&&t.account!=='undefined'&&t.account!==''&&t.account!=='Счет не выбран'?` [${t.account}]`:'';
       const ts = t.time ? `${t.date} ${t.time}` : t.date;
