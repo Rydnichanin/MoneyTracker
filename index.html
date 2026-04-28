@@ -723,6 +723,9 @@
           <button onclick="selectProvider('openai')" id="provBtn-openai" style="flex:1;padding:8px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#65d48b;font-size:12px;font-weight:600;cursor:pointer;">🟢 OpenAI</button>
           <button onclick="selectProvider('qwen')" id="provBtn-qwen" style="flex:1;padding:8px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fb923c;font-size:12px;font-weight:600;cursor:pointer;">🟠 Qwen</button>
         </div>
+        <div style="display:flex;gap:6px;margin-bottom:12px;">
+          <button onclick="selectProvider('custom')" id="provBtn-custom" style="flex:1;padding:8px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#f472b6;font-size:12px;font-weight:600;cursor:pointer;">🔧 Custom API</button>
+        </div>
 
         <!-- Ключи для каждого провайдера -->
         <div id="provSetup-gemini">
@@ -765,6 +768,17 @@
           </select>
         </div>
 
+        <div id="provSetup-custom" style="display:none;">
+          <div style="font-size:11px;color:#f472b6;margin-bottom:4px;">🔧 Custom OpenAI-совместимый провайдер</div>
+          <input id="keyInput-custom" type="password" placeholder="API ключ (sk-...)"
+            style="width:100%;padding:10px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:14px;outline:none;box-sizing:border-box;margin-bottom:6px;" />
+          <input id="urlInput-custom" type="text" placeholder="Base URL: https://api.example.com/v1"
+            style="width:100%;padding:10px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:13px;outline:none;box-sizing:border-box;margin-bottom:6px;" />
+          <input id="modelInput-custom" type="text" placeholder="Модель: gpt-4o / llama-3 / ..."
+            style="width:100%;padding:10px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:13px;outline:none;box-sizing:border-box;margin-bottom:6px;" />
+          <div style="font-size:10px;color:#333;margin-bottom:4px;">Совместимо с: OpenRouter, Groq, Together AI, Mistral, LM Studio и др.</div>
+        </div>
+
         <button onclick="saveAiSettings()" style="width:100%;padding:12px;border-radius:10px;border:none;background:#65d48b;color:#000;font-weight:bold;font-size:14px;cursor:pointer;">✅ Сохранить и запустить агента</button>
       </div>
 
@@ -805,6 +819,7 @@
   <div class="deposit-topbar">
     <button class="back-btn" onclick="closeDeposits()">‹</button>
     <span style="font-size:16px;font-weight:600;">Накопления</span>
+    <button onclick="openDepSettings()" style="margin-left:auto;background:none;border:1px solid #2a2a2a;border-radius:8px;color:#ffd166;font-size:12px;font-weight:600;padding:6px 12px;cursor:pointer;">⚙️ Настройки</button>
   </div>
   <div style="padding:12px;max-width:500px;margin:0 auto;">
 
@@ -812,48 +827,50 @@
       Автоматически откладывается от дневного дохода.<br>Снятие возвращается на наличные.
     </div>
 
-    <!-- Будущее 10% -->
-    <div class="dep-card future">
-      <div class="dep-label future">🌅 Будущее · 10%</div>
-      <div class="dep-total" id="dep1Total" style="color:#4a7aff;">0 ₸</div>
-      <div class="dep-today" id="dep1Today"></div>
-      <div style="display:flex;gap:8px;margin:10px 0 6px;">
-        <button onclick="depAction(0,'withdraw')" style="flex:1;padding:9px;border-radius:10px;background:#1a1a2a;border:1px solid #2a2a4a;color:#4a7aff;font-size:13px;font-weight:600;cursor:pointer;">− Снять</button>
-        <button onclick="depAction(0,'topup')" style="flex:1;padding:9px;border-radius:10px;background:#0a0f1f;border:1px solid #1a2a4a;color:#7aaaff;font-size:13px;font-weight:600;cursor:pointer;">+ Пополнить</button>
-      </div>
-      <div class="dep-log" id="dep1Log"></div>
-    </div>
+    <!-- Динамические карточки депозитов -->
+    <div id="depCardsWrap"></div>
 
-    <!-- День рождения 20% -->
-    <div class="dep-card bday">
-      <div class="dep-label bday">🎂 День рождения · 20%</div>
-      <div class="dep-total" id="dep2Total" style="color:#c77aff;">0 ₸</div>
-      <div class="dep-today" id="dep2Today"></div>
-      <div style="display:flex;gap:8px;margin:10px 0 6px;">
-        <button onclick="depAction(1,'withdraw')" style="flex:1;padding:9px;border-radius:10px;background:#1a0a1a;border:1px solid #3a1a3a;color:#c77aff;font-size:13px;font-weight:600;cursor:pointer;">− Снять</button>
-        <button onclick="depAction(1,'topup')" style="flex:1;padding:9px;border-radius:10px;background:#120a12;border:1px solid #2a1a2a;color:#d799ff;font-size:13px;font-weight:600;cursor:pointer;">+ Пополнить</button>
-      </div>
-      <div class="dep-log" id="dep2Log"></div>
-    </div>
-
-    <!-- Авто 20% -->
-    <div class="dep-card car">
-      <div class="dep-label car">🚗 Авто · 20%</div>
-      <div class="dep-total" id="dep3Total" style="color:#65d48b;">0 ₸</div>
-      <div class="dep-today" id="dep3Today"></div>
-      <div style="display:flex;gap:8px;margin:10px 0 6px;">
-        <button onclick="depAction(2,'withdraw')" style="flex:1;padding:9px;border-radius:10px;background:#0a1a0a;border:1px solid #1a3a1a;color:#65d48b;font-size:13px;font-weight:600;cursor:pointer;">− Снять</button>
-        <button onclick="depAction(2,'topup')" style="flex:1;padding:9px;border-radius:10px;background:#081508;border:1px solid #153015;color:#85f4ab;font-size:13px;font-weight:600;cursor:pointer;">+ Пополнить</button>
-      </div>
-      <div class="dep-log" id="dep3Log"></div>
-    </div>
-
-    <div style="background:#0a0a0a;border-radius:12px;padding:14px;text-align:center;border:1px solid #1a1a1a;">
+    <div style="background:#0a0a0a;border-radius:12px;padding:14px;text-align:center;border:1px solid #1a1a1a;margin-top:4px;">
       <div style="font-size:10px;color:#333;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Всего отложено</div>
       <div id="depGrandTotal" style="font-size:24px;font-weight:bold;color:#ffd166;">0 ₸</div>
-      <div style="font-size:11px;color:#333;margin-top:4px;">50% от всех доходов</div>
+      <div id="depGrandPct" style="font-size:11px;color:#333;margin-top:4px;"></div>
     </div>
 
+  </div>
+</div>
+
+<!-- ЭКРАН НАСТРОЕК ДЕПОЗИТОВ -->
+<div class="deposit-screen" id="depSettingsScreen" style="z-index:401;">
+  <div class="deposit-topbar">
+    <button class="back-btn" onclick="closeDepSettings()">‹</button>
+    <span style="font-size:16px;font-weight:600;">⚙️ Настройки депозитов</span>
+  </div>
+  <div style="padding:12px;max-width:500px;margin:0 auto;">
+
+    <!-- Форма добавления -->
+    <div style="background:#1c1c1e;border-radius:16px;padding:14px;margin-bottom:12px;border:1px solid #1a2a1a;">
+      <div style="font-size:11px;color:#65d48b;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">➕ Новый депозит</div>
+      <div style="display:flex;gap:8px;margin-bottom:8px;">
+        <input id="depNewEmoji" type="text" placeholder="🎯" maxlength="4"
+          style="width:56px;padding:11px;border-radius:10px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:20px;text-align:center;outline:none;flex-shrink:0;" />
+        <input id="depNewName" type="text" placeholder="Название"
+          style="flex:1;padding:11px;border-radius:10px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:15px;outline:none;" />
+        <input id="depNewRate" type="number" inputmode="decimal" placeholder="%" min="1" max="100"
+          style="width:64px;padding:11px;border-radius:10px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:15px;text-align:center;outline:none;flex-shrink:0;" />
+      </div>
+      <input id="depNewColor" type="text" placeholder="Цвет: #4a7aff"
+        style="width:100%;padding:11px;border-radius:10px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:14px;outline:none;box-sizing:border-box;margin-bottom:8px;" />
+      <button onclick="addDepositSlot()"
+        style="width:100%;padding:12px;border-radius:10px;border:none;background:#65d48b;color:#000;font-weight:bold;font-size:14px;cursor:pointer;">
+        Добавить депозит
+      </button>
+    </div>
+
+    <!-- Список существующих депозитов -->
+    <div style="font-size:11px;color:#444;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Существующие депозиты</div>
+    <div id="depSettingsList"></div>
+
+    <div style="height:30px;"></div>
   </div>
 </div>
 
@@ -1130,16 +1147,115 @@
     document.getElementById('depositScreen').classList.remove('open');
   };
 
-  const DEP_NAMES = ['Будущее', 'День рождения', 'Авто'];
-  const DEP_RATES = [0.10, 0.20, 0.20];
-  const DEP_IDS   = ['dep1', 'dep2', 'dep3'];
+  // ── ДИНАМИЧЕСКИЕ ДЕПОЗИТЫ ─────────────────────────────────────
+  // Дефолтные депозиты (используются если в Firebase ничего нет)
+  const DEP_DEFAULTS = [
+    { name:'Будущее',       emoji:'🌅', rate:0.10, color:'#4a7aff' },
+    { name:'День рождения', emoji:'🎂', rate:0.20, color:'#c77aff' },
+    { name:'Авто',          emoji:'🚗', rate:0.20, color:'#65d48b' },
+  ];
+
+  // Хранятся в localStorage как массив { id, name, emoji, rate, color }
+  // id — строка, уникальная для маппинга dep_manual.depId
+  function loadDepSlots() {
+    try {
+      const s = JSON.parse(localStorage.getItem('depSlots') || 'null');
+      if (s && s.length) return s;
+    } catch(e) {}
+    // Создаём дефолты с id
+    const slots = DEP_DEFAULTS.map((d,i) => ({ id:'dep'+i, ...d }));
+    saveDepSlots(slots);
+    return slots;
+  }
+  function saveDepSlots(slots) {
+    localStorage.setItem('depSlots', JSON.stringify(slots));
+  }
+
+  window.openDepSettings = () => {
+    renderDepSettingsList();
+    document.getElementById('depSettingsScreen').classList.add('open');
+  };
+  window.closeDepSettings = () => {
+    document.getElementById('depSettingsScreen').classList.remove('open');
+  };
+
+  function renderDepSettingsList() {
+    const slots = loadDepSlots();
+    const el = document.getElementById('depSettingsList');
+    if (!el) return;
+    if (!slots.length) { el.innerHTML = '<div style="color:#333;font-size:13px;">Нет депозитов</div>'; return; }
+    el.innerHTML = slots.map((s, idx) => `
+      <div id="depSet-${idx}" style="background:#1c1c1e;border-radius:14px;padding:12px;margin-bottom:8px;border:1px solid #1a1a1a;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+          <span style="font-size:22px;">${s.emoji||'💰'}</span>
+          <span style="font-weight:600;font-size:15px;color:${s.color||'#fff'};">${s.name}</span>
+          <span style="margin-left:auto;background:#1a1a2a;border-radius:6px;padding:3px 9px;font-size:13px;font-weight:700;color:${s.color||'#aaa'};">${Math.round(s.rate*100)}%</span>
+        </div>
+        <div style="display:flex;gap:6px;margin-bottom:8px;">
+          <input onchange="updateDepSlot(${idx},'emoji',this.value)" value="${s.emoji||''}" maxlength="4"
+            style="width:46px;padding:8px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:18px;text-align:center;outline:none;flex-shrink:0;" />
+          <input onchange="updateDepSlot(${idx},'name',this.value)" value="${s.name}"
+            style="flex:1;padding:8px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:14px;outline:none;" />
+          <input onchange="updateDepSlot(${idx},'rate',this.value)" value="${Math.round(s.rate*100)}" type="number" min="0" max="100"
+            style="width:52px;padding:8px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:14px;text-align:center;outline:none;flex-shrink:0;" placeholder="%" />
+        </div>
+        <div style="display:flex;gap:6px;">
+          <input onchange="updateDepSlot(${idx},'color',this.value)" value="${s.color||'#65d48b'}"
+            style="flex:1;padding:8px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:${s.color||'#fff'};font-size:13px;outline:none;" placeholder="Цвет #hex" />
+          <button onclick="deleteDepSlot(${idx})"
+            style="padding:8px 14px;border-radius:8px;border:none;background:#1a0a0a;color:#ff6b6b;font-size:18px;cursor:pointer;">✕</button>
+        </div>
+      </div>`).join('');
+  }
+
+  window.updateDepSlot = (idx, field, value) => {
+    const slots = loadDepSlots();
+    if (!slots[idx]) return;
+    if (field === 'rate') slots[idx].rate = Math.max(0, Math.min(100, Number(value))) / 100;
+    else slots[idx][field] = value;
+    saveDepSlots(slots);
+    renderDepSettingsList();
+    renderDeposits();
+  };
+
+  window.addDepositSlot = () => {
+    const emoji = document.getElementById('depNewEmoji').value.trim() || '💰';
+    const name  = document.getElementById('depNewName').value.trim();
+    const rate  = Number(document.getElementById('depNewRate').value) || 10;
+    const color = document.getElementById('depNewColor').value.trim() || '#ffd166';
+    if (!name) { document.getElementById('depNewName').style.borderColor='#ff6b6b'; return; }
+    document.getElementById('depNewName').style.borderColor='#2a2a2a';
+    const slots = loadDepSlots();
+    const id = 'dep' + Date.now();
+    slots.push({ id, name, emoji, rate: rate/100, color });
+    saveDepSlots(slots);
+    document.getElementById('depNewEmoji').value='';
+    document.getElementById('depNewName').value='';
+    document.getElementById('depNewRate').value='';
+    document.getElementById('depNewColor').value='';
+    renderDepSettingsList();
+    renderDeposits();
+  };
+
+  window.deleteDepSlot = (idx) => {
+    showConfirm('Удалить этот депозит? История операций сохранится.', () => {
+      const slots = loadDepSlots();
+      slots.splice(idx, 1);
+      saveDepSlots(slots);
+      renderDepSettingsList();
+      renderDeposits();
+    });
+  };
+
+  // Теперь DEP_NAMES / DEP_RATES — геттеры из slots (для обратной совместимости)
+  function getDepSlots() { return loadDepSlots(); }
 
   function renderDeposits() {
+    const slots = getDepSlots();
     const DEP_START = '2026-03-19';
     const byDay = {};
     (window.allTx || []).forEach(t => {
       if (t.type !== 'income') return;
-      // Исключаем возвраты с депозитов — чтобы не начислять % повторно
       if (t.subcategory && t.subcategory.startsWith('← ')) return;
       const d = t.date || '';
       if (d < DEP_START) return;
@@ -1149,28 +1265,33 @@
 
     const today = new Date().toISOString().slice(0,10);
     const sortedDays = Object.entries(byDay).filter(([d]) => d).sort((a,b) => a[0] > b[0] ? 1 : -1);
-
-    // Читаем ручные операции из Firestore
     const manualOps = (window.allTx || []).filter(t => t.type === 'dep_manual');
 
+    // Рендерим карточки динамически
+    const wrap = document.getElementById('depCardsWrap');
+    if (!wrap) return;
+
     let grand = 0;
-    DEP_RATES.forEach((rate, i) => {
-      const id = DEP_IDS[i];
+    const totalPct = slots.reduce((s,sl) => s + sl.rate, 0);
+
+    wrap.innerHTML = slots.map((slot, i) => {
+      const color = slot.color || '#65d48b';
+      const bgColor = color + '18';
+      const borderColor = color + '44';
       let autoTotal = 0;
       let logItems = [];
 
-      // Авто-начисления
       sortedDays.forEach(([d, sum]) => {
-        const amt = Math.round(sum * rate);
+        const amt = Math.round(sum * slot.rate);
         autoTotal += amt;
         const dd = d.slice(8) + '.' + d.slice(5,7);
         logItems.push({ d, html: `<div class="dep-log-item"><span>${dd}</span><span style="color:#65d48b;">+${amt.toLocaleString()} ₸</span></div>` });
       });
 
-      // Ручные операции для этого депозита
       let manualTotal = 0;
-      manualOps.filter(t => t.depIndex === i).forEach(t => {
-        manualTotal += t.amount; // отрицательное для снятия
+      // Поддержка и старого depIndex и нового depId
+      manualOps.filter(t => t.depId === slot.id || t.depIndex === i).forEach(t => {
+        manualTotal += t.amount;
         const dd = (t.date||'').slice(8) + '.' + (t.date||'').slice(5,7);
         const isW = t.amount < 0;
         logItems.push({ d: t.date||'', html: `<div class="dep-log-item"><span>${dd} ${t.comment||''}</span><span style="color:${isW?'#ff6b6b':'#ffd166'};">${isW?'':'+'}${t.amount.toLocaleString()} ₸</span></div>` });
@@ -1179,26 +1300,32 @@
       const total = autoTotal + manualTotal;
       grand += total;
 
-      // Сортируем лог — новые сверху
       logItems.sort((a,b) => b.d > a.d ? 1 : -1);
-      const logHtml = logItems.map(l => l.html).join('');
+      const logHtml = logItems.slice(0,15).map(l => l.html).join('');
+      const todayAmt = byDay[today] ? Math.round(byDay[today] * slot.rate) : 0;
 
-      document.getElementById(id + 'Total').textContent = total.toLocaleString() + ' ₸';
-
-      const todayAmt = byDay[today] ? Math.round(byDay[today] * rate) : 0;
-      document.getElementById(id + 'Today').textContent = todayAmt > 0
-        ? `Сегодня +${todayAmt.toLocaleString()} ₸`
-        : '';
-      document.getElementById(id + 'Log').innerHTML = logHtml || '<span style="color:#222;">Нет данных</span>';
-    });
+      return `<div style="background:${bgColor};border:1px solid ${borderColor};border-radius:16px;padding:16px;margin-bottom:10px;">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:${color};margin-bottom:4px;">${slot.emoji||'💰'} ${slot.name} · ${Math.round(slot.rate*100)}%</div>
+        <div style="font-size:28px;font-weight:bold;color:${color};">${total.toLocaleString()} ₸</div>
+        ${todayAmt > 0 ? `<div style="font-size:12px;color:#555;margin-bottom:2px;">Сегодня +${todayAmt.toLocaleString()} ₸</div>` : '<div style="font-size:12px;color:#333;margin-bottom:2px;"></div>'}
+        <div style="display:flex;gap:8px;margin:10px 0 6px;">
+          <button onclick="depAction(${i},'withdraw')" style="flex:1;padding:9px;border-radius:10px;background:#111;border:1px solid ${borderColor};color:${color};font-size:13px;font-weight:600;cursor:pointer;">− Снять</button>
+          <button onclick="depAction(${i},'topup')" style="flex:1;padding:9px;border-radius:10px;background:#0a0a0a;border:1px solid ${borderColor};color:${color};font-size:13px;font-weight:600;cursor:pointer;">+ Пополнить</button>
+        </div>
+        <div class="dep-log">${logHtml || '<span style="color:#222;">Нет данных</span>'}</div>
+      </div>`;
+    }).join('');
 
     document.getElementById('depGrandTotal').textContent = grand.toLocaleString() + ' ₸';
+    const pctEl = document.getElementById('depGrandPct');
+    if (pctEl) pctEl.textContent = `${Math.round(totalPct*100)}% от всех доходов · ${slots.length} депозит${slots.length===1?'':'ов'}`;
   }
 
   // Снятие / пополнение депозита
-  // Показываем встроенную форму вместо prompt() (prompt не работает в WebView)
   window.depAction = (depIndex, action) => {
-    const name = DEP_NAMES[depIndex];
+    const slots = getDepSlots();
+    const slot = slots[depIndex] || { name:'Депозит', color:'#65d48b', id:'dep0' };
+    const name = slot.name;
     const label = action === 'withdraw' ? '− Снять из: ' + name : '+ Пополнить: ' + name;
     const color = action === 'withdraw' ? '#ff6b6b' : '#65d48b';
 
@@ -1233,7 +1360,9 @@
   };
 
   window.confirmDepAction = async (depIndex, action) => {
-    const name = DEP_NAMES[depIndex];
+    const slots = getDepSlots();
+    const slot = slots[depIndex] || { name:'Депозит', id:'dep0' };
+    const name = slot.name;
     const amtEl = document.getElementById('depAmt');
     const commentEl = document.getElementById('depComment');
     const amt = Number((amtEl?.value||'').replace(/\s/g,''));
@@ -1252,7 +1381,7 @@
       const txRef = fbMethods.collection(fbDB, 'users', window.fbUser.uid, 'transactions');
 
       await fbMethods.addDoc(txRef, {
-        type: 'dep_manual', depIndex,
+        type: 'dep_manual', depIndex, depId: slot.id,
         amount: finalAmt, date: today, time,
         comment: comment || (action === 'withdraw' ? 'Снятие' : 'Пополнение'),
         createdAt: Date.now()
@@ -1692,8 +1821,8 @@
     document.getElementById("list").innerHTML=filtered.map(t=>{
       const acc=t.account&&t.account!=='undefined'&&t.account!==''&&t.account!=='Счет не выбран'?` [${t.account}]`:'';
       const ts=t.time?`${t.date} ${t.time}`:t.date;
-      if(t.type==='transfer')return`<div class="hist-item"><div><b style="color:#ffd166;">↔ ${t.amount.toLocaleString()} ₸</b><br><small class="muted">${ts} | ${t.fromAccount} → ${t.toAccount}</small></div><button class="hist-del" onclick="deleteTx('${t.id}')">✕</button></div>`;
-      return`<div class="hist-item"><div><b class="${t.type==='income'?'pos':'neg'}">${t.amount.toLocaleString()} ₸</b><br><small class="muted">${ts} | ${t.subcategory||t.categoryName}${acc}</small>${t.comment?`<div style="color:#65d48b;font-size:11px;margin-top:2px;">📝 ${t.comment}</div>`:''}</div><button class="hist-del" onclick="deleteTx('${t.id}')">✕</button></div>`;
+      if(t.type==='transfer')return`<div class="hist-item"><div><b style="color:#ffd166;">↔ ${t.amount.toLocaleString()} ₸</b><br><small class="muted">${ts} | ${t.fromAccount} → ${t.toAccount}</small></div><div style="display:flex;gap:4px;"><button class="hist-del" onclick="deleteTx('${t.id}')">✕</button></div></div>`;
+      return`<div class="hist-item"><div><b class="${t.type==='income'?'pos':'neg'}">${t.amount.toLocaleString()} ₸</b><br><small class="muted">${ts} | ${t.subcategory||t.categoryName}${acc}</small>${t.comment?`<div style="color:#65d48b;font-size:11px;margin-top:2px;">📝 ${t.comment}</div>`:''}</div><div style="display:flex;gap:4px;"><button onclick="editTx('${t.id}')" style="background:none;border:none;color:#ffd166;padding:8px;cursor:pointer;font-size:15px;opacity:0.8;">✏️</button><button class="hist-del" onclick="deleteTx('${t.id}')">✕</button></div></div>`;
     }).join("")||'<div class="muted">Нет записей</div>';
 
     renderAnalytics();
@@ -1818,8 +1947,8 @@
     document.getElementById('histList').innerHTML = list.map(t => {
       const acc = t.account&&t.account!=='undefined'&&t.account!==''&&t.account!=='Счет не выбран'?` [${t.account}]`:'';
       const ts = t.time ? `${t.date} ${t.time}` : t.date;
-      if (t.type==='transfer') return `<div class="hist-item"><div><b style="color:#ffd166;">↔ ${t.amount.toLocaleString()} ₸</b><br><small class="muted">${ts} | ${t.fromAccount} → ${t.toAccount}</small></div><button class="hist-del" onclick="deleteTx('${t.id}')">✕</button></div>`;
-      return `<div class="hist-item"><div><b class="${t.type==='income'?'pos':'neg'}">${t.amount.toLocaleString()} ₸</b><br><small class="muted">${ts} | ${t.subcategory||t.categoryName}${acc}</small>${t.comment?`<div style="color:#65d48b;font-size:11px;margin-top:2px;">📝 ${t.comment}</div>`:''}</div><button class="hist-del" onclick="deleteTx('${t.id}')">✕</button></div>`;
+      if (t.type==='transfer') return `<div class="hist-item"><div><b style="color:#ffd166;">↔ ${t.amount.toLocaleString()} ₸</b><br><small class="muted">${ts} | ${t.fromAccount} → ${t.toAccount}</small></div><div style="display:flex;gap:4px;"><button class="hist-del" onclick="deleteTx('${t.id}')">✕</button></div></div>`;
+      return `<div class="hist-item"><div><b class="${t.type==='income'?'pos':'neg'}">${t.amount.toLocaleString()} ₸</b><br><small class="muted">${ts} | ${t.subcategory||t.categoryName}${acc}</small>${t.comment?`<div style="color:#65d48b;font-size:11px;margin-top:2px;">📝 ${t.comment}</div>`:''}</div><div style="display:flex;gap:4px;"><button onclick="editTx('${t.id}')" style="background:none;border:none;color:#ffd166;padding:8px;cursor:pointer;font-size:15px;opacity:0.8;">✏️</button><button class="hist-del" onclick="deleteTx('${t.id}')">✕</button></div></div>`;
     }).join('') || '<div class="muted" style="padding:20px 0;text-align:center;">Ничего не найдено</div>';
   };
 
@@ -1932,6 +2061,85 @@
         );
       } catch(e) { console.error('deleteTx:', e); }
     });
+  };
+
+  window.editTx = (id) => {
+    const t = (window.allTx||[]).find(tx => tx.id === id);
+    if (!t || t.type === 'transfer') return;
+
+    const old = document.getElementById('_editDialog');
+    if (old) old.remove();
+
+    const accOpts = (window.ACCOUNTS||[]).map(a => `<option value="${a.name}" ${a.name===t.account?'selected':''}>${a.name}</option>`).join('');
+    const cats = [...(window.DEFAULTS?.income||[]), ...(window.DEFAULTS?.expense||[])];
+    const currentCat = cats.find(c => c.name === t.categoryName);
+    const catOpts = cats.map(c => `<option value="${c.name}" ${c.name===t.categoryName?'selected':''}>${c.name}</option>`).join('');
+    const subOpts = currentCat?.sub?.length
+      ? '<select id="_editSub" style="width:100%;padding:11px;border-radius:10px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:15px;outline:none;box-sizing:border-box;">' +
+        currentCat.sub.map(s=>`<option value="${s}" ${s===t.subcategory?'selected':''}>${s}</option>`).join('') + '</select>'
+      : `<input id="_editSub" type="text" value="${t.subcategory||''}" placeholder="Подкатегория" style="width:100%;padding:11px;border-radius:10px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:15px;outline:none;box-sizing:border-box;">`;
+
+    const div = document.createElement('div');
+    div.id = '_editDialog';
+    div.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.9);display:flex;align-items:flex-end;justify-content:center;padding:0;box-sizing:border-box;';
+    div.innerHTML = `
+      <div style="background:#1c1c1e;border-radius:20px 20px 0 0;padding:20px;width:100%;max-width:500px;border-top:1px solid #2a2a2a;max-height:90vh;overflow-y:auto;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+          <div style="font-size:15px;font-weight:700;color:#ffd166;">✏️ Редактировать запись</div>
+          <button onclick="document.getElementById('_editDialog').remove()" style="background:none;border:none;color:#555;font-size:22px;cursor:pointer;padding:4px 8px;">✕</button>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:10px;">
+          <select id="_editType" style="flex:1;padding:11px;border-radius:10px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:15px;outline:none;">
+            <option value="income" ${t.type==='income'?'selected':''}>Приход</option>
+            <option value="expense" ${t.type==='expense'?'selected':''}>Расход</option>
+          </select>
+          <input id="_editAmt" type="number" inputmode="decimal" value="${t.amount}"
+            style="flex:1;padding:11px;border-radius:10px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:15px;outline:none;">
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:10px;">
+          <select id="_editCat" style="flex:1;padding:11px;border-radius:10px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:15px;outline:none;">${catOpts}</select>
+          <select id="_editAcc" style="flex:1;padding:11px;border-radius:10px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:15px;outline:none;">${accOpts}</select>
+        </div>
+        <div style="margin-bottom:10px;">${subOpts}</div>
+        <div style="display:flex;gap:8px;margin-bottom:10px;">
+          <input id="_editDate" type="date" value="${t.date||''}"
+            style="flex:1;padding:11px;border-radius:10px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:15px;outline:none;">
+          <input id="_editTime" type="time" value="${t.time||''}"
+            style="flex:1;padding:11px;border-radius:10px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:15px;outline:none;">
+        </div>
+        <input id="_editComment" type="text" value="${t.comment||''}" placeholder="Примечание"
+          style="width:100%;padding:11px;border-radius:10px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:15px;outline:none;box-sizing:border-box;margin-bottom:14px;">
+        <div style="display:flex;gap:10px;">
+          <button onclick="document.getElementById('_editDialog').remove()"
+            style="flex:1;padding:13px;border-radius:10px;border:1px solid #333;background:none;color:#888;font-size:14px;cursor:pointer;">Отмена</button>
+          <button onclick="confirmEditTx('${id}')"
+            style="flex:1;padding:13px;border-radius:10px;border:none;background:#ffd166;color:#000;font-size:14px;font-weight:bold;cursor:pointer;">Сохранить</button>
+        </div>
+      </div>`;
+    document.body.appendChild(div);
+  };
+
+  window.confirmEditTx = async (id) => {
+    const amt = Number(document.getElementById('_editAmt').value);
+    if (!amt) { document.getElementById('_editAmt').style.borderColor='#ff6b6b'; return; }
+    const catName = document.getElementById('_editCat').value;
+    const sub = document.getElementById('_editSub').value;
+    const upd = {
+      type: document.getElementById('_editType').value,
+      amount: amt,
+      categoryName: catName,
+      subcategory: sub || '',
+      account: document.getElementById('_editAcc').value,
+      date: document.getElementById('_editDate').value,
+      time: document.getElementById('_editTime').value,
+      comment: document.getElementById('_editComment').value,
+    };
+    document.getElementById('_editDialog').remove();
+    try {
+      await window.fbMethods.updateDoc(
+        window.fbMethods.doc(window.fbDB, "users", window.fbUser.uid, "transactions", id), upd
+      );
+    } catch(e) { console.error('editTx save:', e); }
   };
 
   // ── WHATSAPP ПАРСЕР ────────────────────────────────────────────
@@ -2283,8 +2491,8 @@ let aiMemoryLoaded = false;
 // ── Выбор провайдера ──
 window.selectProvider = (p) => {
   currentProvider = p;
-  const colors = {gemini:'#4a9eff', claude:'#c084fc', openai:'#65d48b', qwen:'#fb923c'};
-  ['gemini','claude','openai','qwen'].forEach(x => {
+  const colors = {gemini:'#4a9eff', claude:'#c084fc', openai:'#65d48b', qwen:'#fb923c', custom:'#f472b6'};
+  ['gemini','claude','openai','qwen','custom'].forEach(x => {
     const btn = document.getElementById('provBtn-'+x);
     const setup = document.getElementById('provSetup-'+x);
     const active = x === p;
@@ -2334,11 +2542,19 @@ window.saveAiSettings = () => {
     const key=document.getElementById('keyInput-qwen').value.trim();
     if (!key) { window.showToast('Введи ключ Qwen'); return; }
     localStorage.setItem('qwenKey',key); localStorage.setItem('qwenModel',document.getElementById('modelSelect-qwen').value);
+  } else if (p==='custom') {
+    const key=document.getElementById('keyInput-custom').value.trim();
+    const url=document.getElementById('urlInput-custom').value.trim();
+    const model=document.getElementById('modelInput-custom').value.trim();
+    if (!key) { window.showToast('Введи API ключ'); return; }
+    if (!url) { window.showToast('Введи Base URL'); return; }
+    if (!model) { window.showToast('Введи название модели'); return; }
+    localStorage.setItem('customKey',key); localStorage.setItem('customUrl',url); localStorage.setItem('customModel',model);
   }
   localStorage.setItem('aiProvider',p);
   document.getElementById('aiKeySetup').style.display='none';
-  const names={gemini:'Gemini 🔵',claude:'Claude 🟣',openai:'OpenAI 🟢',qwen:'Qwen 🟠'};
-  showAgentStatus(names[p]);
+  const names={gemini:'Gemini 🔵',claude:'Claude 🟣',openai:'OpenAI 🟢',qwen:'Qwen 🟠',custom:'Custom 🔧'};
+  showAgentStatus(names[p]||p);
   if (!aiHistory.length) greetAgent();
 };
 
@@ -2352,6 +2568,9 @@ window.resetAiKey = () => {
   const ck=localStorage.getItem('claudeKey'); if(ck) document.getElementById('keyInput-claude').value=ck;
   const ok=localStorage.getItem('openaiKey'); if(ok) document.getElementById('keyInput-openai').value=ok;
   const qk=localStorage.getItem('qwenKey'); if(qk) document.getElementById('keyInput-qwen').value=qk;
+  const xk=localStorage.getItem('customKey'); if(xk) document.getElementById('keyInput-custom').value=xk;
+  const xu=localStorage.getItem('customUrl'); if(xu) document.getElementById('urlInput-custom').value=xu;
+  const xm=localStorage.getItem('customModel'); if(xm) document.getElementById('modelInput-custom').value=xm;
   const cm=localStorage.getItem('claudeModel'); if(cm) document.getElementById('modelSelect-claude').value=cm;
   const om=localStorage.getItem('openaiModel'); if(om) document.getElementById('modelSelect-openai').value=om;
   const qm=localStorage.getItem('qwenModel'); if(qm) document.getElementById('modelSelect-qwen').value=qm;
@@ -2634,8 +2853,8 @@ function appendAiMsg(role, text) {
 
 function greetAgent() {
   const p=localStorage.getItem('aiProvider')||'gemini';
-  const names={gemini:'Gemini',claude:'Claude',openai:'ChatGPT',qwen:'Qwen'};
-  appendAiMsg('bot',`👋 Привет! Агент на базе ${names[p]} готов.\nВижу все твои данные и могу:\n• Записывать/удалять/редактировать транзакции\n• Искать и фильтровать по дате, времени, сумме\n• Находить и удалять дубли\n• Управлять категориями и счетами\n• Переводить между счетами\n• Анализировать доходы за любой период\n\nЧто делаем?`);
+  const names={gemini:'Gemini',claude:'Claude',openai:'ChatGPT',qwen:'Qwen',custom:'Custom API'};
+  appendAiMsg('bot',`👋 Привет! Агент на базе ${names[p]||p} готов.\nВижу все твои данные и могу:\n• Записывать/удалять/редактировать транзакции\n• Искать и фильтровать по дате, времени, сумме\n• Находить и удалять дубли\n• Управлять категориями и счетами\n• Переводить между счетами\n• Анализировать доходы за любой период\n\nЧто делаем?`);
 }
 
 // ── Отправка сообщения ──
@@ -2665,6 +2884,7 @@ ${buildContext()}
     else if (provider==='claude') reply=await sendClaude(systemPrompt,text,typing);
     else if (provider==='openai') reply=await sendOpenAI(systemPrompt,text,typing);
     else if (provider==='qwen') reply=await sendQwen(systemPrompt,text,typing);
+    else if (provider==='custom') reply=await sendCustom(systemPrompt,text,typing);
 
     typing.textContent=reply;
     typing.classList.remove('typing');
@@ -2774,16 +2994,44 @@ async function sendQwen(systemPrompt,text,typing) {
   return data.choices?.[0]?.message?.content||'(нет ответа)';
 }
 
+// ── Custom (любой OpenAI-совместимый провайдер) ──
+async function sendCustom(systemPrompt,text,typing) {
+  const key=localStorage.getItem('customKey');
+  const baseUrl=(localStorage.getItem('customUrl')||'').replace(/\/+$/,'');
+  const model=localStorage.getItem('customModel')||'gpt-4o-mini';
+  if (!key) throw new Error('Нет API ключа для Custom провайдера');
+  if (!baseUrl) throw new Error('Нет Base URL для Custom провайдера');
+  const messages=[{role:'system',content:systemPrompt},...aiHistory.map(m=>({role:m.role==='assistant'?'assistant':'user',content:m.content})),{role:'user',content:text}];
+  const headers={'Content-Type':'application/json','Authorization':'Bearer '+key};
+  // Некоторые провайдеры (напр. OpenRouter) требуют дополнительных заголовков
+  let res=await fetch(baseUrl+'/chat/completions',{method:'POST',headers,body:JSON.stringify({model,messages,max_tokens:2048})});
+  let data=await res.json();
+  if (data.error) throw new Error(data.error.message||JSON.stringify(data.error));
+  const msg=data.choices?.[0]?.message;
+  // Tool calling поддерживается если провайдер совместим (не обязательно)
+  if (msg?.tool_calls?.length) {
+    const tc=msg.tool_calls[0];
+    typing.textContent=`⚙️ ${tc.function.name}...`;
+    const result=await executeTool(tc.function.name,JSON.parse(tc.function.arguments));
+    messages.push(msg);
+    messages.push({role:'tool',tool_call_id:tc.id,content:result});
+    res=await fetch(baseUrl+'/chat/completions',{method:'POST',headers,body:JSON.stringify({model,messages,max_tokens:2048})});
+    data=await res.json();
+    if (data.error) throw new Error(data.error.message||JSON.stringify(data.error));
+  }
+  return data.choices?.[0]?.message?.content||'(нет ответа)';
+}
+
 // ── Инициализация вкладки ──
 function initAiTab() {
   const p=localStorage.getItem('aiProvider');
   selectProvider(p||'gemini');
   if (p) {
-    const hasKey=(p==='gemini'&&localStorage.getItem('geminiKey'))||(p==='claude'&&localStorage.getItem('claudeKey'))||(p==='openai'&&localStorage.getItem('openaiKey'))||(p==='qwen'&&localStorage.getItem('qwenKey'));
+    const hasKey=(p==='gemini'&&localStorage.getItem('geminiKey'))||(p==='claude'&&localStorage.getItem('claudeKey'))||(p==='openai'&&localStorage.getItem('openaiKey'))||(p==='qwen'&&localStorage.getItem('qwenKey'))||(p==='custom'&&localStorage.getItem('customKey'));
     if (hasKey) {
       document.getElementById('aiKeySetup').style.display='none';
-      const names={gemini:'Gemini 🔵',claude:'Claude 🟣',openai:'OpenAI 🟢',qwen:'Qwen 🟠'};
-      showAgentStatus(names[p]);
+      const names={gemini:'Gemini 🔵',claude:'Claude 🟣',openai:'OpenAI 🟢',qwen:'Qwen 🟠',custom:'Custom 🔧'};
+      showAgentStatus(names[p]||p);
       // Загружаем память из Firebase
       loadMemoryFromFirebase().then(()=>{
         if (!aiHistory.length) greetAgent();
