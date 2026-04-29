@@ -858,8 +858,9 @@
         <input id="depNewRate" type="number" inputmode="decimal" placeholder="%" min="1" max="100"
           style="width:64px;padding:11px;border-radius:10px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:15px;text-align:center;outline:none;flex-shrink:0;" />
       </div>
-      <input id="depNewColor" type="text" placeholder="Цвет: #4a7aff"
-        style="width:100%;padding:11px;border-radius:10px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:14px;outline:none;box-sizing:border-box;margin-bottom:8px;" />
+      <div style="font-size:11px;color:#555;margin-bottom:6px;">Цвет</div>
+      <div id="depNewColorPicker"></div>
+      <div style="height:12px;"></div>
       <button onclick="addDepositSlot()"
         style="width:100%;padding:12px;border-radius:10px;border:none;background:#65d48b;color:#000;font-weight:bold;font-size:14px;cursor:pointer;">
         Добавить депозит
@@ -1148,22 +1149,56 @@
   };
 
   // ── ДИНАМИЧЕСКИЕ ДЕПОЗИТЫ ─────────────────────────────────────
-  // Дефолтные депозиты (используются если в Firebase ничего нет)
   const DEP_DEFAULTS = [
     { name:'Будущее',       emoji:'🌅', rate:0.10, color:'#4a7aff' },
     { name:'День рождения', emoji:'🎂', rate:0.20, color:'#c77aff' },
     { name:'Авто',          emoji:'🚗', rate:0.20, color:'#65d48b' },
   ];
 
-  // Хранятся в localStorage как массив { id, name, emoji, rate, color }
-  // id — строка, уникальная для маппинга dep_manual.depId
+  // Палитра цветов
+  const DEP_COLORS = [
+    { hex:'#4a7aff', name:'Синий'    },
+    { hex:'#c77aff', name:'Фиолет'   },
+    { hex:'#65d48b', name:'Зелёный'  },
+    { hex:'#ffd166', name:'Жёлтый'   },
+    { hex:'#ff6b6b', name:'Красный'  },
+    { hex:'#fb923c', name:'Оранж'    },
+    { hex:'#f472b6', name:'Розовый'  },
+    { hex:'#38bdf8', name:'Голубой'  },
+    { hex:'#a3e635', name:'Лайм'     },
+    { hex:'#e879f9', name:'Маджента' },
+    { hex:'#94a3b8', name:'Серый'    },
+    { hex:'#fbbf24', name:'Золото'   },
+  ];
+
+  function colorPickerHtml(selected, onclickFn) {
+    return `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;">` +
+      DEP_COLORS.map(c => {
+        const active = c.hex === selected;
+        return `<button type="button" onclick="${onclickFn}('${c.hex}')"
+          style="width:32px;height:32px;border-radius:50%;background:${c.hex};border:${active?'3px solid #fff':'2px solid transparent'};
+          box-shadow:${active?'0 0 0 2px '+c.hex:'none'};cursor:pointer;flex-shrink:0;transition:all 0.15s;"
+          title="${c.name}"></button>`;
+      }).join('') +
+    `</div>`;
+  }
+
+  // slot: { id, name, emoji, rate, color, rateHistory: [{rate, from}] }
+  // rateHistory — массив изменений ставки с датой вступления в силу
   function loadDepSlots() {
     try {
       const s = JSON.parse(localStorage.getItem('depSlots') || 'null');
-      if (s && s.length) return s;
+      if (s && s.length) return s.map(slot => ({
+        ...slot,
+        rateHistory: slot.rateHistory || [{ rate: slot.rate, from: '2026-03-19' }]
+      }));
     } catch(e) {}
-    // Создаём дефолты с id
-    const slots = DEP_DEFAULTS.map((d,i) => ({ id:'dep'+i, ...d }));
+    const today = new Date().toISOString().slice(0,10);
+    const DEP_START = '2026-03-19';
+    const slots = DEP_DEFAULTS.map((d,i) => ({
+      id: 'dep'+i, ...d,
+      rateHistory: [{ rate: d.rate, from: DEP_START }]
+    }));
     saveDepSlots(slots);
     return slots;
   }
@@ -1171,12 +1206,43 @@
     localStorage.setItem('depSlots', JSON.stringify(slots));
   }
 
+  // Получить ставку для конкретного дня из истории
+  function getRateForDay(slot, date) {
+    const hist = slot.rateHistory || [{ rate: slot.rate, from: '2000-01-01' }];
+    // берём последнее изменение ставки, которое было <= date
+    const sorted = [...hist].sort((a,b) => a.from > b.from ? 1 : -1);
+    let rate = sorted[0]?.rate ?? slot.rate;
+    for (const h of sorted) {
+      if (h.from <= date) rate = h.rate;
+    }
+    return rate;
+  }
+
   window.openDepSettings = () => {
+    window._depNewColor = window._depNewColor || DEP_COLORS[0].hex;
     renderDepSettingsList();
+    // Инициализируем палитру для новой формы
+    const picker = document.getElementById('depNewColorPicker');
+    if (picker) picker.innerHTML = colorPickerHtml(window._depNewColor, 'setDepNewColor');
     document.getElementById('depSettingsScreen').classList.add('open');
   };
   window.closeDepSettings = () => {
     document.getElementById('depSettingsScreen').classList.remove('open');
+  };
+
+  // Выбор цвета в форме редактирования
+  window._depEditColor = {}; // { [idx]: color }
+  window._depNewColor = DEP_COLORS[0].hex;
+
+  window.setDepColor = (idx, hex) => {
+    window._depEditColor[idx] = hex;
+    renderDepSettingsList();
+  };
+  window.setDepNewColor = (hex) => {
+    window._depNewColor = hex;
+    // Перерисовать только палитру новой формы
+    const el = document.getElementById('depNewColorPicker');
+    if (el) el.innerHTML = colorPickerHtml(hex, 'setDepNewColor');
   };
 
   function renderDepSettingsList() {
@@ -1184,36 +1250,60 @@
     const el = document.getElementById('depSettingsList');
     if (!el) return;
     if (!slots.length) { el.innerHTML = '<div style="color:#333;font-size:13px;">Нет депозитов</div>'; return; }
-    el.innerHTML = slots.map((s, idx) => `
-      <div id="depSet-${idx}" style="background:#1c1c1e;border-radius:14px;padding:12px;margin-bottom:8px;border:1px solid #1a1a1a;">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+    el.innerHTML = slots.map((s, idx) => {
+      const color = window._depEditColor[idx] || s.color || '#65d48b';
+      return `
+      <div style="background:#1c1c1e;border-radius:14px;padding:14px;margin-bottom:10px;border:1px solid ${color}33;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
           <span style="font-size:22px;">${s.emoji||'💰'}</span>
-          <span style="font-weight:600;font-size:15px;color:${s.color||'#fff'};">${s.name}</span>
-          <span style="margin-left:auto;background:#1a1a2a;border-radius:6px;padding:3px 9px;font-size:13px;font-weight:700;color:${s.color||'#aaa'};">${Math.round(s.rate*100)}%</span>
+          <span style="font-weight:700;font-size:15px;color:${color};">${s.name}</span>
+          <span style="margin-left:auto;background:${color}22;border-radius:6px;padding:3px 10px;font-size:13px;font-weight:700;color:${color};">${Math.round(s.rate*100)}%</span>
         </div>
+
         <div style="display:flex;gap:6px;margin-bottom:8px;">
-          <input onchange="updateDepSlot(${idx},'emoji',this.value)" value="${s.emoji||''}" maxlength="4"
+          <input id="depEmojiEdit-${idx}" type="text" value="${s.emoji||''}" maxlength="4"
             style="width:46px;padding:8px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:18px;text-align:center;outline:none;flex-shrink:0;" />
-          <input onchange="updateDepSlot(${idx},'name',this.value)" value="${s.name}"
+          <input id="depNameEdit-${idx}" type="text" value="${s.name}"
             style="flex:1;padding:8px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:14px;outline:none;" />
-          <input onchange="updateDepSlot(${idx},'rate',this.value)" value="${Math.round(s.rate*100)}" type="number" min="0" max="100"
-            style="width:52px;padding:8px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:14px;text-align:center;outline:none;flex-shrink:0;" placeholder="%" />
+          <input id="depRateEdit-${idx}" type="number" min="0" max="100" value="${Math.round(s.rate*100)}"
+            style="width:52px;padding:8px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:${color};font-size:15px;font-weight:700;text-align:center;outline:none;flex-shrink:0;" placeholder="%" />
         </div>
-        <div style="display:flex;gap:6px;">
-          <input onchange="updateDepSlot(${idx},'color',this.value)" value="${s.color||'#65d48b'}"
-            style="flex:1;padding:8px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:${s.color||'#fff'};font-size:13px;outline:none;" placeholder="Цвет #hex" />
+
+        <div style="font-size:11px;color:#555;margin-bottom:6px;">Цвет</div>
+        ${colorPickerHtml(color, `(h)=>setDepColor(${idx},h)`)}
+
+        <div style="display:flex;gap:6px;margin-top:12px;">
+          <button onclick="saveDepSlotEdit(${idx})"
+            style="flex:1;padding:10px;border-radius:10px;border:none;background:${color};color:#000;font-weight:700;font-size:13px;cursor:pointer;">Сохранить</button>
           <button onclick="deleteDepSlot(${idx})"
-            style="padding:8px 14px;border-radius:8px;border:none;background:#1a0a0a;color:#ff6b6b;font-size:18px;cursor:pointer;">✕</button>
+            style="padding:10px 14px;border-radius:10px;border:none;background:#1a0a0a;color:#ff6b6b;font-size:16px;cursor:pointer;">🗑</button>
         </div>
-      </div>`).join('');
+      </div>`}).join('');
   }
 
-  window.updateDepSlot = (idx, field, value) => {
+  window.saveDepSlotEdit = (idx) => {
     const slots = loadDepSlots();
     if (!slots[idx]) return;
-    if (field === 'rate') slots[idx].rate = Math.max(0, Math.min(100, Number(value))) / 100;
-    else slots[idx][field] = value;
+    const newRate = Math.max(0, Math.min(100, Number(document.getElementById('depRateEdit-'+idx)?.value||0))) / 100;
+    const oldRate = slots[idx].rate;
+    const today = new Date().toISOString().slice(0,10);
+
+    slots[idx].name  = document.getElementById('depNameEdit-'+idx)?.value?.trim() || slots[idx].name;
+    slots[idx].emoji = document.getElementById('depEmojiEdit-'+idx)?.value?.trim() || slots[idx].emoji;
+    slots[idx].color = window._depEditColor[idx] || slots[idx].color;
+
+    // Если ставка изменилась — добавляем запись в историю с сегодняшней датой
+    if (Math.abs(newRate - oldRate) > 0.001) {
+      const hist = slots[idx].rateHistory || [{ rate: oldRate, from: '2026-03-19' }];
+      // Убираем дубль на сегодня если уже есть
+      const filtered = hist.filter(h => h.from !== today);
+      filtered.push({ rate: newRate, from: today });
+      slots[idx].rateHistory = filtered.sort((a,b) => a.from > b.from ? 1 : -1);
+      slots[idx].rate = newRate;
+    }
+
     saveDepSlots(slots);
+    delete window._depEditColor[idx];
     renderDepSettingsList();
     renderDeposits();
   };
@@ -1222,19 +1312,23 @@
     const emoji = document.getElementById('depNewEmoji').value.trim() || '💰';
     const name  = document.getElementById('depNewName').value.trim();
     const rate  = Number(document.getElementById('depNewRate').value) || 10;
-    const color = document.getElementById('depNewColor').value.trim() || '#ffd166';
+    const color = window._depNewColor || DEP_COLORS[0].hex;
     if (!name) { document.getElementById('depNewName').style.borderColor='#ff6b6b'; return; }
     document.getElementById('depNewName').style.borderColor='#2a2a2a';
+    const today = new Date().toISOString().slice(0,10);
     const slots = loadDepSlots();
     const id = 'dep' + Date.now();
-    slots.push({ id, name, emoji, rate: rate/100, color });
+    slots.push({ id, name, emoji, rate: rate/100, color, rateHistory: [{ rate: rate/100, from: today }] });
     saveDepSlots(slots);
     document.getElementById('depNewEmoji').value='';
     document.getElementById('depNewName').value='';
     document.getElementById('depNewRate').value='';
-    document.getElementById('depNewColor').value='';
+    window._depNewColor = DEP_COLORS[0].hex;
     renderDepSettingsList();
     renderDeposits();
+    // Сброс палитры
+    const picker = document.getElementById('depNewColorPicker');
+    if (picker) picker.innerHTML = colorPickerHtml(DEP_COLORS[0].hex, 'setDepNewColor');
   };
 
   window.deleteDepSlot = (idx) => {
@@ -1247,7 +1341,6 @@
     });
   };
 
-  // Теперь DEP_NAMES / DEP_RATES — геттеры из slots (для обратной совместимости)
   function getDepSlots() { return loadDepSlots(); }
 
   function renderDeposits() {
@@ -1267,7 +1360,6 @@
     const sortedDays = Object.entries(byDay).filter(([d]) => d).sort((a,b) => a[0] > b[0] ? 1 : -1);
     const manualOps = (window.allTx || []).filter(t => t.type === 'dep_manual');
 
-    // Рендерим карточки динамически
     const wrap = document.getElementById('depCardsWrap');
     if (!wrap) return;
 
@@ -1276,20 +1368,22 @@
 
     wrap.innerHTML = slots.map((slot, i) => {
       const color = slot.color || '#65d48b';
-      const bgColor = color + '18';
+      const bgColor = color + '14';
       const borderColor = color + '44';
       let autoTotal = 0;
       let logItems = [];
 
+      // Каждый день считаем по той ставке, которая действовала в тот день
       sortedDays.forEach(([d, sum]) => {
-        const amt = Math.round(sum * slot.rate);
+        const rate = getRateForDay(slot, d);
+        const amt = Math.round(sum * rate);
         autoTotal += amt;
         const dd = d.slice(8) + '.' + d.slice(5,7);
-        logItems.push({ d, html: `<div class="dep-log-item"><span>${dd}</span><span style="color:#65d48b;">+${amt.toLocaleString()} ₸</span></div>` });
+        const pct = Math.round(rate*100);
+        logItems.push({ d, html: `<div class="dep-log-item"><span>${dd} <span style="color:#333;font-size:10px;">${pct}%</span></span><span style="color:#65d48b;">+${amt.toLocaleString()} ₸</span></div>` });
       });
 
       let manualTotal = 0;
-      // Поддержка и старого depIndex и нового depId
       manualOps.filter(t => t.depId === slot.id || t.depIndex === i).forEach(t => {
         manualTotal += t.amount;
         const dd = (t.date||'').slice(8) + '.' + (t.date||'').slice(5,7);
@@ -1302,7 +1396,8 @@
 
       logItems.sort((a,b) => b.d > a.d ? 1 : -1);
       const logHtml = logItems.slice(0,15).map(l => l.html).join('');
-      const todayAmt = byDay[today] ? Math.round(byDay[today] * slot.rate) : 0;
+      const todayRate = getRateForDay(slot, today);
+      const todayAmt = byDay[today] ? Math.round(byDay[today] * todayRate) : 0;
 
       return `<div style="background:${bgColor};border:1px solid ${borderColor};border-radius:16px;padding:16px;margin-bottom:10px;">
         <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:${color};margin-bottom:4px;">${slot.emoji||'💰'} ${slot.name} · ${Math.round(slot.rate*100)}%</div>
