@@ -3,7 +3,17 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <meta name="theme-color" content="#000000" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
   <title>Учёт Курьера Pro</title>
+  <!-- Preconnect ускоряет DNS+TLS для Firebase -->
+  <link rel="preconnect" href="https://www.gstatic.com" crossorigin />
+  <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin />
+  <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin />
+  <link rel="dns-prefetch" href="https://www.gstatic.com" />
+  <link rel="dns-prefetch" href="https://firestore.googleapis.com" />
   <style>
     :root { --bg: #000; --card: #1c1c1e; --pos: #65d48b; --neg: #ff6b6b; --accent: #ffd166; --nav-h: 65px; }
     * { box-sizing: border-box; font-family: -apple-system, sans-serif; -webkit-tap-highlight-color: transparent; }
@@ -266,7 +276,7 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc, arrayUnion, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc, arrayUnion, getDoc, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
     import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithCredential, signOut, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
     const app = initializeApp({
@@ -278,10 +288,31 @@
       appId: "1:440589448883:web:5ad507b270fa414731a2c6"
     });
 
-    window.fbDB = getFirestore(app);
+    const db = getFirestore(app);
+    // Офлайн кэш — данные грузятся мгновенно из IndexedDB при повторном открытии
+    enableIndexedDbPersistence(db).catch(e => {
+      if (e.code === 'failed-precondition') console.warn('Firestore offline: несколько вкладок открыто');
+      else if (e.code === 'unimplemented') console.warn('Firestore offline: браузер не поддерживает');
+    });
+    window.fbDB = db;
     window.fbMethods = { collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc, arrayUnion, getDoc };
     const auth = getAuth(app);
     const provider = new GoogleAuthProvider();
+
+    // ── Toast уведомления (нужны до старта приложения) ────────────
+    window.showToast = (msg, type = 'success') => {
+      const existing = document.getElementById('_toast');
+      if (existing) existing.remove();
+      const el = document.createElement('div');
+      el.id = '_toast';
+      el.style.cssText = `position:fixed;bottom:80px;left:50%;transform:translateX(-50%);
+        background:${type==='error'?'#ff6b6b':type==='warn'?'#ffd166':'#65d48b'};
+        color:#000;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:600;
+        z-index:9999;white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,0.5);`;
+      el.textContent = msg;
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 2500);
+    };
 
     // ── Запуск приложения ──────────────────────────────────────────
     function startApp(user) {
@@ -292,10 +323,12 @@
       window.fbUser = user;
       if (!window.appStarted) {
         window.appStarted = true;
-        // Даём время второму скрипту зарегистрировать слушатель fbReady
+        // Показываем скелетон загрузки
+        const listEl = document.getElementById('list');
+        if (listEl) listEl.innerHTML = '<div style="color:#2a2a2a;font-size:13px;padding:8px 0;">Загрузка данных...</div>';
         setTimeout(() => {
           window.dispatchEvent(new Event("fbReady"));
-        }, 100);
+        }, 50); // уменьшили с 100 до 50ms
       }
     }
 
@@ -334,7 +367,7 @@
       try {
         await signInWithPopup(auth, provider);
       } catch(e) {
-        if (e?.code !== "auth/popup-closed-by-user") alert("Ошибка входа: " + (e?.message || e));
+        if (e?.code !== "auth/popup-closed-by-user") window.showToast("Ошибка входа: " + (e?.message || e), 'error');
       }
     };
 
@@ -346,7 +379,7 @@
       try {
         await sendPasswordResetEmail(auth, email);
         showError('');
-        alert('✅ Письмо отправлено на ' + email + '. Проверь почту.');
+        window.showToast('✅ Письмо отправлено на ' + email);
       } catch(e) {
         const msgs = {
           'auth/user-not-found': 'Пользователь не найден',
@@ -1497,6 +1530,7 @@
 
       renderDeposits();
     } catch(e) {
+      window.showToast('Ошибка: ' + e.message, 'error');
       console.error('depAction error:', e);
     }
   };
@@ -1601,7 +1635,7 @@
       if (!accId || isNaN(val)) return;
       await fbMethods.updateDoc(fbMethods.doc(fbDB,"users",window.fbUser.uid,"settings",accId), { initialBalance: val });
       document.getElementById("setBalanceVal").value = "";
-      alert("Начальный баланс установлен!");
+      window.showToast("Начальный баланс установлен!");
     };
     window.addSub = async () => {
       const parentId = document.getElementById("setParentCat").value;
@@ -1639,7 +1673,7 @@
       localStorage.setItem('lastType', type);
       localStorage.setItem('lastCat', cat);
       localStorage.setItem('lastSub', sub);
-      alert('✅ Сохранено! Теперь форма будет открываться с этими значениями.');
+      window.showToast('✅ Сохранено! Форма будет открываться с этими значениями.');
     };
 
     // Инициализируем селекты в настройках когда они открываются
@@ -1735,43 +1769,63 @@
       fillSubs(restoreLast);
     }
 
+    let _renderTimer = null;
+    const debouncedRender = () => {
+      if (_renderTimer) clearTimeout(_renderTimer);
+      _renderTimer = setTimeout(() => { render(); _renderTimer = null; }, 80);
+    };
+
     fbMethods.onSnapshot(fbMethods.query(txRef, fbMethods.orderBy("date","desc")), (snap) => {
       allTx = []; snap.forEach(d=>allTx.push({id:d.id,...d.data()})); window.allTx = allTx;
-      if (!document.getElementById("fromDate").value) setRange('today'); else render();
+      if (!document.getElementById("fromDate").value) setRange('today'); else debouncedRender();
     });
 
     document.getElementById("txForm").onsubmit = async (e) => {
       e.preventDefault();
       const amt=Number(document.getElementById("amount").value); if(!amt) return;
-      const catId=document.getElementById("category").value;
-      const catObj=[...DEFAULTS.income,...DEFAULTS.expense].find(c=>c.id===catId);
-      await fbMethods.addDoc(txRef, {
-        type:document.getElementById("type").value, amount:amt,
-        categoryName:catObj?catObj.name:"Без категории",
-        subcategory:document.getElementById("subcategory").value||"",
-        account:document.getElementById("accountSelect").value,
-        date:document.getElementById("date").value,
-        time:new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}),
-        createdAt:Date.now(), comment:document.getElementById("comment").value
-      });
-      document.getElementById("amount").value=""; document.getElementById("comment").value=""; setToday();
+      const btn = document.querySelector('#txForm .btn-main');
+      const origText = btn.textContent;
+      btn.textContent = '⏳'; btn.disabled = true;
+      try {
+        const catId=document.getElementById("category").value;
+        const catObj=[...DEFAULTS.income,...DEFAULTS.expense].find(c=>c.id===catId);
+        const type = document.getElementById("type").value;
+        await fbMethods.addDoc(txRef, {
+          type, amount:amt,
+          categoryName:catObj?catObj.name:"Без категории",
+          subcategory:document.getElementById("subcategory").value||"",
+          account:document.getElementById("accountSelect").value,
+          date:document.getElementById("date").value,
+          time:new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}),
+          createdAt:Date.now(), comment:document.getElementById("comment").value
+        });
+        document.getElementById("amount").value=""; document.getElementById("comment").value=""; setToday();
+        window.showToast(`${type==='income'?'+':'−'}${amt.toLocaleString()} ₸ записано`);
+      } catch(err) {
+        window.showToast('Ошибка: ' + err.message, 'error');
+      }
+      btn.textContent = origText; btn.disabled = false;
     };
   }
 
   window.doTransfer = async () => {
     const from=document.getElementById("transferFrom").value, to=document.getElementById("transferTo").value;
     const amt=Number(document.getElementById("transferAmount").value), date=document.getElementById("transferDate").value;
-    if(!amt||amt<=0) return alert("Введите сумму");
-    if(from===to) return alert("Счета должны быть разными");
-    if(!date) return alert("Выберите дату");
-    await window.fbMethods.addDoc(window.fbMethods.collection(window.fbDB,"users",window.fbUser.uid,"transactions"),{
-      type:'transfer',amount:amt,fromAccount:from,toAccount:to,account:from,
-      categoryName:`Перевод → ${to}`,subcategory:'',date,
-      time:new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}),
-      createdAt:Date.now(),comment:`${from} → ${to}`
-    });
-    document.getElementById("transferAmount").value="";
-    alert(`Переведено ${amt.toLocaleString()} ₸`);
+    if(!amt||amt<=0) return window.showToast('Введите сумму', 'error');
+    if(from===to) return window.showToast('Счета должны быть разными', 'error');
+    if(!date) return window.showToast('Выберите дату', 'error');
+    try {
+      await window.fbMethods.addDoc(window.fbMethods.collection(window.fbDB,"users",window.fbUser.uid,"transactions"),{
+        type:'transfer',amount:amt,fromAccount:from,toAccount:to,account:from,
+        categoryName:`Перевод → ${to}`,subcategory:'',date,
+        time:new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}),
+        createdAt:Date.now(),comment:`${from} → ${to}`
+      });
+      document.getElementById("transferAmount").value="";
+      window.showToast(`Переведено ${amt.toLocaleString()} ₸`);
+    } catch(e) {
+      window.showToast('Ошибка перевода: ' + e.message, 'error');
+    }
   };
 
   function render() {
@@ -1784,9 +1838,44 @@
       return true;
     }).sort((a,b)=>{ if(b.date!==a.date)return b.date>a.date?1:-1; return(b.createdAt||0)-(a.createdAt||0); });
 
-    const inc=filtered.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
-    const exp=filtered.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
-    const gas=filtered.filter(t=>t.type==='expense'&&(String(t.subcategory||'').toLowerCase().includes('бенз')||String(t.categoryName||'').toLowerCase().includes('бенз'))).reduce((s,t)=>s+t.amount,0);
+    // ── Один проход по filtered вместо 6 отдельных filter/reduce ──
+    let inc=0, exp=0, gas=0;
+    const statsInc={}, statsExpRaw={};
+    let totalGain=0;
+    const vdStats={}, vds=["F1","F2","F3","Ночь"];
+
+    filtered.forEach(t=>{
+      if(t.type==='income'){
+        inc+=t.amount;
+        // statsInc
+        const key=t.subcategory||t.categoryName;
+        if(!statsInc[key])statsInc[key]={sum:0,cnt:0,br:{}};
+        statsInc[key].sum+=t.amount; statsInc[key].cnt++;
+        statsInc[key].br[t.amount]=(statsInc[key].br[t.amount]||0)+1;
+        // ВД
+        if(vds.includes(t.subcategory)&&t.amount<3000){
+          if(!vdStats[t.subcategory])vdStats[t.subcategory]={vdSum:0};
+          let p=t.amount;
+          if(t.amount===150)p=600;
+          else if(t.amount===300)p=900;
+          else if(t.subcategory==="Ночь"&&t.amount===500)p=1000;
+          vdStats[t.subcategory].vdSum+=p;
+        }
+      } else if(t.type==='expense'){
+        exp+=t.amount;
+        // Бензин
+        const lsub=String(t.subcategory||'').toLowerCase();
+        const lcat=String(t.categoryName||'').toLowerCase();
+        if(lsub.includes('бенз')||lcat.includes('бенз')) gas+=t.amount;
+        // statsExp
+        const rawName=t.categoryName||'Прочее';
+        const existingKey=Object.keys(statsExpRaw).find(k=>k.toLowerCase()===rawName.toLowerCase());
+        const key=existingKey||rawName;
+        if(!statsExpRaw[key])statsExpRaw[key]={sum:0,subs:{}};
+        statsExpRaw[key].sum+=t.amount;
+        if(t.subcategory)statsExpRaw[key].subs[t.subcategory]=(statsExpRaw[key].subs[t.subcategory]||0)+t.amount;
+      }
+    });
 
     document.getElementById("balance").textContent=(inc-exp).toLocaleString()+" ₸";
     document.getElementById("totalIncome").textContent=inc.toLocaleString()+" ₸";
@@ -1795,6 +1884,8 @@
     const accs={};
     ACCOUNTS.forEach(a=>{accs[a.name]=Number(a.initialBalance)||0;});
     allTx.forEach(t=>{
+      // dep_manual не влияет на баланс счёта напрямую — только через income/expense записи
+      if(t.type==='dep_manual') return;
       if(t.type==='transfer'){if(accs[t.fromAccount]!==undefined)accs[t.fromAccount]-=t.amount;if(accs[t.toAccount]!==undefined)accs[t.toAccount]+=t.amount;return;}
       const acc=t.account&&t.account!=='undefined'&&t.account!==''&&t.account!=='Счет не выбран'?t.account:null;
       if(!acc)return; if(accs[acc]===undefined)accs[acc]=0;
@@ -1804,1349 +1895,22 @@
       accs[acc]+=(t.type==='income'?t.amount:-t.amount);
     });
 
-    // Вычитаем депозиты (50% от дохода) из наличных — только с 19 марта 2026
+    // Вычитаем депозиты из наличных по реальным ставкам каждого слота
     const DEP_START_DATE = '2026-03-19';
+    const depSlotsForBalance = loadDepSlots();
     const byDayAll={};
     allTx.forEach(t=>{
       if(t.type!=='income'||!t.date||t.date<DEP_START_DATE)return;
-      // Исключаем возвраты с депозитов
+      // Исключаем возвраты с депозитов — иначе двойной счёт
       if(t.subcategory&&t.subcategory.startsWith('← '))return;
+      // Исключаем dep_manual — они не реальный доход
+      if(t.type==='dep_manual')return;
       if(!byDayAll[t.date])byDayAll[t.date]=0;
       byDayAll[t.date]+=t.amount;
     });
-    const totalDeposit=Object.values(byDayAll).reduce((s,v)=>s+Math.round(v*0.5),0);
-    const nalichKey=Object.keys(accs).find(k=>k.toLowerCase().includes('налич'));
-    if(nalichKey) accs[nalichKey]-=totalDeposit;
-
-    document.getElementById("accountBalances").innerHTML=Object.entries(accs)
-      .filter(([n])=>n&&n!=='undefined'&&n!=='Счет не выбран')
-      .map(([n,v])=>`<div class="acc-chip">${n}: <b style="color:${v>=0?'#65d48b':'#ff6b6b'}">${v.toLocaleString()} ₸</b></div>`).join("");
-
-    const gasP=inc>0?((gas/inc)*100).toFixed(1):0;
-    document.getElementById("gasText").textContent=`Бензин: ${gasP}% (${gas.toLocaleString()} ₸)`;
-    document.getElementById("gasFill").style.width=Math.min(Number(gasP)*3,100)+"%";
-
-    const statsInc={};
-    filtered.filter(t=>t.type==='income').forEach(t=>{
-      const key=t.subcategory||t.categoryName;
-      if(!statsInc[key])statsInc[key]={sum:0,cnt:0,br:{}};
-      statsInc[key].sum+=t.amount;statsInc[key].cnt++;statsInc[key].br[t.amount]=(statsInc[key].br[t.amount]||0)+1;
-    });
-    document.getElementById("earningsDetails").innerHTML=Object.entries(statsInc).map(([k,d])=>`
-      <div class="stat-row"><div class="stat-main"><span>${k} (${d.cnt})</span><b>${d.sum.toLocaleString()} ₸</b></div>
-      <div class="stat-sub">${Object.entries(d.br).map(([p,c])=>`${p}₸×${c}`).join(" | ")}</div></div>`).join("")||'<div class="muted">Нет данных</div>';
-
-    let totalGain=0; const vdStats={}, vds=["F1","F2","F3","Ночь"];
-    filtered.forEach(t=>{
-      if(t.type==='income'&&vds.includes(t.subcategory)&&t.amount<3000){
-        if(!vdStats[t.subcategory])vdStats[t.subcategory]={vdSum:0};
-        let p=t.amount;
-        if(t.amount===150)p=600;else if(t.amount===300)p=900;else if(t.subcategory==="Ночь"&&t.amount===500)p=1000;
-        vdStats[t.subcategory].vdSum+=p;
-      }
-    });
-    const vdHtml=Object.entries(vdStats).map(([p,data])=>{
-      const rSum=statsInc[p]?statsInc[p].sum:0,diff=data.vdSum-rSum;totalGain+=diff;
-      return`<div class="stat-row"><div class="stat-main"><span>${p}</span><b>${data.vdSum.toLocaleString()} ₸</b></div><div style="color:#65d48b;font-size:12px;">Выгода: +${diff.toLocaleString()} ₸</div></div>`;
-    }).join("");
-    document.getElementById("potentialStats").innerHTML=vdHtml||'<div class="muted">Нет данных ВД</div>';
-    if(totalGain>0)document.getElementById("potentialStats").innerHTML+=`<div class="gain-box"><span>ВЫГОДА ВД:</span><span class="pos">+${totalGain.toLocaleString()} ₸</span></div>`;
-
-    // Расходы — объединяем категории с одинаковым именем (регистронезависимо)
-    const statsExpRaw={};
-    filtered.filter(t=>t.type==='expense').forEach(t=>{
-      // Нормализуем название: первая буква заглавная, остальное как есть
-      const rawName = t.categoryName || 'Прочее';
-      // Ищем существующий ключ с таким же именем (без учёта регистра)
-      const existingKey = Object.keys(statsExpRaw).find(k => k.toLowerCase() === rawName.toLowerCase());
-      const key = existingKey || rawName;
-      if(!statsExpRaw[key]) statsExpRaw[key]={sum:0,subs:{}};
-      statsExpRaw[key].sum+=t.amount;
-      // Подкатегория: если categoryName совпадает с другой категорией — добавляем как подкат
-      const subKey = t.subcategory || null;
-      if(subKey) statsExpRaw[key].subs[subKey]=(statsExpRaw[key].subs[subKey]||0)+t.amount;
-    });
-
-    // Дополнительно: если есть категория "Напитки" и есть "Еда" — переносим Напитки в Еда как подкат
-    const mergeMap = {}; // 'откуда (lower)' -> 'куда (lower)'
-    const expKeys = Object.keys(statsExpRaw);
-    expKeys.forEach(k => {
-      // Ищем категорию которая является подкатегорией другой категории
-      expKeys.forEach(parent => {
-        if (k === parent) return;
-        const parentData = statsExpRaw[parent];
-        // Если имя k встречается как подкатегория parent — значит k надо слить с parent
-        if (Object.keys(parentData.subs).some(s => s.toLowerCase() === k.toLowerCase())) {
-          mergeMap[k.toLowerCase()] = parent;
-        }
-      });
-    });
-
-    const statsExp = {};
-    Object.entries(statsExpRaw).forEach(([k, d]) => {
-      const targetKey = mergeMap[k.toLowerCase()];
-      if (targetKey) {
-        // Переносим сумму в родительскую категорию как подкатегорию
-        if (!statsExp[targetKey]) statsExp[targetKey] = {...statsExpRaw[targetKey]};
-        statsExp[targetKey].sum += d.sum;
-        // Добавляем подкатегории
-        Object.entries(d.subs).forEach(([s,v]) => {
-          statsExp[targetKey].subs[s] = (statsExp[targetKey].subs[s]||0) + v;
-        });
-        // Если подкатегорий нет — добавляем само название как подкат
-        if (Object.keys(d.subs).length === 0) {
-          statsExp[targetKey].subs[k] = (statsExp[targetKey].subs[k]||0) + d.sum;
-        }
-      } else if (!Object.values(mergeMap).includes(k) || !statsExp[k]) {
-        if (!statsExp[k]) statsExp[k] = d;
-      }
-    });
-    // Убеждаемся что родительские категории добавлены
-    Object.values(mergeMap).forEach(parent => {
-      if (!statsExp[parent] && statsExpRaw[parent]) statsExp[parent] = {...statsExpRaw[parent]};
-    });
-
-    document.getElementById("expenseDetails").innerHTML=Object.entries(statsExp)
-      .sort((a,b)=>b[1].sum-a[1].sum)
-      .map(([c,d])=>`
-        <div class="stat-row"><div class="stat-main"><span>${c}</span><b class="neg">${d.sum.toLocaleString()} ₸</b></div>
-        <div class="stat-sub">${Object.entries(d.subs).map(([s,v])=>`${s}: ${v.toLocaleString()}`).join(" | ")}</div></div>`)
-      .join("")||'<div class="muted">Нет расходов</div>';
-
-    document.getElementById("list").innerHTML=filtered.map(t=>{
-      const acc=t.account&&t.account!=='undefined'&&t.account!==''&&t.account!=='Счет не выбран'?` [${t.account}]`:'';
-      const ts=t.time?`${t.date} ${t.time}`:t.date;
-      if(t.type==='transfer')return`<div class="hist-item"><div><b style="color:#ffd166;">↔ ${t.amount.toLocaleString()} ₸</b><br><small class="muted">${ts} | ${t.fromAccount} → ${t.toAccount}</small></div><div style="display:flex;gap:4px;"><button class="hist-del" onclick="deleteTx('${t.id}')">✕</button></div></div>`;
-      return`<div class="hist-item"><div><b class="${t.type==='income'?'pos':'neg'}">${t.amount.toLocaleString()} ₸</b><br><small class="muted">${ts} | ${t.subcategory||t.categoryName}${acc}</small>${t.comment?`<div style="color:#65d48b;font-size:11px;margin-top:2px;">📝 ${t.comment}</div>`:''}</div><div style="display:flex;gap:4px;"><button onclick="editTx('${t.id}')" style="background:none;border:none;color:#ffd166;padding:8px;cursor:pointer;font-size:15px;opacity:0.8;">✏️</button><button class="hist-del" onclick="deleteTx('${t.id}')">✕</button></div></div>`;
-    }).join("")||'<div class="muted">Нет записей</div>';
-
-    renderAnalytics();
-  }
-
-  window.render = render;
-
-  // ── ИСТОРИЯ (всплывающий экран) ────────────────────────────────
-  let _histTypeFilter   = 'all';
-  let _histCatFilter    = 'all';
-  let _histPeriodFilter = 'all';
-
-  const _getHistToday = () => {
-    const n = new Date();
-    if (n.getHours() < 3) n.setDate(n.getDate() - 1);
-    return new Date(n - n.getTimezoneOffset()*60000).toISOString().split('T')[0];
-  };
-
-  window.openHistorySheet = () => {
-    const cats = new Set();
-    (window.allTx||[]).forEach(t => {
-      if (t.type === 'transfer') return;
-      const c = t.subcategory || t.categoryName;
-      if (c) cats.add(c);
-    });
-    const catBar = document.getElementById('histCatFilters');
-    catBar.innerHTML = `<div class="hf-chip on" data-cat="all" onclick="toggleHistFilter(this,'cat')">Все</div>` +
-      [...cats].sort().map(c =>
-        `<div class="hf-chip" data-cat="${c}" onclick="toggleHistFilter(this,'cat')">${c}</div>`
-      ).join('');
-    _histTypeFilter   = 'all';
-    _histCatFilter    = 'all';
-    _histPeriodFilter = 'all';
-    document.querySelectorAll('#histTypeFilters .hf-chip').forEach(c => c.classList.remove('on','red','blue'));
-    document.querySelector('#histTypeFilters .hf-chip[data-type="all"]').classList.add('on');
-    document.querySelectorAll('#histDateFilters .hf-chip').forEach(c => c.classList.remove('on'));
-    document.querySelector('#histDateFilters .hf-chip[data-period="all"]').classList.add('on');
-    document.getElementById('histCustomDateRow').style.display = 'none';
-    document.getElementById('histSearch').value = '';
-    renderHistorySheet();
-    document.getElementById('historySheet').classList.add('open');
-  };
-
-  window.closeHistorySheet = () => {
-    document.getElementById('historySheet').classList.remove('open');
-  };
-
-  window.toggleHistFilter = (el, group) => {
-    if (group === 'type') {
-      document.querySelectorAll('#histTypeFilters .hf-chip').forEach(c => c.classList.remove('on','red','blue'));
-      el.classList.add('on');
-      if (el.dataset.type === 'expense') el.classList.add('red');
-      if (el.dataset.type === 'transfer') el.classList.add('blue');
-      _histTypeFilter = el.dataset.type;
-    } else if (group === 'period') {
-      document.querySelectorAll('#histDateFilters .hf-chip').forEach(c => c.classList.remove('on'));
-      el.classList.add('on');
-      _histPeriodFilter = el.dataset.period;
-      document.getElementById('histCustomDateRow').style.display =
-        _histPeriodFilter === 'custom' ? 'block' : 'none';
-    } else {
-      document.querySelectorAll('#histCatFilters .hf-chip').forEach(c => c.classList.remove('on'));
-      el.classList.add('on');
-      _histCatFilter = el.dataset.cat;
-    }
-    renderHistorySheet();
-  };
-
-  window.renderHistorySheet = () => {
-    const search = (document.getElementById('histSearch').value||'').toLowerCase().trim();
-    let list = [...(window.allTx||[])];
-
-    // Тип
-    if (_histTypeFilter !== 'all') list = list.filter(t => t.type === _histTypeFilter);
-
-    // Период
-    const today = _getHistToday();
-    if (_histPeriodFilter === 'today') {
-      list = list.filter(t => t.date === today);
-    } else if (_histPeriodFilter === 'yesterday') {
-      const d = new Date(); d.setDate(d.getDate()-1);
-      const ys = new Date(d - d.getTimezoneOffset()*60000).toISOString().split('T')[0];
-      list = list.filter(t => t.date === ys);
-    } else if (_histPeriodFilter === 'week') {
-      const d = new Date(); d.setDate(d.getDate()-7);
-      const ws = new Date(d - d.getTimezoneOffset()*60000).toISOString().split('T')[0];
-      list = list.filter(t => t.date >= ws);
-    } else if (_histPeriodFilter === 'month') {
-      list = list.filter(t => (t.date||'').startsWith(today.slice(0,7)));
-    } else if (_histPeriodFilter === 'custom') {
-      const from = document.getElementById('histFromDate').value;
-      const to   = document.getElementById('histToDate').value;
-      if (from) list = list.filter(t => t.date >= from);
-      if (to)   list = list.filter(t => t.date <= to);
-    }
-
-    // Категория
-    if (_histCatFilter !== 'all') list = list.filter(t =>
-      (t.subcategory||t.categoryName||'') === _histCatFilter
-    );
-
-    // Поиск
-    if (search) list = list.filter(t => {
-      const cat = (t.subcategory||t.categoryName||'').toLowerCase();
-      const comment = (t.comment||'').toLowerCase();
-      const amt = String(t.amount);
-      const acc = (t.account||'').toLowerCase();
-      return cat.includes(search)||comment.includes(search)||amt.includes(search)||acc.includes(search);
-    });
-
-    list.sort((a,b) => {
-      if (b.date !== a.date) return b.date > a.date ? 1 : -1;
-      return (b.createdAt||0) - (a.createdAt||0);
-    });
-
-    const inc = list.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
-    const exp = list.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
-    document.getElementById('histSummary').innerHTML =
-      `<span>${list.length} записей</span>` +
-      `<span><span class="pos">+${inc.toLocaleString()}</span> / <span class="neg">-${exp.toLocaleString()}</span> ₸</span>`;
-
-    document.getElementById('histList').innerHTML = list.map(t => {
-      const acc = t.account&&t.account!=='undefined'&&t.account!==''&&t.account!=='Счет не выбран'?` [${t.account}]`:'';
-      const ts = t.time ? `${t.date} ${t.time}` : t.date;
-      if (t.type==='transfer') return `<div class="hist-item"><div><b style="color:#ffd166;">↔ ${t.amount.toLocaleString()} ₸</b><br><small class="muted">${ts} | ${t.fromAccount} → ${t.toAccount}</small></div><div style="display:flex;gap:4px;"><button class="hist-del" onclick="deleteTx('${t.id}')">✕</button></div></div>`;
-      return `<div class="hist-item"><div><b class="${t.type==='income'?'pos':'neg'}">${t.amount.toLocaleString()} ₸</b><br><small class="muted">${ts} | ${t.subcategory||t.categoryName}${acc}</small>${t.comment?`<div style="color:#65d48b;font-size:11px;margin-top:2px;">📝 ${t.comment}</div>`:''}</div><div style="display:flex;gap:4px;"><button onclick="editTx('${t.id}')" style="background:none;border:none;color:#ffd166;padding:8px;cursor:pointer;font-size:15px;opacity:0.8;">✏️</button><button class="hist-del" onclick="deleteTx('${t.id}')">✕</button></div></div>`;
-    }).join('') || '<div class="muted" style="padding:20px 0;text-align:center;">Ничего не найдено</div>';
-  };
-
-  function renderAnalytics() {
-    const el=document.getElementById("analyticsContent"); if(!el)return;
-    const DELIVERY_POINTS_BW=["F1","F2","F3","ALLEY PUB","Ночь"];
-    const byDay={},byMonth={},byDayDeliv={};
-    // byDay = весь доход за день (кроме переводов)
-    allTx.forEach(t=>{
-      if(t.type!=='income')return;
-      const d=t.date||'',m=d.slice(0,7);
-      if(!byDay[d])byDay[d]=0;
-      byDay[d]+=t.amount;
-      if(!byMonth[m])byMonth[m]={inc:0,exp:0};
-      byMonth[m].inc+=t.amount;
-    });
-    allTx.forEach(t=>{if(t.type!=='expense')return;const m=(t.date||'').slice(0,7);if(!byMonth[m])byMonth[m]={inc:0,exp:0};byMonth[m].exp+=t.amount;});
-    // byDayDeliv = только точки F1/F2/F3/ALLEY/Ночь за день
-    allTx.forEach(t=>{
-      if(t.type==='income'&&DELIVERY_POINTS_BW.includes(t.subcategory)){
-        if(!byDayDeliv[t.date])byDayDeliv[t.date]=0;
-        byDayDeliv[t.date]+=t.amount;
-      }
-    });
-    // Лучший/худший день — считаем только по дням где есть хоть одна запись с точки
-    const delivDays=Object.entries(byDayDeliv).filter(([d])=>d);
-    let bestDay=null,worstDay=null;
-    if(delivDays.length>0){
-      bestDay=delivDays.reduce((a,b)=>b[1]>a[1]?b:a);
-      worstDay=delivDays.reduce((a,b)=>b[1]<a[1]?b:a);
-    }
-    const fmtD=d=>{if(!d)return'—';const[y,mo,day]=d.split('-');return`${day}.${mo}.${y}`;};
-    const fmtM=m=>{if(!m)return'—';const mn=['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];const[y,mo]=m.split('-');return`${mn[parseInt(mo)-1]} ${y}`;};
-    const from=document.getElementById("fromDate").value,to=document.getElementById("toDate").value;
-    const filteredDays=Object.entries(byDay).filter(([d])=>d&&(!from||d>=from)&&(!to||d<=to)).sort((a,b)=>a[0]>b[0]?1:-1);
-    let chartHtml='',chartData=null;
-    if(filteredDays.length>1){
-      const maxVal=Math.max(...filteredDays.map(([,v])=>v)),W=Math.max(filteredDays.length*50,300),H=80,pad=10;
-      chartData={filteredDays,maxVal,W,H,pad};
-      chartHtml=`<div class="sec-title">График дохода по дням</div><div style="text-align:center;height:24px;display:flex;align-items:center;justify-content:center;gap:8px;"><span id="chartTipDate" style="font-size:11px;color:#444;"></span><span id="chartTipVal" style="font-size:15px;font-weight:bold;color:#a78bfa;"></span></div><div class="chart-wrap"><canvas id="incomeChart" width="${W}" height="${H+20}" style="display:block;"></canvas></div>`;
-    }
-    // Лучший/худший: зелёный = весь доход за тот день, жёлтый = только точки
-    const bestAllDay = bestDay ? byDay[bestDay[0]]||0 : 0;
-    const worstAllDay = worstDay ? byDay[worstDay[0]]||0 : 0;
-    const bwHtml=bestDay?`<div class="sec-title">Лучший и худший день</div><div class="bw-grid">
-      <div class="bw-card best">
-        <div class="bw-label">🏆 Лучший</div>
-        <div class="bw-val pos">${bestAllDay.toLocaleString()} ₸</div>
-        <div class="bw-date">${fmtD(bestDay[0])}</div>
-        <div style="margin-top:6px;padding-top:6px;border-top:1px solid #1a3a1a;font-size:10px;color:#555;">🚴 по точкам</div>
-        <div style="font-size:13px;font-weight:bold;color:#ffd166;">${bestDay[1].toLocaleString()} ₸</div>
-      </div>
-      <div class="bw-card worst">
-        <div class="bw-label">📉 Худший</div>
-        <div class="bw-val neg">${worstAllDay.toLocaleString()} ₸</div>
-        <div class="bw-date">${worstDay?fmtD(worstDay[0]):'—'}</div>
-        <div style="margin-top:6px;padding-top:6px;border-top:1px solid #3a1a1a;font-size:10px;color:#555;">🚴 по точкам</div>
-        <div style="font-size:13px;font-weight:bold;color:#ffd166;">${worstDay?worstDay[1].toLocaleString():'—'} ₸</div>
-      </div>
-    </div>`:'';
-    const DELIVERY_POINTS=["F1","F2","F3","ALLEY PUB","Ночь"];
-    const wdByM={};
-    allTx.forEach(t=>{if(t.type==='income'&&DELIVERY_POINTS.includes(t.subcategory)){const m=(t.date||'').slice(0,7);if(!wdByM[m])wdByM[m]=new Set();wdByM[m].add(t.date);}});
-    const sortedM=Object.entries(byMonth).sort((a,b)=>b[0]>a[0]?1:-1).slice(0,6);
-    const maxInc=Math.max(...sortedM.map(([,d])=>d.inc),1);
-    const monthHtml=sortedM.length>0?`<div class="sec-title">Сравнение по месяцам</div>${sortedM.map(([m,d])=>{const wd=wdByM[m]?wdByM[m].size:0,avg=wd>0?Math.round(d.inc/wd):0;return`<div class="month-row"><div class="month-top"><span>${fmtM(m)}</span><span class="pos">${d.inc.toLocaleString()} ₸</span></div><div class="month-bar-bg"><div class="month-bar-fill" style="width:${(d.inc/maxInc*100).toFixed(1)}%"></div></div><div class="month-meta">📅 ${wd} дн. · ≈ ${avg.toLocaleString()} ₸/день</div></div>`;}).join('')}`:'';
-    const delivByMonth={};
-    allTx.forEach(t=>{if(t.type==='income'&&DELIVERY_POINTS.includes(t.subcategory)){const m=(t.date||'').slice(0,7);if(!delivByMonth[m])delivByMonth[m]={sum:0,days:new Set()};delivByMonth[m].sum+=t.amount;delivByMonth[m].days.add(t.date);}});
-    const sortedDeliv=Object.entries(delivByMonth).sort((a,b)=>b[0]>a[0]?1:-1).slice(0,6);
-    const maxDeliv=Math.max(...sortedDeliv.map(([,d])=>d.sum),1);
-    const delivHtml=sortedDeliv.length>0?`<div class="sec-title" style="margin-top:18px;color:#ffd166;">🚴 По точкам (F1·F2·F3·ALLEY·Ночь)</div>${sortedDeliv.map(([m,d])=>{const days=d.days.size,avg=days>0?Math.round(d.sum/days):0;return`<div class="month-row"><div class="month-top"><span>${fmtM(m)}</span><span style="color:#ffd166;font-weight:bold;">${d.sum.toLocaleString()} ₸</span></div><div class="month-bar-bg"><div class="month-bar-fill" style="width:${(d.sum/maxDeliv*100).toFixed(1)}%;background:#ffd166;"></div></div><div class="month-meta">📅 ${days} дн. · ≈ ${avg.toLocaleString()} ₸/день</div></div>`;}).join('')}`:'';
-    el.innerHTML=chartHtml+bwHtml+monthHtml+delivHtml||'<div class="muted">Недостаточно данных</div>';
-    if(chartData){
-      const{filteredDays,maxVal,W,H,pad}=chartData;
-      const canvas=document.getElementById('incomeChart');if(!canvas)return;
-      const ctx=canvas.getContext('2d');
-      const getX=i=>pad+i*((W-pad*2)/(filteredDays.length-1));
-      const getY=v=>H-pad-((v/maxVal)*(H-pad*2));
-      function draw(ai){
-        ctx.clearRect(0,0,W,H+20);
-        const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'rgba(167,139,250,0.2)');g.addColorStop(1,'rgba(167,139,250,0)');
-        ctx.beginPath();ctx.moveTo(getX(0),getY(filteredDays[0][1]));filteredDays.forEach(([,v],i)=>ctx.lineTo(getX(i),getY(v)));
-        ctx.lineTo(getX(filteredDays.length-1),H);ctx.lineTo(getX(0),H);ctx.closePath();ctx.fillStyle=g;ctx.fill();
-        ctx.beginPath();ctx.strokeStyle='#a78bfa';ctx.lineWidth=2.5;ctx.lineJoin='round';
-        ctx.moveTo(getX(0),getY(filteredDays[0][1]));filteredDays.forEach(([,v],i)=>ctx.lineTo(getX(i),getY(v)));ctx.stroke();
-        filteredDays.forEach(([,v],i)=>{
-          const x=getX(i),y=getY(v);
-          if(i===ai){ctx.beginPath();ctx.strokeStyle='rgba(167,139,250,0.25)';ctx.lineWidth=1;ctx.setLineDash([4,3]);ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();ctx.setLineDash([]);ctx.beginPath();ctx.arc(x,y,7,0,Math.PI*2);ctx.fillStyle='rgba(167,139,250,0.15)';ctx.fill();ctx.beginPath();ctx.arc(x,y,4,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();ctx.beginPath();ctx.arc(x,y,2.5,0,Math.PI*2);ctx.fillStyle='#a78bfa';ctx.fill();}
-          else{ctx.beginPath();ctx.arc(x,y,3,0,Math.PI*2);ctx.fillStyle='#a78bfa';ctx.fill();}
-        });
-        ctx.fillStyle='#333';ctx.font='9px sans-serif';ctx.textAlign='center';
-        filteredDays.forEach(([d,],i)=>ctx.fillText(d.slice(8),getX(i),H+14));
-      }
-      const getIdx=cx=>{const r=canvas.getBoundingClientRect(),mx=(cx-r.left)*(W/r.width);let cl=0,md=Infinity;filteredDays.forEach(([,],i)=>{const dist=Math.abs(getX(i)-mx);if(dist<md){md=dist;cl=i;}});return cl;};
-      const showTip=idx=>{const[d,v]=filteredDays[idx];document.getElementById('chartTipDate').textContent=d.slice(8)+'.'+d.slice(5,7);document.getElementById('chartTipVal').textContent=v.toLocaleString()+' ₸';draw(idx);};
-      const hideTip=()=>{document.getElementById('chartTipDate').textContent='';document.getElementById('chartTipVal').textContent='';draw(-1);};
-      canvas.addEventListener('touchstart',e=>showTip(getIdx(e.touches[0].clientX)),{passive:true});
-      canvas.addEventListener('touchend',()=>hideTip());
-      canvas.addEventListener('mousemove',e=>showTip(getIdx(e.clientX)));
-      canvas.addEventListener('mouseleave',()=>hideTip());
-      draw(-1);
-    }
-  }
-
-  window.deleteTx = (id) => {
-    showConfirm('Удалить запись?', async () => {
-      try {
-        await window.fbMethods.deleteDoc(
-          window.fbMethods.doc(window.fbDB, "users", window.fbUser.uid, "transactions", id)
-        );
-      } catch(e) { console.error('deleteTx:', e); }
-    });
-  };
-
-  window.editTx = (id) => {
-    const t = (window.allTx||[]).find(tx => tx.id === id);
-    if (!t || t.type === 'transfer') return;
-
-    const old = document.getElementById('_editDialog');
-    if (old) old.remove();
-
-    const accOpts = (window.ACCOUNTS||[]).map(a => `<option value="${a.name}" ${a.name===t.account?'selected':''}>${a.name}</option>`).join('');
-    const cats = [...(window.DEFAULTS?.income||[]), ...(window.DEFAULTS?.expense||[])];
-    const currentCat = cats.find(c => c.name === t.categoryName);
-    const catOpts = cats.map(c => `<option value="${c.name}" ${c.name===t.categoryName?'selected':''}>${c.name}</option>`).join('');
-    const subOpts = currentCat?.sub?.length
-      ? '<select id="_editSub" style="width:100%;padding:11px;border-radius:10px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:15px;outline:none;box-sizing:border-box;">' +
-        currentCat.sub.map(s=>`<option value="${s}" ${s===t.subcategory?'selected':''}>${s}</option>`).join('') + '</select>'
-      : `<input id="_editSub" type="text" value="${t.subcategory||''}" placeholder="Подкатегория" style="width:100%;padding:11px;border-radius:10px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:15px;outline:none;box-sizing:border-box;">`;
-
-    const div = document.createElement('div');
-    div.id = '_editDialog';
-    div.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.9);display:flex;align-items:flex-end;justify-content:center;padding:0;box-sizing:border-box;';
-    div.innerHTML = `
-      <div style="background:#1c1c1e;border-radius:20px 20px 0 0;padding:20px;width:100%;max-width:500px;border-top:1px solid #2a2a2a;max-height:90vh;overflow-y:auto;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-          <div style="font-size:15px;font-weight:700;color:#ffd166;">✏️ Редактировать запись</div>
-          <button onclick="document.getElementById('_editDialog').remove()" style="background:none;border:none;color:#555;font-size:22px;cursor:pointer;padding:4px 8px;">✕</button>
-        </div>
-        <div style="display:flex;gap:8px;margin-bottom:10px;">
-          <select id="_editType" style="flex:1;padding:11px;border-radius:10px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:15px;outline:none;">
-            <option value="income" ${t.type==='income'?'selected':''}>Приход</option>
-            <option value="expense" ${t.type==='expense'?'selected':''}>Расход</option>
-          </select>
-          <input id="_editAmt" type="number" inputmode="decimal" value="${t.amount}"
-            style="flex:1;padding:11px;border-radius:10px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:15px;outline:none;">
-        </div>
-        <div style="display:flex;gap:8px;margin-bottom:10px;">
-          <select id="_editCat" style="flex:1;padding:11px;border-radius:10px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:15px;outline:none;">${catOpts}</select>
-          <select id="_editAcc" style="flex:1;padding:11px;border-radius:10px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:15px;outline:none;">${accOpts}</select>
-        </div>
-        <div style="margin-bottom:10px;">${subOpts}</div>
-        <div style="display:flex;gap:8px;margin-bottom:10px;">
-          <input id="_editDate" type="date" value="${t.date||''}"
-            style="flex:1;padding:11px;border-radius:10px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:15px;outline:none;">
-          <input id="_editTime" type="time" value="${t.time||''}"
-            style="flex:1;padding:11px;border-radius:10px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:15px;outline:none;">
-        </div>
-        <input id="_editComment" type="text" value="${t.comment||''}" placeholder="Примечание"
-          style="width:100%;padding:11px;border-radius:10px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:15px;outline:none;box-sizing:border-box;margin-bottom:14px;">
-        <div style="display:flex;gap:10px;">
-          <button onclick="document.getElementById('_editDialog').remove()"
-            style="flex:1;padding:13px;border-radius:10px;border:1px solid #333;background:none;color:#888;font-size:14px;cursor:pointer;">Отмена</button>
-          <button onclick="confirmEditTx('${id}')"
-            style="flex:1;padding:13px;border-radius:10px;border:none;background:#ffd166;color:#000;font-size:14px;font-weight:bold;cursor:pointer;">Сохранить</button>
-        </div>
-      </div>`;
-    document.body.appendChild(div);
-  };
-
-  window.confirmEditTx = async (id) => {
-    const amt = Number(document.getElementById('_editAmt').value);
-    if (!amt) { document.getElementById('_editAmt').style.borderColor='#ff6b6b'; return; }
-    const catName = document.getElementById('_editCat').value;
-    const sub = document.getElementById('_editSub').value;
-    const upd = {
-      type: document.getElementById('_editType').value,
-      amount: amt,
-      categoryName: catName,
-      subcategory: sub || '',
-      account: document.getElementById('_editAcc').value,
-      date: document.getElementById('_editDate').value,
-      time: document.getElementById('_editTime').value,
-      comment: document.getElementById('_editComment').value,
-    };
-    document.getElementById('_editDialog').remove();
-    try {
-      await window.fbMethods.updateDoc(
-        window.fbMethods.doc(window.fbDB, "users", window.fbUser.uid, "transactions", id), upd
-      );
-    } catch(e) { console.error('editTx save:', e); }
-  };
-
-  // ── WHATSAPP ПАРСЕР ────────────────────────────────────────────
-  let waEntries = [];
-  let nightMode = false;
-
-  window.toggleNightMode = () => {
-    nightMode = document.getElementById('nightMode').checked;
-    const thumb = document.getElementById('nightThumb');
-    const slider = document.getElementById('nightSlider');
-    if (nightMode) {
-      slider.style.background = '#1a3a2a';
-      thumb.style.background = '#65d48b';
-      thumb.style.transform = 'translateX(20px)';
-    } else {
-      slider.style.background = '#222';
-      thumb.style.background = '#444';
-      thumb.style.transform = 'translateX(0)';
-    }
-  };
-
-  window.parseWA = async () => {
-    const text = document.getElementById('waInput').value.trim();
-    if (!text) return alert('Вставь текст из WhatsApp');
-
-    const btn = document.querySelector('#tab-wa .card button');
-    btn.textContent = '⏳ Анализирую...';
-    btn.disabled = true;
-
-    // Если ночной режим — простой парсинг без ИИ
-    if (nightMode) {
-      // Считаем количество строк с адресами (номер дома)
-      const lines = text.split('\n').filter(l => /\d+-\d+/.test(l));
-      waEntries = lines.map(l => ({
-        point: 'Ночь', amount: 500,
-        address: l.trim(), type: 'до подъезда'
-      }));
-      renderWAResult();
-      btn.textContent = '🤖 Разобрать';
-      btn.disabled = false;
-      return;
-    }
-
-    // Фиксированные цены
-    const POINTS = {
-      'F1':        { under: 150, flat: 300 },
-      'F2':        { under: 150, flat: 300 },
-      'F3':        { under: 150, flat: 300 },
-      'ALLEY PUB': { under: 600, flat: 900 },
-    };
-
-    // Справочник пользовательских адресов [{ addr, type, price }]
-    const customAddrs = loadCustomAddresses();
-
-    // Парсим локально без ИИ — по шаблону
-    const entries = [];
-    const rawBlocks = text.split(/(\[\d+\.\d+,\s*\d+:\d+\])/);
-    const blocks = [];
-    for (let i = 1; i < rawBlocks.length; i += 2) {
-      const timeTag = rawBlocks[i]; // [28.03, 17:02]
-      const body = rawBlocks[i+1] || '';
-      const timeMatch = timeTag.match(/(\d+:\d+)/);
-      const msgTime = timeMatch ? timeMatch[1] : '';
-      blocks.push({ body: body.trim(), msgTime });
-    }
-
-    const isPhone = s => {
-      const cleaned = s.trim().replace(/[\s\-\(\)]/g, '');
-      return /^(\+7|8|7)\d{10}$/.test(cleaned) || /^\d{11}$/.test(cleaned);
-    };
-
-    // Убираем телефон из строки, не трогая адрес
-    const stripPhone = s => s
-      .replace(/(?<![0-9])(\+7|8)[\s\-]?\(?\d{3}\)?[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}/g, '')
-      .replace(/(?<![0-9])\+77\d{9}/g, '')
-      .replace(/(?<![0-9])87\d{9}/g, '')
-      .replace(/(?<![0-9])77\d{9}/g, '')
-      .replace(/,\s*$/, '')
-      .trim();
-
-    for (const block of blocks) {
-      const lines = block.body.split('\n').filter(l => l.trim());
-      if (!lines.length) continue;
-      const msgTime = block.msgTime;
-      const firstLine = lines[0].trim();
-
-      // Определяем точку
-      let point = null;
-      const fl = firstLine.toUpperCase();
-      if (/ALLEY|АЛЕЙ/.test(fl)) point = 'ALLEY PUB';
-      else if (/F\s*3/.test(fl)) point = 'F3';
-      else if (/F\s*2/.test(fl)) point = 'F2';
-      else if (/F\s*1/.test(fl)) point = 'F1';
-      if (!point) continue;
-
-      // Всё что идёт после "F1:" / "ALLEY PUB:" — потенциальный адрес
-      let afterColon = firstLine.replace(/^.*?(?:ALLEY\s*PUB|F\s*[123])\s*[:\-\s]/i, '').trim();
-      afterColon = stripPhone(afterColon);
-
-      let address = '';
-
-      // 1. Если после двоеточия что-то осталось (не пустое, не просто телефон)
-      if (afterColon && afterColon.length > 1 && !isPhone(afterColon)) {
-        address = afterColon;
-      }
-
-      // 2. Ищем адрес в следующих строках
-      if (!address) {
-        for (const line of lines.slice(1)) {
-          const stripped = stripPhone(line).trim();
-          if (!stripped || stripped.length < 2) continue;
-          if (isPhone(stripped)) continue;
-          if (/^(через|забрать|звонить|код|готов|с гаража|не|да$|нет$)/i.test(stripped)) continue;
-          address = stripped;
-          break;
-        }
-      }
-
-      if (!address) continue;
-
-      const prices = POINTS[point] || { under: 150, flat: 300 };
-      const a = address.toLowerCase().trim();
-
-      // 1. Проверяем справочник адресов (приоритет)
-      let amount = null;
-      let type = null;
-      for (const entry of customAddrs) {
-        if (a === entry.addr.toLowerCase() || a.includes(entry.addr.toLowerCase()) || entry.addr.toLowerCase().includes(a)) {
-          const typeLabel = { under: 'до подъезда', flat: 'до квартиры', other: 'другое' };
-          type = typeLabel[entry.type] || entry.type;
-          // Для подъезда/квартиры берём фиксированную цену, для "другое" — цену из справочника
-          if (entry.type === 'under') amount = prices.under;
-          else if (entry.type === 'flat') amount = prices.flat;
-          else amount = entry.price || prices.flat;
-          break;
-        }
-      }
-
-      // 2. Если не в справочнике — авто-определение по паттерну
-      if (amount === null) {
-        let addrType = 'flat';
-
-        if (/п\.п\.?$|пп$/i.test(a) || /последний\s*подъезд/i.test(a)) {
-          addrType = 'under';
-        } else if (/\d+кв$/i.test(a) || /кв\.?\s*\d+/i.test(a)) {
-          addrType = 'flat';
-        } else if (/^[а-яёa-z]/i.test(a) && !/^\d/.test(a)) {
-          // начинается с буквы — спецадрес, по умолчанию как квартира
-          addrType = 'flat';
-        } else {
-          const segs = a.split(/[-–]/).map(s => s.trim());
-          if (segs.length >= 3) {
-            const last = segs[segs.length - 1];
-            addrType = /^\d*п$/i.test(last) && !/кв/i.test(a) ? 'under' : 'flat';
-          } else if (segs.length === 2) {
-            const last = segs[1];
-            if (/^\d*п$/i.test(last)) addrType = 'under';
-            else if (/^\d+$/.test(last) && Number(last) <= 20) addrType = 'under';
-            else addrType = 'flat';
-          }
-        }
-
-        amount = addrType === 'under' ? prices.under : prices.flat;
-        type = addrType === 'under' ? 'до подъезда' : 'до квартиры';
-      }
-
-      entries.push({ point, amount, address, type, msgTime });
-    }
-
-    waEntries = entries;
-    renderWAResult();
-    btn.textContent = '🤖 Разобрать';
-    btn.disabled = false;
-  };
-
-  function renderWAResult() {
-    const result = document.getElementById('waResult');
-    const list = document.getElementById('waList');
-
-    if (!waEntries.length) {
-      list.innerHTML = '<div class="muted">Ничего не найдено. Проверь формат текста.</div>';
-      result.style.display = 'block';
-      return;
-    }
-
-    const total = waEntries.reduce((s, e) => s + e.amount, 0);
-    list.innerHTML = waEntries.map((e, i) => `
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #1a1a1a;">
-        <div>
-          <div style="font-size:14px;font-weight:600;">${e.point} · ${e.type}</div>
-          <div style="font-size:11px;color:#444;">${e.address}${e.msgTime ? ' · ' + e.msgTime : ''}</div>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <span style="color:#65d48b;font-weight:bold;">${e.amount.toLocaleString()} ₸</span>
-          <button onclick="removeWAEntry(${i})" style="background:none;border:none;color:#ff6b6b;font-size:18px;cursor:pointer;padding:4px;">✕</button>
-        </div>
-      </div>
-    `).join('') + `
-      <div style="display:flex;justify-content:space-between;padding:12px 0;font-weight:bold;">
-        <span>Итого (${waEntries.length} записей)</span>
-        <span style="color:#65d48b;">${total.toLocaleString()} ₸</span>
-      </div>`;
-
-    result.style.display = 'block';
-  }
-
-  window.removeWAEntry = (i) => {
-    waEntries.splice(i, 1);
-    renderWAResult();
-  };
-
-  window.saveWA = async () => {
-    if (!waEntries.length) return;
-    const btn = document.querySelector('#waResult button');
-    btn.textContent = '⏳ Проверяю дубли...';
-    btn.disabled = true;
-
-    const { fbDB, fbMethods } = window;
-    const uid = window.fbUser.uid;
-    const txRef = fbMethods.collection(fbDB, 'users', uid, 'transactions');
-    const today = (() => {
-      const now = new Date();
-      if (now.getHours() < 3) now.setDate(now.getDate() - 1);
-      return new Date(now - now.getTimezoneOffset() * 60000).toISOString().split('T')[0];
-    })();
-    const time = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-
-    try {
-      // Загружаем уже существующие записи за сегодня
-      const existing = (window.allTx || []).filter(t =>
-        t.date === today && t.type === 'income' && t.categoryName === 'Доставка'
-      );
-      // Ключ для проверки дубля: точка + адрес
-      // Дубль = та же точка + адрес + время сообщения WhatsApp
-      const existingKeys = new Set(existing.map(t =>
-        `${t.subcategory}|${(t.comment||'').trim().toLowerCase()}|${t.waTime||''}`
-      ));
-
-      let saved = 0, skipped = 0;
-      for (const e of waEntries) {
-        const key = `${e.point}|${e.address.trim().toLowerCase()}|${e.msgTime||''}`;
-        if (existingKeys.has(key)) {
-          skipped++;
-          continue;
-        }
-        await fbMethods.addDoc(txRef, {
-          type: 'income',
-          amount: e.amount,
-          categoryName: 'Доставка',
-          subcategory: e.point,
-          account: 'Наличные',
-          date: today,
-          time,
-          comment: e.address,
-          waTime: e.msgTime || '',
-          createdAt: Date.now()
-        });
-        existingKeys.add(key);
-        saved++;
-      }
-
-      let msg = `✅ Записано: ${saved}`;
-      if (skipped > 0) msg += `\n⚠️ Пропущено дублей: ${skipped}`;
-      alert(msg);
-
-      waEntries = [];
-      document.getElementById('waInput').value = '';
-      document.getElementById('waResult').style.display = 'none';
-    } catch(e) {
-      alert('Ошибка: ' + e.message);
-    }
-
-    btn.textContent = '✅ Записать всё';
-    btn.disabled = false;
-  };
-
-  // Обработка уведомлений от банков (вызывается из NotificationService -> MainActivity)
-  window.onNotificationReceived = function(title, text, app) {
-    console.log("Уведомление перехвачено:", title, text, app);
-    // Здесь логика парсинга SMS/уведомлений от банков
-  };
-</script>
-<script>
-  // PULL TO REFRESH
-  let ptrStartY = 0, ptrActive = false;
-  const PTR_THRESHOLD = 80;
-
-  document.addEventListener('touchstart', e => {
-    if (window.scrollY === 0) {
-      ptrStartY = e.touches[0].clientY;
-      ptrActive = true;
-    }
-  }, { passive: true });
-
-  document.addEventListener('touchmove', e => {
-    if (!ptrActive) return;
-    const dist = e.touches[0].clientY - ptrStartY;
-    if (dist > 10) {
-      const ind = document.getElementById('ptr-indicator');
-      const spinner = document.getElementById('ptr-spinner');
-      const txt = document.getElementById('ptr-text');
-      ind.classList.add('visible');
-      if (dist > PTR_THRESHOLD) {
-        spinner.classList.add('spin');
-        txt.textContent = 'Отпустите для обновления';
-      } else {
-        spinner.classList.remove('spin');
-        txt.textContent = 'Потяните вниз для обновления';
-      }
-    }
-  }, { passive: true });
-
-  document.addEventListener('touchend', e => {
-    if (!ptrActive) return;
-    ptrActive = false;
-    const dist = e.changedTouches[0].clientY - ptrStartY;
-    const ind = document.getElementById('ptr-indicator');
-    const spinner = document.getElementById('ptr-spinner');
-    if (dist > PTR_THRESHOLD) {
-      document.getElementById('ptr-text').textContent = 'Обновление...';
-      setTimeout(() => {
-        ind.classList.remove('visible');
-        spinner.classList.remove('spin');
-        // Перезапускаем initApp полностью — свежие данные из Firebase
-        if (window.fbUser && window.fbDB && window.fbMethods) {
-          if (window.resetApp) window.resetApp();
-          window.appStarted = false;
-          setTimeout(() => window.dispatchEvent(new Event("fbReady")), 50);
-        } else if (window.render) {
-          window.render();
-        }
-      }, 500);
-    } else {
-      ind.classList.remove('visible');
-      spinner.classList.remove('spin');
-    }
-  });
-</script>
-<script>
-(function() {
-
-// ══════════════════════════════════════════════
-// ИИ АГЕНТ — Gemini/Claude/OpenAI/Qwen + Firebase memory
-// ══════════════════════════════════════════════
-let aiHistory = [];
-let currentProvider = 'gemini';
-let aiMemoryLoaded = false;
-
-// ── Выбор провайдера ──
-window.selectProvider = (p) => {
-  currentProvider = p;
-  const colors = {gemini:'#4a9eff', claude:'#c084fc', openai:'#65d48b', qwen:'#fb923c', custom:'#f472b6'};
-  ['gemini','claude','openai','qwen','custom'].forEach(x => {
-    const btn = document.getElementById('provBtn-'+x);
-    const setup = document.getElementById('provSetup-'+x);
-    const active = x === p;
-    if (btn) { btn.style.opacity = active?'1':'0.4'; btn.style.borderColor = active?colors[x]:'#2a2a2a'; }
-    if (setup) setup.style.display = active ? 'block' : 'none';
-  });
-};
-
-// ── Загрузка моделей Gemini ──
-window.loadAiModels = async () => {
-  const key = document.getElementById('keyInput-gemini').value.trim();
-  if (!key) { window.showToast('Введи ключ Gemini'); return; }
-  const btn = document.getElementById('loadModelsBtn');
-  btn.textContent = '⏳ Загружаю...'; btn.disabled = true;
-  try {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
-    const data = await res.json();
-    if (data.error) throw new Error(data.error.message);
-    const models = (data.models||[]).filter(m=>(m.supportedGenerationMethods||[]).includes('generateContent'));
-    const sel = document.getElementById('aiModelSelect');
-    const saved = localStorage.getItem('geminiModel')||'';
-    sel.innerHTML = models.map(m=>{ const id=m.name.replace('models/',''); return `<option value="${id}" ${id===saved?'selected':''}>${m.displayName||id}</option>`; }).join('');
-    sel.style.display = 'block';
-    btn.textContent = `✅ ${models.length} моделей`;
-  } catch(e) { btn.textContent = '❌ '+e.message; }
-  btn.disabled = false;
-};
-
-// ── Сохранение настроек ──
-window.saveAiSettings = () => {
-  const p = currentProvider;
-  if (p==='gemini') {
-    const key=document.getElementById('keyInput-gemini').value.trim();
-    const sel=document.getElementById('aiModelSelect');
-    if (!key) { window.showToast('Введи ключ Gemini'); return; }
-    if (!sel.value) { window.showToast('Загрузи и выбери модель'); return; }
-    localStorage.setItem('geminiKey',key); localStorage.setItem('geminiModel',sel.value);
-  } else if (p==='claude') {
-    const key=document.getElementById('keyInput-claude').value.trim();
-    if (!key) { window.showToast('Введи ключ Claude'); return; }
-    localStorage.setItem('claudeKey',key); localStorage.setItem('claudeModel',document.getElementById('modelSelect-claude').value);
-  } else if (p==='openai') {
-    const key=document.getElementById('keyInput-openai').value.trim();
-    if (!key) { window.showToast('Введи ключ OpenAI'); return; }
-    localStorage.setItem('openaiKey',key); localStorage.setItem('openaiModel',document.getElementById('modelSelect-openai').value);
-  } else if (p==='qwen') {
-    const key=document.getElementById('keyInput-qwen').value.trim();
-    if (!key) { window.showToast('Введи ключ Qwen'); return; }
-    localStorage.setItem('qwenKey',key); localStorage.setItem('qwenModel',document.getElementById('modelSelect-qwen').value);
-  } else if (p==='custom') {
-    const key=document.getElementById('keyInput-custom').value.trim();
-    const url=document.getElementById('urlInput-custom').value.trim();
-    const model=document.getElementById('modelInput-custom').value.trim();
-    if (!key) { window.showToast('Введи API ключ'); return; }
-    if (!url) { window.showToast('Введи Base URL'); return; }
-    if (!model) { window.showToast('Введи название модели'); return; }
-    localStorage.setItem('customKey',key); localStorage.setItem('customUrl',url); localStorage.setItem('customModel',model);
-  }
-  localStorage.setItem('aiProvider',p);
-  document.getElementById('aiKeySetup').style.display='none';
-  const names={gemini:'Gemini 🔵',claude:'Claude 🟣',openai:'OpenAI 🟢',qwen:'Qwen 🟠',custom:'Custom 🔧'};
-  showAgentStatus(names[p]||p);
-  if (!aiHistory.length) greetAgent();
-};
-
-window.resetAiKey = () => {
-  document.getElementById('aiKeySetup').style.display='block';
-  const statusEl=document.getElementById('aiAgentStatus');
-  statusEl.style.display='none';
-  const p=localStorage.getItem('aiProvider')||'gemini';
-  selectProvider(p);
-  const gk=localStorage.getItem('geminiKey'); if(gk) document.getElementById('keyInput-gemini').value=gk;
-  const ck=localStorage.getItem('claudeKey'); if(ck) document.getElementById('keyInput-claude').value=ck;
-  const ok=localStorage.getItem('openaiKey'); if(ok) document.getElementById('keyInput-openai').value=ok;
-  const qk=localStorage.getItem('qwenKey'); if(qk) document.getElementById('keyInput-qwen').value=qk;
-  const xk=localStorage.getItem('customKey'); if(xk) document.getElementById('keyInput-custom').value=xk;
-  const xu=localStorage.getItem('customUrl'); if(xu) document.getElementById('urlInput-custom').value=xu;
-  const xm=localStorage.getItem('customModel'); if(xm) document.getElementById('modelInput-custom').value=xm;
-  const cm=localStorage.getItem('claudeModel'); if(cm) document.getElementById('modelSelect-claude').value=cm;
-  const om=localStorage.getItem('openaiModel'); if(om) document.getElementById('modelSelect-openai').value=om;
-  const qm=localStorage.getItem('qwenModel'); if(qm) document.getElementById('modelSelect-qwen').value=qm;
-};
-
-function showAgentStatus(name) {
-  const el=document.getElementById('aiAgentStatus');
-  el.style.display='flex';
-  el.style.setProperty('display','flex');
-  document.getElementById('aiStatusText').textContent=`🟢 Агент: ${name}`;
-}
-
-// ── Память в Firebase ──
-async function saveMemoryToFirebase() {
-  const { fbDB, fbMethods, fbUser } = window;
-  if (!fbUser?.uid || !fbDB) return;
-  try {
-    await fbMethods.updateDoc(fbMethods.doc(fbDB,'users',fbUser.uid), {
-      aiMemory: JSON.stringify(aiHistory.slice(-40)),
-      aiMemoryUpdated: Date.now()
-    });
-  } catch(e) { console.log('Memory save error:', e.message); }
-}
-
-async function loadMemoryFromFirebase() {
-  const { fbDB, fbMethods, fbUser } = window;
-  if (!fbUser?.uid || !fbDB || aiMemoryLoaded) return;
-  try {
-    if (!fbMethods.getDoc) return; // getDoc not imported, skip
-    const snap = await fbMethods.getDoc(fbMethods.doc(fbDB,'users',fbUser.uid));
-    if (!snap) return;
-    const data = snap.data?.() || snap;
-    if (data?.aiMemory) {
-      const saved = JSON.parse(data.aiMemory);
-      if (Array.isArray(saved) && saved.length) {
-        aiHistory = saved;
-        aiMemoryLoaded = true;
-        // Показываем последние 5 сообщений из памяти
-        const el = document.getElementById('aiMessages');
-        if (el && !el.children.length) {
-          const divider = document.createElement('div');
-          divider.style = 'text-align:center;font-size:10px;color:#333;padding:6px 0;';
-          divider.textContent = `── история из памяти (${saved.length} сообщений) ──`;
-          el.appendChild(divider);
-          saved.slice(-6).forEach(m => appendAiMsg(m.role==='assistant'?'bot':'user', m.content));
-        }
-      }
-    }
-  } catch(e) { console.log('Memory load error:', e.message); }
-}
-
-// ── Контекст данных (полный, со временем) ──
-function buildContext() {
-  const tx = window.allTx || [];
-  const getToday = () => { const n=new Date(); if(n.getHours()<3)n.setDate(n.getDate()-1); return new Date(n-n.getTimezoneOffset()*60000).toISOString().split('T')[0]; };
-  const today = getToday();
-  const month = today.slice(0,7);
-
-  const todayTx = tx.filter(t=>t.date===today&&t.type==='income');
-  const todaySum = todayTx.reduce((s,t)=>s+t.amount,0);
-  const monthInc = tx.filter(t=>(t.date||'').startsWith(month)&&t.type==='income').reduce((s,t)=>s+t.amount,0);
-  const monthExp = tx.filter(t=>(t.date||'').startsWith(month)&&t.type==='expense').reduce((s,t)=>s+t.amount,0);
-  const totalInc = tx.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
-  const totalExp = tx.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
-
-  const POINTS=['F1','F2','F3','ALLEY PUB','Ночь'];
-  const byPoint={};
-  todayTx.forEach(t=>{ if(POINTS.includes(t.subcategory)) byPoint[t.subcategory]=(byPoint[t.subcategory]||0)+t.amount; });
-
-  const byMonth={};
-  tx.filter(t=>t.type==='income').forEach(t=>{ const m=(t.date||'').slice(0,7); byMonth[m]=(byMonth[m]||0)+t.amount; });
-  const monthsSummary=Object.entries(byMonth).sort((a,b)=>b[0]>a[0]?1:-1).slice(0,6).map(([m,v])=>`${m}:${v.toLocaleString()}₸`).join(', ');
-
-  // Последние 20 записей СО ВРЕМЕНЕМ
-  const last20=tx.slice(-20).map(t=>`${t.date} ${t.time||'--:--'}|${t.type==='income'?'+':'−'}${t.amount}₸|${t.subcategory||t.categoryName}|id:${t.id}`).join('\n');
-
-  const accs=(window.ACCOUNTS||[]).map(a=>a.name);
-  const now = new Date().toLocaleString('ru-RU');
-
-  return `═══ ДАННЫЕ ПОЛЬЗОВАТЕЛЯ ═══
-Текущее время: ${now}
-Сегодня (${today}): ${todaySum.toLocaleString()}₸ | По точкам: ${Object.entries(byPoint).map(([k,v])=>`${k}:${v}`).join(', ')||'нет'}
-Месяц ${month}: доход ${monthInc.toLocaleString()}₸ | расход ${monthExp.toLocaleString()}₸
-За всё время: доход ${totalInc.toLocaleString()}₸ | расход ${totalExp.toLocaleString()}₸ | записей ${tx.length}
-По месяцам: ${monthsSummary}
-Счета: ${accs.join(', ')||'нет'}
-Категории дохода: ${(window.DEFAULTS?.income||[]).map(c=>c.name+(c.sub?.length?`[${c.sub.join(',')}]`:'')).join(', ')||'нет'}
-Категории расхода: ${(window.DEFAULTS?.expense||[]).map(c=>c.name+(c.sub?.length?`[${c.sub.join(',')}]`:'')).join(', ')||'нет'}
-Последние 20 записей (дата время|сумма|категория|id):
-${last20}
-═══════════════════════`;
-}
-
-// ── Определения инструментов ──
-const TOOL_DEFS = [
-  { name:'add_transaction', desc:'Записать доход или расход', params:{ type:{t:'STRING',d:'income или expense'}, amount:{t:'NUMBER',d:'Сумма'}, categoryName:{t:'STRING',d:'Категория'}, subcategory:{t:'STRING',d:'Точка: F1,F2,F3,ALLEY PUB,Ночь'}, account:{t:'STRING',d:'Счёт'}, date:{t:'STRING',d:'Дата YYYY-MM-DD'}, time:{t:'STRING',d:'Время HH:MM'}, comment:{t:'STRING',d:'Примечание'} }, req:['type','amount','categoryName'] },
-  { name:'edit_transaction', desc:'Изменить запись', params:{ id:{t:'STRING',d:'ID или "last"'}, amount:{t:'NUMBER',d:'Новая сумма'}, categoryName:{t:'STRING',d:'Категория'}, subcategory:{t:'STRING',d:'Подкатегория'}, account:{t:'STRING',d:'Счёт'}, date:{t:'STRING',d:'Дата'}, time:{t:'STRING',d:'Время HH:MM'}, comment:{t:'STRING',d:'Примечание'} }, req:['id'] },
-  { name:'delete_transaction', desc:'Удалить запись', params:{ id:{t:'STRING',d:'ID или "last"'} }, req:['id'] },
-  { name:'bulk_delete', desc:'Удалить несколько', params:{ ids:{t:'STRING',d:'ID через запятую или "duplicates" или "today_income"'} }, req:['ids'] },
-  { name:'find_duplicates', desc:'Найти дубли', params:{ action:{t:'STRING',d:'show или delete'} }, req:['action'] },
-  { name:'search_transactions', desc:'Найти записи по фильтрам включая время', params:{ date_from:{t:'STRING',d:'С даты'}, date_to:{t:'STRING',d:'По дату'}, time_from:{t:'STRING',d:'С времени HH:MM'}, time_to:{t:'STRING',d:'По время HH:MM'}, type:{t:'STRING',d:'income или expense'}, subcategory:{t:'STRING',d:'Точка/категория'}, amount_min:{t:'NUMBER',d:'Мин сумма'}, amount_max:{t:'NUMBER',d:'Макс сумма'}, sort_by:{t:'STRING',d:'date, time, amount'}, sort_dir:{t:'STRING',d:'asc или desc'}, limit:{t:'NUMBER',d:'Сколько вернуть'} }, req:[] },
-  { name:'get_stats', desc:'Статистика за период', params:{ period:{t:'STRING',d:'today, week, month, year, all или YYYY-MM-DD:YYYY-MM-DD'} }, req:['period'] },
-  { name:'get_all_data', desc:'Все транзакции списком', params:{ period:{t:'STRING',d:'today, month, all'} }, req:['period'] },
-  { name:'add_category', desc:'Добавить категорию', params:{ name:{t:'STRING',d:'Название'}, catType:{t:'STRING',d:'income или expense'} }, req:['name','catType'] },
-  { name:'delete_category', desc:'Удалить категорию', params:{ name:{t:'STRING',d:'Название'} }, req:['name'] },
-  { name:'add_subcategory', desc:'Добавить подкатегорию', params:{ categoryName:{t:'STRING',d:'Родительская категория'}, subName:{t:'STRING',d:'Подкатегория'} }, req:['categoryName','subName'] },
-  { name:'add_account', desc:'Добавить счёт', params:{ name:{t:'STRING',d:'Название'} }, req:['name'] },
-  { name:'delete_account', desc:'Удалить счёт', params:{ name:{t:'STRING',d:'Название'} }, req:['name'] },
-  { name:'transfer', desc:'Перевод между счетами', params:{ from:{t:'STRING',d:'Откуда'}, to:{t:'STRING',d:'Куда'}, amount:{t:'NUMBER',d:'Сумма'} }, req:['from','to','amount'] },
-];
-
-const toGeminiProps = (params) => Object.fromEntries(Object.entries(params).map(([k,v])=>([k,{type:v.t,description:v.d}])));
-const toJsonProps = (params) => Object.fromEntries(Object.entries(params).map(([k,v])=>([k,{type:v.t.toLowerCase(),description:v.d}])));
-
-const AGENT_TOOLS_GEMINI = [{ functionDeclarations: TOOL_DEFS.map(t=>({ name:t.name, description:t.desc, parameters:{type:'OBJECT', properties:toGeminiProps(t.params), required:t.req} })) }];
-const AGENT_TOOLS_CLAUDE = TOOL_DEFS.map(t=>({ name:t.name, description:t.desc, input_schema:{type:'object', properties:toJsonProps(t.params), required:t.req} }));
-const AGENT_TOOLS_OPENAI = TOOL_DEFS.map(t=>({ type:'function', function:{name:t.name, description:t.desc, parameters:{type:'object', properties:toJsonProps(t.params), required:t.req}} }));
-const AGENT_TOOLS_QWEN = AGENT_TOOLS_OPENAI; // Qwen использует OpenAI-совместимый формат
-
-// ── Выполнение инструментов ──
-async function executeTool(name, args) {
-  const { fbDB, fbMethods, fbUser } = window;
-  const uid = fbUser?.uid;
-  if (!uid) return 'Ошибка: не авторизован';
-
-  const getToday = () => { const n=new Date(); if(n.getHours()<3)n.setDate(n.getDate()-1); return new Date(n-n.getTimezoneOffset()*60000).toISOString().split('T')[0]; };
-  const today = getToday();
-  const time = args.time || new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
-  const txRef = () => fbMethods.collection(fbDB,'users',uid,'transactions');
-  const setRef = () => fbMethods.collection(fbDB,'users',uid,'settings');
-  const allTx = window.allTx || [];
-  const nalichAcc = (window.ACCOUNTS||[]).find(a=>a.name.toLowerCase().includes('налич'))?.name || 'Наличные';
-
-  if (name==='add_transaction') {
-    await fbMethods.addDoc(txRef(), { type:args.type, amount:Number(args.amount), categoryName:args.categoryName, subcategory:args.subcategory||'', account:args.account||nalichAcc, date:args.date||today, time, comment:args.comment||'', createdAt:Date.now() });
-    return `✅ ${args.type==='income'?'+':'−'}${Number(args.amount).toLocaleString()}₸ · ${args.subcategory||args.categoryName} · ${args.date||today} ${time}`;
-  }
-
-  if (name==='edit_transaction') {
-    const target = args.id==='last' ? allTx[allTx.length-1] : allTx.find(t=>t.id===args.id);
-    if (!target) return '❌ Запись не найдена';
-    const upd = {};
-    if (args.amount!==undefined) upd.amount=Number(args.amount);
-    if (args.categoryName) upd.categoryName=args.categoryName;
-    if (args.subcategory!==undefined) upd.subcategory=args.subcategory;
-    if (args.account) upd.account=args.account;
-    if (args.date) upd.date=args.date;
-    if (args.time) upd.time=args.time;
-    if (args.comment!==undefined) upd.comment=args.comment;
-    await fbMethods.updateDoc(fbMethods.doc(fbDB,'users',uid,'transactions',target.id), upd);
-    return `✅ Изменено: ${target.amount}₸ → ${JSON.stringify(upd)}`;
-  }
-
-  if (name==='delete_transaction') {
-    const target = args.id==='last' ? allTx[allTx.length-1] : allTx.find(t=>t.id===args.id);
-    if (!target) return '❌ Запись не найдена';
-    await fbMethods.deleteDoc(fbMethods.doc(fbDB,'users',uid,'transactions',target.id));
-    return `✅ Удалено: ${target.amount.toLocaleString()}₸ · ${target.subcategory||target.categoryName} · ${target.date} ${target.time||''}`;
-  }
-
-  if (name==='bulk_delete') {
-    let targets = [];
-    if (args.ids==='duplicates') {
-      const seen={}; allTx.forEach(t=>{ const k=`${t.date}|${t.amount}|${t.subcategory||t.categoryName}`; if(seen[k]) targets.push(t); else seen[k]=true; });
-    } else if (args.ids==='today_income') {
-      targets = allTx.filter(t=>t.date===today&&t.type==='income');
-    } else {
-      const ids=args.ids.split(',').map(s=>s.trim()); targets=allTx.filter(t=>ids.includes(t.id));
-    }
-    if (!targets.length) return '❌ Записи не найдены';
-    for (const t of targets) await fbMethods.deleteDoc(fbMethods.doc(fbDB,'users',uid,'transactions',t.id));
-    return `✅ Удалено ${targets.length} записей`;
-  }
-
-  if (name==='find_duplicates') {
-    const seen={}; const dups=[];
-    allTx.forEach(t=>{ const k=`${t.date}|${t.amount}|${t.subcategory||t.categoryName}`; if(seen[k]) dups.push(t); else seen[k]=true; });
-    if (!dups.length) return '✅ Дублей нет';
-    if (args.action==='delete') {
-      for (const t of dups) await fbMethods.deleteDoc(fbMethods.doc(fbDB,'users',uid,'transactions',t.id));
-      return `✅ Удалено ${dups.length} дублей`;
-    }
-    return `🔍 Найдено ${dups.length} дублей:\n`+dups.map(t=>`• ${t.date} ${t.time||''} | ${t.amount}₸ | ${t.subcategory||t.categoryName} | id:${t.id}`).join('\n');
-  }
-
-  if (name==='search_transactions') {
-    let result = allTx;
-    if (args.date_from) result=result.filter(t=>t.date>=args.date_from);
-    if (args.date_to) result=result.filter(t=>t.date<=args.date_to);
-    if (args.time_from) result=result.filter(t=>(t.time||'00:00')>=args.time_from);
-    if (args.time_to) result=result.filter(t=>(t.time||'23:59')<=args.time_to);
-    if (args.type) result=result.filter(t=>t.type===args.type);
-    if (args.subcategory) result=result.filter(t=>(t.subcategory||t.categoryName||'').toLowerCase().includes(args.subcategory.toLowerCase()));
-    if (args.amount_min!==undefined) result=result.filter(t=>t.amount>=args.amount_min);
-    if (args.amount_max!==undefined) result=result.filter(t=>t.amount<=args.amount_max);
-    // Сортировка
-    const sortBy = args.sort_by || 'date';
-    const sortDir = args.sort_dir === 'asc' ? 1 : -1;
-    result.sort((a,b) => {
-      if (sortBy==='time') return ((a.time||'')>(b.time||'')?1:-1)*sortDir;
-      if (sortBy==='amount') return (a.amount-b.amount)*sortDir;
-      return ((a.date+' '+(a.time||''))>(b.date+' '+(b.time||''))?1:-1)*sortDir;
-    });
-    result = result.slice(0, args.limit||20);
-    if (!result.length) return '❌ Ничего не найдено';
-    return `🔍 ${result.length} записей:\n`+result.map(t=>`${t.date} ${t.time||'--:--'}|${t.type==='income'?'+':'−'}${t.amount}₸|${t.subcategory||t.categoryName}|id:${t.id}`).join('\n');
-  }
-
-  if (name==='get_stats') {
-    let filtered=allTx;
-    const p=args.period;
-    if (p==='today') filtered=allTx.filter(t=>t.date===today);
-    else if (p==='week') { const d=new Date(); d.setDate(d.getDate()-7); const ds=new Date(d-d.getTimezoneOffset()*60000).toISOString().split('T')[0]; filtered=allTx.filter(t=>t.date>=ds); }
-    else if (p==='month') filtered=allTx.filter(t=>(t.date||'').startsWith(today.slice(0,7)));
-    else if (p==='year') filtered=allTx.filter(t=>(t.date||'').startsWith(today.slice(0,4)));
-    else if (p.includes(':')) { const [f,t2]=p.split(':'); filtered=allTx.filter(t=>t.date>=f&&t.date<=t2); }
-    const inc=filtered.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
-    const exp=filtered.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
-    const POINTS=['F1','F2','F3','ALLEY PUB','Ночь'];
-    const byPoint={};
-    filtered.filter(t=>t.type==='income'&&POINTS.includes(t.subcategory)).forEach(t=>{ byPoint[t.subcategory]=(byPoint[t.subcategory]||0)+t.amount; });
-    const days=new Set(filtered.filter(t=>t.type==='income').map(t=>t.date)).size;
-    return `📊 ${p}: Доход:${inc.toLocaleString()}₸ | Расход:${exp.toLocaleString()}₸ | Чистая:${(inc-exp).toLocaleString()}₸ | Записей:${filtered.length} | Дней:${days}\nПо точкам: ${Object.entries(byPoint).map(([k,v])=>`${k}:${v.toLocaleString()}₸`).join(', ')||'нет'}`;
-  }
-
-  if (name==='get_all_data') {
-    let filtered=allTx;
-    if (args.period==='today') filtered=allTx.filter(t=>t.date===today);
-    else if (args.period==='month') filtered=allTx.filter(t=>(t.date||'').startsWith(today.slice(0,7)));
-    if (!filtered.length) return 'Нет данных';
-    return `Всего ${filtered.length}:\n`+filtered.map(t=>`${t.date} ${t.time||''}|${t.type==='income'?'+':'−'}${t.amount}₸|${t.subcategory||t.categoryName}|id:${t.id}`).join('\n');
-  }
-
-  if (name==='add_category') {
-    await fbMethods.addDoc(setRef(), {type:'category',name:args.name,catType:args.catType,sub:[]});
-    return `✅ Категория "${args.name}" добавлена`;
-  }
-  if (name==='delete_category') {
-    const cats=[...(window.DEFAULTS?.income||[]),...(window.DEFAULTS?.expense||[])];
-    const cat=cats.find(c=>c.name.toLowerCase()===args.name.toLowerCase());
-    if (!cat) return `❌ Категория "${args.name}" не найдена`;
-    await fbMethods.deleteDoc(fbMethods.doc(fbDB,'users',uid,'settings',cat.id));
-    return `✅ Категория "${args.name}" удалена`;
-  }
-  if (name==='add_subcategory') {
-    const cats=[...(window.DEFAULTS?.income||[]),...(window.DEFAULTS?.expense||[])];
-    const cat=cats.find(c=>c.name.toLowerCase()===args.categoryName.toLowerCase());
-    if (!cat) return `❌ Категория "${args.categoryName}" не найдена`;
-    await fbMethods.updateDoc(fbMethods.doc(fbDB,'users',uid,'settings',cat.id),{sub:fbMethods.arrayUnion(args.subName)});
-    return `✅ Подкатегория "${args.subName}" → "${args.categoryName}"`;
-  }
-  if (name==='add_account') {
-    await fbMethods.addDoc(setRef(),{type:'account',name:args.name,initialBalance:0});
-    return `✅ Счёт "${args.name}" добавлен`;
-  }
-  if (name==='delete_account') {
-    const acc=(window.ACCOUNTS||[]).find(a=>a.name.toLowerCase()===args.name.toLowerCase());
-    if (!acc) return `❌ Счёт "${args.name}" не найден`;
-    await fbMethods.deleteDoc(fbMethods.doc(fbDB,'users',uid,'settings',acc.id));
-    return `✅ Счёт "${args.name}" удалён`;
-  }
-  if (name==='transfer') {
-    await fbMethods.addDoc(txRef(),{type:'transfer',amount:Number(args.amount),fromAccount:args.from,toAccount:args.to,date:today,time,createdAt:Date.now()});
-    return `✅ Перевод ${Number(args.amount).toLocaleString()}₸: ${args.from} → ${args.to}`;
-  }
-
-  return '❌ Неизвестный инструмент: '+name;
-}
-
-// ── Отображение сообщений ──
-function appendAiMsg(role, text) {
-  const el=document.getElementById('aiMessages');
-  const div=document.createElement('div');
-  div.className=`ai-msg ${role}`;
-  div.textContent=text;
-  el.appendChild(div);
-  setTimeout(()=>el.scrollTop=el.scrollHeight,50);
-  return div;
-}
-
-function greetAgent() {
-  const p=localStorage.getItem('aiProvider')||'gemini';
-  const names={gemini:'Gemini',claude:'Claude',openai:'ChatGPT',qwen:'Qwen',custom:'Custom API'};
-  appendAiMsg('bot',`👋 Привет! Агент на базе ${names[p]||p} готов.\nВижу все твои данные и могу:\n• Записывать/удалять/редактировать транзакции\n• Искать и фильтровать по дате, времени, сумме\n• Находить и удалять дубли\n• Управлять категориями и счетами\n• Переводить между счетами\n• Анализировать доходы за любой период\n\nЧто делаем?`);
-}
-
-// ── Отправка сообщения ──
-window.sendAiMsg = async () => {
-  const input=document.getElementById('aiInput');
-  const text=input.value.trim();
-  if (!text) return;
-  const provider=localStorage.getItem('aiProvider');
-  if (!provider) { window.showToast('Настрой агента сначала'); return; }
-  input.value='';
-  appendAiMsg('user',text);
-  const typing=appendAiMsg('bot','...');
-  typing.classList.add('typing');
-
-  const systemPrompt=`Ты ИИ-агент приложения "Учёт Курьера Pro". ПОЛНЫЙ доступ к данным и действиям.
-
-${buildContext()}
-
-Инструменты: add_transaction, edit_transaction, delete_transaction, bulk_delete, find_duplicates, search_transactions (с фильтрами по времени и сортировкой), get_stats, get_all_data, add/delete_category, add_subcategory, add/delete_account, transfer.
-
-Выполняй ВСЕ поручения. Используй инструменты. Можешь вызывать несколько инструментов подряд для сложных задач.
-Отвечай кратко на русском. Подтверди выполнение.`;
-
-  try {
-    let reply='';
-    if (provider==='gemini') reply=await sendGemini(systemPrompt,text,typing);
-    else if (provider==='claude') reply=await sendClaude(systemPrompt,text,typing);
-    else if (provider==='openai') reply=await sendOpenAI(systemPrompt,text,typing);
-    else if (provider==='qwen') reply=await sendQwen(systemPrompt,text,typing);
-    else if (provider==='custom') reply=await sendCustom(systemPrompt,text,typing);
-
-    typing.textContent=reply;
-    typing.classList.remove('typing');
-    aiHistory.push({role:'user',content:text});
-    aiHistory.push({role:'assistant',content:reply});
-    if (aiHistory.length>40) aiHistory=aiHistory.slice(-40);
-
-    // Сохраняем память в Firebase
-    saveMemoryToFirebase();
-
-  } catch(e) {
-    typing.textContent='❌ Ошибка: '+e.message;
-    typing.classList.remove('typing');
-  }
-};
-
-// ── Gemini ──
-async function sendGemini(systemPrompt,text,typing) {
-  const key=localStorage.getItem('geminiKey');
-  const model=localStorage.getItem('geminiModel')||'gemini-2.5-flash';
-  if (!key) throw new Error('Нет ключа Gemini');
-  const contents=[...aiHistory.map(m=>({role:m.role==='assistant'?'model':'user',parts:[{text:m.content}]})),{role:'user',parts:[{text}]}];
-  let res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system_instruction:{parts:[{text:systemPrompt}]},contents,tools:AGENT_TOOLS_GEMINI})});
-  let data=await res.json();
-  if (data.error) throw new Error(data.error.message);
-  const part=data.candidates?.[0]?.content?.parts?.[0];
-  if (part?.functionCall) {
-    const {name,args}=part.functionCall;
-    typing.textContent=`⚙️ ${name}...`;
-    const result=await executeTool(name,args);
-    contents.push({role:'model',parts:[{functionCall:{name,args}}]});
-    contents.push({role:'user',parts:[{functionResponse:{name,response:{result}}}]});
-    res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system_instruction:{parts:[{text:systemPrompt}]},contents,tools:AGENT_TOOLS_GEMINI})});
-    data=await res.json();
-    if (data.error) throw new Error(data.error.message);
-  }
-  return data.candidates?.[0]?.content?.parts?.[0]?.text||'(нет ответа)';
-}
-
-// ── Claude ──
-async function sendClaude(systemPrompt,text,typing) {
-  const key=localStorage.getItem('claudeKey');
-  const model=localStorage.getItem('claudeModel')||'claude-haiku-4-5';
-  if (!key) throw new Error('Нет ключа Claude');
-  const messages=[...aiHistory.map(m=>({role:m.role==='assistant'?'assistant':'user',content:m.content})),{role:'user',content:text}];
-  let res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model,max_tokens:2048,system:systemPrompt,tools:AGENT_TOOLS_CLAUDE,messages})});
-  let data=await res.json();
-  if (data.error) throw new Error(data.error.message||JSON.stringify(data.error));
-  if (data.stop_reason==='tool_use') {
-    const toolUse=data.content.find(b=>b.type==='tool_use');
-    if (toolUse) {
-      typing.textContent=`⚙️ ${toolUse.name}...`;
-      const result=await executeTool(toolUse.name,toolUse.input);
-      messages.push({role:'assistant',content:data.content});
-      messages.push({role:'user',content:[{type:'tool_result',tool_use_id:toolUse.id,content:result}]});
-      res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model,max_tokens:2048,system:systemPrompt,tools:AGENT_TOOLS_CLAUDE,messages})});
-      data=await res.json();
-      if (data.error) throw new Error(data.error.message||JSON.stringify(data.error));
-    }
-  }
-  return data.content?.find(b=>b.type==='text')?.text||'(нет ответа)';
-}
-
-// ── OpenAI ──
-async function sendOpenAI(systemPrompt,text,typing) {
-  const key=localStorage.getItem('openaiKey');
-  const model=localStorage.getItem('openaiModel')||'gpt-4o-mini';
-  if (!key) throw new Error('Нет ключа OpenAI');
-  const messages=[{role:'system',content:systemPrompt},...aiHistory.map(m=>({role:m.role==='assistant'?'assistant':'user',content:m.content})),{role:'user',content:text}];
-  let res=await fetch('https://api.openai.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model,messages,tools:AGENT_TOOLS_OPENAI,tool_choice:'auto',max_tokens:2048})});
-  let data=await res.json();
-  if (data.error) throw new Error(data.error.message);
-  const msg=data.choices?.[0]?.message;
-  if (msg?.tool_calls?.length) {
-    const tc=msg.tool_calls[0];
-    typing.textContent=`⚙️ ${tc.function.name}...`;
-    const result=await executeTool(tc.function.name,JSON.parse(tc.function.arguments));
-    messages.push(msg);
-    messages.push({role:'tool',tool_call_id:tc.id,content:result});
-    res=await fetch('https://api.openai.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model,messages,tools:AGENT_TOOLS_OPENAI,max_tokens:2048})});
-    data=await res.json();
-    if (data.error) throw new Error(data.error.message);
-  }
-  return data.choices?.[0]?.message?.content||'(нет ответа)';
-}
-
-// ── Qwen (Alibaba) — OpenAI-совместимый API ──
-async function sendQwen(systemPrompt,text,typing) {
-  const key=localStorage.getItem('qwenKey');
-  const model=localStorage.getItem('qwenModel')||'qwen-turbo';
-  if (!key) throw new Error('Нет ключа Qwen');
-  const messages=[{role:'system',content:systemPrompt},...aiHistory.map(m=>({role:m.role==='assistant'?'assistant':'user',content:m.content})),{role:'user',content:text}];
-  let res=await fetch('https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model,messages,tools:AGENT_TOOLS_QWEN,tool_choice:'auto',max_tokens:2048})});
-  let data=await res.json();
-  if (data.error) throw new Error(data.error.message||JSON.stringify(data.error));
-  const msg=data.choices?.[0]?.message;
-  if (msg?.tool_calls?.length) {
-    const tc=msg.tool_calls[0];
-    typing.textContent=`⚙️ ${tc.function.name}...`;
-    const result=await executeTool(tc.function.name,JSON.parse(tc.function.arguments));
-    messages.push(msg);
-    messages.push({role:'tool',tool_call_id:tc.id,content:result});
-    res=await fetch('https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model,messages,tools:AGENT_TOOLS_QWEN,max_tokens:2048})});
-    data=await res.json();
-    if (data.error) throw new Error(data.error.message||JSON.stringify(data.error));
-  }
-  return data.choices?.[0]?.message?.content||'(нет ответа)';
-}
-
-// ── Custom (любой OpenAI-совместимый провайдер) ──
-async function sendCustom(systemPrompt,text,typing) {
-  const key=localStorage.getItem('customKey');
-  const baseUrl=(localStorage.getItem('customUrl')||'').replace(/\/+$/,'');
-  const model=localStorage.getItem('customModel')||'gpt-4o-mini';
-  if (!key) throw new Error('Нет API ключа для Custom провайдера');
-  if (!baseUrl) throw new Error('Нет Base URL для Custom провайдера');
-  const messages=[{role:'system',content:systemPrompt},...aiHistory.map(m=>({role:m.role==='assistant'?'assistant':'user',content:m.content})),{role:'user',content:text}];
-  const headers={'Content-Type':'application/json','Authorization':'Bearer '+key};
-  // Некоторые провайдеры (напр. OpenRouter) требуют дополнительных заголовков
-  let res=await fetch(baseUrl+'/chat/completions',{method:'POST',headers,body:JSON.stringify({model,messages,max_tokens:2048})});
-  let data=await res.json();
-  if (data.error) throw new Error(data.error.message||JSON.stringify(data.error));
-  const msg=data.choices?.[0]?.message;
-  // Tool calling поддерживается если провайдер совместим (не обязательно)
-  if (msg?.tool_calls?.length) {
-    const tc=msg.tool_calls[0];
-    typing.textContent=`⚙️ ${tc.function.name}...`;
-    const result=await executeTool(tc.function.name,JSON.parse(tc.function.arguments));
-    messages.push(msg);
-    messages.push({role:'tool',tool_call_id:tc.id,content:result});
-    res=await fetch(baseUrl+'/chat/completions',{method:'POST',headers,body:JSON.stringify({model,messages,max_tokens:2048})});
-    data=await res.json();
-    if (data.error) throw new Error(data.error.message||JSON.stringify(data.error));
-  }
-  return data.choices?.[0]?.message?.content||'(нет ответа)';
-}
-
-// ── Инициализация вкладки ──
-function initAiTab() {
-  const p=localStorage.getItem('aiProvider');
-  selectProvider(p||'gemini');
-  if (p) {
-    const hasKey=(p==='gemini'&&localStorage.getItem('geminiKey'))||(p==='claude'&&localStorage.getItem('claudeKey'))||(p==='openai'&&localStorage.getItem('openaiKey'))||(p==='qwen'&&localStorage.getItem('qwenKey'))||(p==='custom'&&localStorage.getItem('customKey'));
-    if (hasKey) {
-      document.getElementById('aiKeySetup').style.display='none';
-      const names={gemini:'Gemini 🔵',claude:'Claude 🟣',openai:'OpenAI 🟢',qwen:'Qwen 🟠',custom:'Custom 🔧'};
-      showAgentStatus(names[p]||p);
-      // Загружаем память из Firebase
-      loadMemoryFromFirebase().then(()=>{
-        if (!aiHistory.length) greetAgent();
-      });
-    }
-  }
-}
-
-// ── Переключение вкладок ──
-const origSwitchTab = window.switchTab;
-window.switchTab = (tab) => {
-  if (origSwitchTab) origSwitchTab(tab);
-  const bar=document.getElementById('aiInputBar');
-  if (bar) bar.style.display=tab==='ai'?'block':'none';
-  if (tab==='ai') initAiTab();
-};
-
-})();
-</script>
-
-
-</body>
-</html>
+    // Считаем по реальной ставке каждого депозита за каждый конкретный день
+    const totalDeposit=Object.entries(byDayAll).reduce((s,[date,sum])=>{
+      const dayDep=depSlotsForBalance.reduce((ds,slot)=>ds+Math.round(sum*getRateForDay(slot,date)),0);
+      return s+dayDep;
+    },0);
+    const nalichKey=Obj
