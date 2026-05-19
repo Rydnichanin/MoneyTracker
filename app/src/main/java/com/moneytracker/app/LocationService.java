@@ -104,7 +104,7 @@ public class LocationService extends Service implements LocationListener {
     @Override public void onProviderDisabled(String provider) {}
 
     private void createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES, O) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES. O) {
             NotificationChannel channel = new NotificationChannel(
                 CHANNEL_ID, "GPS Трекер курьера", NotificationManager.IMPORTANCE_LOW
             );
