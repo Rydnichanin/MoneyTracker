@@ -899,6 +899,93 @@
       <div style="height:80px;"></div>
     </div>
 
+    // ── ЛОГИКА GPS ТРЕКЕРА ДЛЯ СВЯЗКИ С ANDROID ──────────────────
+  let isTracking = false;
+  let currentDistance = 0.0;
+
+  // Функция загрузки локальных настроек
+  function loadGpsSettings() {
+    if (localStorage.getItem('gps_consumption')) {
+      document.getElementById('gps-consumption').value = localStorage.getItem('gps_consumption');
+    }
+    if (localStorage.getItem('gps_fuel-price')) {
+      document.getElementById('gps-fuel-price').value = localStorage.getItem('gps_fuel-price');
+    }
+  }
+
+  // Сохранение настроек расхода топлива
+  window.saveGpsSettings = function() {
+    localStorage.setItem('gps_consumption', document.getElementById('gps-consumption').value);
+    localStorage.setItem('gps_fuel-price', document.getElementById('gps-fuel-price').value);
+  };
+
+  // Эту функцию будет вызывать Java-код (MainActivity.java) каждые 2-3 секунды
+  window.updateDistance = function(km) {
+    if (isTracking) {
+      currentDistance = km;
+      document.getElementById('live-distance').innerText = km.toFixed(2);
+    }
+  };
+
+  // Переключение Старт / Стоп поездки
+  window.toggleTrip = function() {
+    const btn = document.getElementById('gps-btn');
+    const status = document.getElementById('gps-status');
+    const resultBox = document.getElementById('gps-trip-result');
+    
+    if (!isTracking) {
+      // НАЧАЛО ПОЕЗДКИ
+      isTracking = true;
+      currentDistance = 0.0;
+      document.getElementById('live-distance').innerText = "0.00";
+      resultBox.style.display = "none";
+      
+      btn.innerText = "Стоп поездки";
+      btn.style.background = "var(--neg)";
+      status.innerText = "Запись...";
+      status.style.color = "var(--pos)";
+
+      // Пинаем Android-оболочку через мост
+      if (window.AndroidBridge && window.AndroidBridge.startTrip) {
+        window.AndroidBridge.startTrip();
+      } else {
+        window.showToast("Симуляция: через 5 секунд набегут тестовые км", "warn");
+        setTimeout(() => window.updateDistance(6.42), 5000); 
+      }
+    } else {
+      // КОНЕЦ ПОЕЗДКИ
+      isTracking = false;
+      btn.innerText = "Старт поездки";
+      btn.style.background = "var(--pos)";
+      status.innerText = "Выключен";
+      status.style.color = "#555";
+
+      if (window.AndroidBridge && window.AndroidBridge.stopTrip) {
+        window.AndroidBridge.stopTrip();
+      }
+
+      // Расчет расходов по формулам
+      const consumption = parseFloat(document.getElementById('gps-consumption').value || '0');
+      const fuelPrice = parseFloat(document.getElementById('gps-fuel-price').value || '0');
+      const liters = (currentDistance * consumption) / 100;
+      const money = liters * fuelPrice;
+
+      // Выводим результаты на экран
+      document.getElementById('res-km').innerText = currentDistance.toFixed(2) + " км";
+      document.getElementById('res-liters').innerText = liters.toFixed(1) + " л";
+      document.getElementById('res-money').innerText = Math.round(money) + " ₸";
+      resultBox.style.display = "flex";
+
+      if (currentDistance > 0.02) {
+        window.showToast(`✅ Поездка окончена: ${currentDistance.toFixed(2)} км`);
+      }
+    }
+  };
+
+  // Инициализируем настройки при загрузке страницы
+  document.addEventListener("DOMContentLoaded", loadGpsSettings);
+  
+  
   <!-- НИЖНЯЯ НАВИГАЦИЯ -->
   <nav class="nav-bar">
     <button class="nav-item active" onclick="switchTab('record')" id="nav-record">
