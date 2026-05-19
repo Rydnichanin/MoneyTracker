@@ -18,6 +18,12 @@ import androidx.core.app.NotificationCompat;
 public class LocationService extends Service implements LocationListener {
 
     private static final String CHANNEL_ID = "GPS_Tracker_Channel";
+
+    // Фильтры качества GPS
+    private static final float MIN_DISTANCE_METERS = 10f;   // минимальный шаг (было 1м — слишком мало)
+    private static final float MAX_DISTANCE_METERS = 300f;  // максимальный прыжок за 3 сек (защита от глюков)
+    private static final float MAX_ACCURACY_METERS = 30f;   // игнорируем точки хуже 30м
+
     private LocationManager locationManager;
     private Location lastLocation = null;
     private float totalDistanceInMeters = 0f;
@@ -53,7 +59,6 @@ public class LocationService extends Service implements LocationListener {
         totalDistanceInMeters = 0f;
         lastLocation = null;
 
-        // Показываем неудаляемое уведомление, чтобы Android не убил службу в кармане
         Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Поездка пишется")
             .setContentText("MoneyTracker считает километры...")
@@ -64,8 +69,8 @@ public class LocationService extends Service implements LocationListener {
         startForeground(1, notification);
 
         try {
-            // Запрашиваем обновления каждые 3 секунды или каждые 2 метра изменения положения
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 3000, 2, this);
+            // Обновления каждые 3 сек или каждые 10 метров
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 3000, 10, this);
         } catch (SecurityException e) {
             e.printStackTrace();
         }
@@ -82,18 +87,22 @@ public class LocationService extends Service implements LocationListener {
     public void onLocationChanged(Location location) {
         if (location == null) return;
 
+        // Пропускаем точки с плохой точностью
+        if (location.getAccuracy() > MAX_ACCURACY_METERS) return;
+
         if (lastLocation != null) {
-            // Считаем расстояние между старой и новой точкой GPS
             float distance = lastLocation.distanceTo(location);
-            // Игнорируем погрешности GPS (если прыгает на месте меньше метра)
-            if (distance > 1.0) {
+
+            // Пропускаем шум (меньше 10м) и аномальные прыжки (больше 300м за 3 сек)
+            if (distance >= MIN_DISTANCE_METERS && distance <= MAX_DISTANCE_METERS) {
                 totalDistanceInMeters += distance;
-                // Отправляем текущий километраж обратно в MainActivity
-                Intent intent = new Intent("GPS_UPDATE");
-                intent.putExtra("distance_km", totalDistanceInMeters / 1000f);
-                sendBroadcast(intent);
+
+                Intent broadcastIntent = new Intent("GPS_UPDATE");
+                broadcastIntent.putExtra("distance_km", totalDistanceInMeters / 1000f);
+                sendBroadcast(broadcastIntent);
             }
         }
+
         lastLocation = location;
     }
 
@@ -104,7 +113,7 @@ public class LocationService extends Service implements LocationListener {
     @Override public void onProviderDisabled(String provider) {}
 
     private void createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES. O) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
                 CHANNEL_ID, "GPS Трекер курьера", NotificationManager.IMPORTANCE_LOW
             );
