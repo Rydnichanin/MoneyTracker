@@ -64,7 +64,7 @@
     .page-wrap { max-width: 500px; margin: 0 auto; padding-top: 106px; padding-bottom: calc(var(--nav-h) + 8px); padding-left: 10px; padding-right: 10px; }
 
     /* НАВ */
-    .nav-bar { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); z-index: 200; display: flex; background: #0a0a0a; border-top: 1px solid #1a1a1a; height: var(--nav-h); width: 100%; max-width: 500px; }
+    .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; z-index: 200; display: flex; background: #0a0a0a; border-top: 1px solid #1a1a1a; height: var(--nav-h); max-width: 500px; margin: 0 auto; }
     .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; cursor: pointer; color: #2a2a2a; border: none; background: none; padding-bottom: 6px; transition: color 0.15s; }
     .nav-item.active { color: var(--pos); }
     .nav-icon { font-size: 22px; line-height: 1; }
@@ -272,8 +272,6 @@
       font-size: 11px; color: #444; padding: 8px 0 4px;
       display: flex; justify-content: space-between;
     }
-
-    
 
     /* ЭКРАН НАСТРОЕК ЦЕН */
     .prices-screen {
@@ -686,45 +684,6 @@
         </div>
       </div>
 
-        <div class="card" style="border-color: var(--accent); margin-bottom: 15px;">
-      <div class="card-title" style="color: var(--accent); display: flex; justify-content: space-between;">
-        <span>🛰️ GPS ТРЕКЕР ПОЕЗДОК</span>
-        <span id="gps-status" style="color: #555;">Выключен</span>
-      </div>
-      
-      <div style="text-align: center; padding: 10px 0;">
-        <div id="live-distance" style="font-size: 42px; font-weight: bold; color: var(--pos); font-variant-numeric: tabular-nums;">0.00</div>
-        <div style="font-size: 11px; color: #555; text-transform: uppercase; letter-spacing: 1px;">Километров в пути</div>
-      </div>
-
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0; border-top: 1px solid #111; padding-top: 10px;">
-        <div>
-          <label style="font-size: 10px; color: #444; ">Расход (л/100км):</label>
-          <input type="number" id="gps-consumption" value="8.0" step="0.1" onchange="saveGpsSettings()" style="padding: 6px 10px; font-size: 14px; margin-top:4px;">
-        </div>
-        <div>
-          <label style="font-size: 10px; color: #444;">Цена за 1 литр:</label>
-          <input type="number" id="gps-fuel-price" value="250" onchange="saveGpsSettings()" style="padding: 6px 10px; font-size: 14px; margin-top:4px;">
-        </div>
-      </div>
-
-      <button id="gps-btn" class="btn-main" onclick="toggleTrip()" style="background: var(--pos); margin-top: 5px;">
-        Старт поездки
-      </button>
-      
-      <div id="gps-trip-result" class="gain-box" style="display: none; font-size: 13px; flex-direction: column; gap: 4px; border-color: var(--accent); background: #1a150a; margin-top: 12px;">
-        <div style="display:flex; justify-content: space-between;">
-          <span>Итоговый километраж:</span><b id="res-km" style="color:var(--accent)">0.00 км</b>
-        </div>
-        <div style="display:flex; justify-content: space-between;">
-          <span>Потрачено топлива:</span><b id="res-liters">0.0 л</b>
-        </div>
-        <div style="display:flex; justify-content: space-between;">
-          <span>Расходы на бензин:</span><b id="res-money" style="color:var(--neg)">0 ₸</b>
-        </div>
-      </div>
-    </div>
-
       <!-- ФОРМА -->
       <div class="card">
         <div class="card-title">Новая запись</div>
@@ -853,6 +812,9 @@
       </div>
     </div>
 
+  </div>
+
+
     <!-- 6. ИИ АГЕНТ -->
     <div class="tab" id="tab-ai">
 
@@ -937,97 +899,7 @@
       <div style="height:80px;"></div>
     </div>
 
-  </div>
-
-<script>
-  // ── ЛОГИКА GPS ТРЕКЕРА ─────────────────────────────────────────
-    // ── ЛОГИКА GPS ТРЕКЕРА ДЛЯ СВЯЗКИ С ANDROID ──────────────────
-  let isTracking = false;
-  let currentDistance = 0.0;
-
-  // Функция загрузки локальных настроек
-  function loadGpsSettings() {
-    if (localStorage.getItem('gps_consumption')) {
-      document.getElementById('gps-consumption').value = localStorage.getItem('gps_consumption');
-    }
-    if (localStorage.getItem('gps_fuel-price')) {
-      document.getElementById('gps-fuel-price').value = localStorage.getItem('gps_fuel-price');
-    }
-  }
-
-  // Сохранение настроек расхода топлива
-  window.saveGpsSettings = function() {
-    localStorage.setItem('gps_consumption', document.getElementById('gps-consumption').value);
-    localStorage.setItem('gps_fuel-price', document.getElementById('gps-fuel-price').value);
-  };
-
-  // Эту функцию будет вызывать Java-код (MainActivity.java) каждые 2-3 секунды
-  window.updateDistance = function(km) {
-    if (isTracking) {
-      currentDistance = km;
-      document.getElementById('live-distance').innerText = km.toFixed(2);
-    }
-  };
-
-  // Переключение Старт / Стоп поездки
-  window.toggleTrip = function() {
-    const btn = document.getElementById('gps-btn');
-    const status = document.getElementById('gps-status');
-    const resultBox = document.getElementById('gps-trip-result');
-    
-    if (!isTracking) {
-      // НАЧАЛО ПОЕЗДКИ
-      isTracking = true;
-      currentDistance = 0.0;
-      document.getElementById('live-distance').innerText = "0.00";
-      resultBox.style.display = "none";
-      
-      btn.innerText = "Стоп поездки";
-      btn.style.background = "var(--neg)";
-      status.innerText = "Запись...";
-      status.style.color = "var(--pos)";
-
-      // Пинаем Android-оболочку через мост
-      if (window.AndroidBridge && window.AndroidBridge.startTrip) {
-        window.AndroidBridge.startTrip();
-      } else {
-        window.showToast("Симуляция: через 5 секунд набегут тестовые км", "warn");
-        setTimeout(() => window.updateDistance(6.42), 5000); 
-      }
-    } else {
-      // КОНЕЦ ПОЕЗДКИ
-      isTracking = false;
-      btn.innerText = "Старт поездки";
-      btn.style.background = "var(--pos)";
-      status.innerText = "Выключен";
-      status.style.color = "#555";
-
-      if (window.AndroidBridge && window.AndroidBridge.stopTrip) {
-        window.AndroidBridge.stopTrip();
-      }
-
-      // Расчет расходов по формулам
-      const consumption = parseFloat(document.getElementById('gps-consumption').value || '0');
-      const fuelPrice = parseFloat(document.getElementById('gps-fuel-price').value || '0');
-      const liters = (currentDistance * consumption) / 100;
-      const money = liters * fuelPrice;
-
-      // Выводим результаты на экран
-      document.getElementById('res-km').innerText = currentDistance.toFixed(2) + " км";
-      document.getElementById('res-liters').innerText = liters.toFixed(1) + " л";
-      document.getElementById('res-money').innerText = Math.round(money) + " ₸";
-      resultBox.style.display = "flex";
-
-      if (currentDistance > 0.02) {
-        window.showToast(`✅ Поездка окончена: ${currentDistance.toFixed(2)} км`);
-      }
-    }
-  };
-
-  // Инициализируем настройки при загрузке страницы
-  document.addEventListener("DOMContentLoaded", loadGpsSettings);
-</script>
-
+  <!-- НИЖНЯЯ НАВИГАЦИЯ -->
   <nav class="nav-bar">
     <button class="nav-item active" onclick="switchTab('record')" id="nav-record">
       <span class="nav-icon">✏️</span><span class="nav-label">Запись</span>
@@ -1142,7 +1014,7 @@
       <div class="hf-chip" data-period="custom" onclick="toggleHistFilter(this,'period')">📅 Период</div>
     </div>
     <!-- Кастомный период (скрыт по умолчанию) -->
-    <div id="histCustomDateRow" style="display:none;gap:6px;padding-bottom:8px;">
+    <div id="histCustomDateRow" style="display:none;gap:6px;padding-bottom:8px;display:none;">
       <div style="display:flex;gap:6px;">
         <input type="date" id="histFromDate" style="flex:1;padding:7px;border-radius:8px;border:1px solid #2a2a2a;background:#1c1c1e;color:#fff;font-size:13px;" oninput="renderHistorySheet()" />
         <input type="date" id="histToDate" style="flex:1;padding:7px;border-radius:8px;border:1px solid #2a2a2a;background:#1c1c1e;color:#fff;font-size:13px;" oninput="renderHistorySheet()" />
@@ -1997,4 +1869,106 @@
     const { fbDB, fbMethods } = window;
     const uid = window.fbUser.uid;
     const userDoc = fbMethods.doc(fbDB, "users", uid);
-    const txRef = fbMethods.collecti
+    const txRef = fbMethods.collection(fbDB, "users", uid, "transactions");
+    const setRef = fbMethods.collection(fbDB, "users", uid, "settings");
+
+    // ── Таймаут сессии — выход через 30 мин неактивности ──────────
+    const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 минут
+    let _sessionTimer = null;
+    const resetSessionTimer = () => {
+      if (_sessionTimer) clearTimeout(_sessionTimer);
+      _sessionTimer = setTimeout(async () => {
+        window.showToast('⏱ Сессия истекла — выполняется выход', 'warn');
+        setTimeout(() => window.fbSignOut(), 1500);
+      }, SESSION_TIMEOUT);
+    };
+    // Сбрасываем таймер при любом действии пользователя
+    ['touchstart','click','keydown','scroll'].forEach(evt => {
+      document.addEventListener(evt, resetSessionTimer, { passive: true });
+    });
+    resetSessionTimer(); // Запускаем сразу при входе
+
+    const getToday = () => {
+      const now = new Date();
+      if (now.getHours() < 3) now.setDate(now.getDate() - 1);
+      const off = now.getTimezoneOffset() * 60000;
+      return new Date(now - off).toISOString().split('T')[0];
+    };
+    const setToday = () => { document.getElementById("date").value = getToday(); };
+    setToday();
+    document.getElementById("transferDate").value = getToday();
+
+    window.setRange = (mode) => {
+      ['today','yesterday','all','custom'].forEach(m => {
+        const b = document.getElementById('btn-'+m);
+        if (b) b.classList.toggle('active', m===mode);
+      });
+      const today = getToday(), f = document.getElementById("fromDate"), t = document.getElementById("toDate");
+      const dateRow = document.getElementById("dateRangeRow");
+      if (mode==='today') { f.value=today; t.value=today; dateRow.style.display='none'; }
+      else if (mode==='yesterday') {
+        const now=new Date(); now.setDate(now.getDate()-1);
+        const ys=new Date(now - now.getTimezoneOffset()*60000).toISOString().split('T')[0];
+        f.value=ys; t.value=ys; dateRow.style.display='none';
+      } else if (mode==='custom') {
+        dateRow.style.display='flex';
+      } else { f.value=""; t.value=""; dateRow.style.display='none'; }
+      render();
+    };
+    window.onCustomDate = () => { render(); };
+
+    fbMethods.onSnapshot(setRef, (snap) => {
+      DEFAULTS = { income: [], expense: [] }; ACCOUNTS = [];
+      let setHtml = "";
+      snap.forEach(d => {
+        const data = d.data();
+        if (data.type === 'category') {
+          DEFAULTS[data.catType].push({ id: d.id, ...data });
+          const subBtns = (data.sub||[]).map(s =>
+            `<span style="display:inline-flex;align-items:center;gap:3px;background:#2a2a2a;border-radius:5px;padding:2px 7px;margin:2px;font-size:12px;">
+              ${s}<button onclick="deleteSub('${d.id}','${s}')" style="background:none;border:none;color:var(--neg);font-size:11px;padding:0;cursor:pointer;line-height:1;">✕</button>
+            </span>`).join("");
+          setHtml += `<div class="set-item">
+            <div class="set-item-top"><span>📂 ${data.name} <span style="color:#333;font-size:11px;">${data.catType==='income'?'(+)':'(−)'}</span></span>
+            <button class="set-del" onclick="deleteSet('${d.id}')">✕</button></div>
+            <div style="margin-top:5px;display:flex;flex-wrap:wrap;">${subBtns||'<span style="color:#2a2a2a;font-size:10px;">нет подкатегорий</span>'}</div>
+          </div>`;
+        } else if (data.type === 'account') {
+          ACCOUNTS.push({ id: d.id, ...data }); window.ACCOUNTS = ACCOUNTS;
+          const ib = Number(data.initialBalance)||0;
+          setHtml += `<div class="set-item">
+            <div class="set-item-top"><span>💳 ${data.name}</span><button class="set-del" onclick="deleteSet('${d.id}')">✕</button></div>
+            <div style="font-size:10px;color:#333;margin-top:3px;">Нач. баланс: ${ib.toLocaleString()} ₸</div>
+          </div>`;
+        }
+      });
+      document.getElementById("settingsList").innerHTML = setHtml || '<div class="muted" style="font-size:13px;padding:8px 0;">Нет настроек</div>';
+      updateUI(true);
+    });
+
+    window.addCategory = async () => {
+      const name = document.getElementById("setCatName").value.trim();
+      const catType = document.getElementById("setCatType").value;
+      if (name) await fbMethods.addDoc(setRef, { type:'category', name, catType, sub:[] });
+      document.getElementById("setCatName").value = "";
+    };
+    window.addAccount = async () => {
+      const name = document.getElementById("setAccName").value.trim();
+      if (name) await fbMethods.addDoc(setRef, { type:'account', name, initialBalance:0 });
+      document.getElementById("setAccName").value = "";
+    };
+    window.setInitialBalance = async () => {
+      const accId = document.getElementById("setBalanceAcc").value;
+      const val = Number(document.getElementById("setBalanceVal").value);
+      if (!accId || isNaN(val)) return;
+      await fbMethods.updateDoc(fbMethods.doc(fbDB,"users",window.fbUser.uid,"settings",accId), { initialBalance: val });
+      document.getElementById("setBalanceVal").value = "";
+      window.showToast("Начальный баланс установлен!");
+    };
+    window.addSub = async () => {
+      const parentId = document.getElementById("setParentCat").value;
+      const subName = document.getElementById("setSubName").value.trim();
+      if (parentId && subName) await fbMethods.updateDoc(fbMethods.doc(fbDB,"users",window.fbUser.uid,"settings",parentId), { sub: fbMethods.arrayUnion(subName) });
+      document.getElementById("setSubName").value = "";
+    };
+    window.deleteSet = (id) => { showConfirm(
