@@ -9,11 +9,12 @@ import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.webkit.GeolocationPermissions;
 import android.webkit.JavascriptInterface;
+import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
-import android.widget.Toast;
 
 public class MainActivity extends Activity {
 
@@ -26,7 +27,6 @@ public class MainActivity extends Activity {
         public void onReceive(Context context, Intent intent) {
             if (intent != null && intent.hasExtra("distance_km")) {
                 float distance = intent.getFloatExtra("distance_km", 0f);
-                // Передаем км напрямую в JavaScript функцию на нашем сайте index.html
                 webView.post(() -> webView.evaluateJavascript("updateDistance(" + distance + ");", null));
             }
         }
@@ -41,13 +41,23 @@ public class MainActivity extends Activity {
 
         WebSettings webSettings = webView.getSettings();
         webSettings.setJavaScriptEnabled(true);
-        webSettings.setDomStorageEnabled(true); // Важно для сохранения в базу данных в HTML
-        
+        webSettings.setDomStorageEnabled(true);
+        webSettings.setGeolocationEnabled(true); // ← включаем геолокацию в WebView
+
         // Регистрируем "мост" между Java и JS
         webView.addJavascriptInterface(new WebAppInterface(), "AndroidBridge");
         webView.setWebViewClient(new WebViewClient());
 
-        // Замени URL_НА_ТВОЙ_GITHUB на свой реальный адрес GitHub Pages
+        // ↓ ГЛАВНОЕ ИСПРАВЛЕНИЕ: разрешаем GPS-запросы от JavaScript
+        webView.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public void onGeolocationPermissionsShowPrompt(String origin,
+                    GeolocationPermissions.Callback callback) {
+                // Автоматически разрешаем геолокацию для нашего сайта
+                callback.invoke(origin, true, false);
+            }
+        });
+
         webView.loadUrl("https://rydnichanin.github.io/MoneyTracker/index.html");
 
         checkAndRequestPermissions();
@@ -65,7 +75,6 @@ public class MainActivity extends Activity {
         unregisterReceiver(gpsReceiver);
     }
 
-    // Класс-мост, методы которого можно вызывать прямо из кода кнопок в HTML
     public class WebAppInterface {
         @JavascriptInterface
         public void startTrip() {
