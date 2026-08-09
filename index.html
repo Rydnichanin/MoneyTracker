@@ -15,6 +15,12 @@
   <link rel="dns-prefetch" href="https://www.gstatic.com" />
   <link rel="dns-prefetch" href="https://firestore.googleapis.com" />
   <link rel="manifest" href="/manifest.json" />
+  
+  <!-- Предзагрузка модулей Firebase для ускорения старта -->
+  <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js" />
+  <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js" />
+  <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js" />
+
   <!-- Безопасность -->
   <meta http-equiv="X-Content-Type-Options" content="nosniff" />
   <meta http-equiv="X-Frame-Options" content="DENY" />
@@ -273,7 +279,7 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc, setDoc, arrayUnion, getDoc, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, deleteDoc, doc, updateDoc, setDoc, arrayUnion, getDoc, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
     import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithCredential, signOut, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
     const app = initializeApp({
@@ -285,19 +291,20 @@
       appId: "1:440589448883:web:5ad507b270fa414731a2c6"
     });
 
-    // Firestore с офлайн кэшем — правильный способ для Firebase 10+
+    // Firestore с офлайн кэшем
     let db;
     try {
       db = initializeFirestore(app, {
         localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
       });
     } catch(e) {
-      // Fallback для Android WebView и Safari где IndexedDB может быть недоступен
+      // Fallback для Android WebView и Safari
       db = getFirestore(app);
       console.warn('Firestore: offline cache недоступен, работаем без кэша:', e.message);
     }
     window.fbDB = db;
-    window.fbMethods = { collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc, setDoc, arrayUnion, getDoc };
+    // Добавили limit в fbMethods
+    window.fbMethods = { collection, addDoc, onSnapshot, query, orderBy, limit, deleteDoc, doc, updateDoc, setDoc, arrayUnion, getDoc };
     const auth = getAuth(app);
     const provider = new GoogleAuthProvider();
 
@@ -349,14 +356,12 @@
     });
 
     // ── receiveAuthToken — вызывается APK после входа ──────────────
-    // APK вызывает: window.receiveAuthToken({idToken, name, email})
     window.receiveAuthToken = async (data) => {
       console.log("receiveAuthToken:", data && data.idToken ? "токен есть" : "нет токена");
       if (!data || !data.idToken) return;
       try {
         const credential = GoogleAuthProvider.credential(data.idToken);
         await signInWithCredential(auth, credential);
-        // onAuthStateChanged автоматически вызовет startApp
       } catch(e) {
         console.error("receiveAuthToken error:", e);
       }
@@ -376,15 +381,12 @@
     };
 
     window.fbSignOut = async () => {
-      // Очищаем чувствительные данные из памяти перед выходом
       window.allTx = [];
       window.fbUser = null;
       window.appStarted = false;
       window.resetApp && window.resetApp();
-      // Очищаем кэши клиентов и адресов
       window._clientsCache = null;
       window._customAddrsCache = null;
-      // Очищаем историю чата ИИ
       if (window.aiHistory !== undefined) window.aiHistory = [];
       const aiEl = document.getElementById('aiMessages');
       if (aiEl) aiEl.innerHTML = '';
@@ -407,7 +409,6 @@
       }
     };
 
-    // ── Email / пароль ─────────────────────────────────────────────
     const showError = (msg) => {
       const el = document.getElementById('loginError');
       if (el) el.textContent = msg;
@@ -417,17 +418,12 @@
       pass:  (document.getElementById('loginPassword')?.value || '').trim()
     });
 
-    // ── Защита от брутфорса ────────────────────────────────────────
     const _loginGuard = {
       attempts: 0,
       lockedUntil: 0,
       maxAttempts: 5,
-      isLocked() {
-        if (this.lockedUntil > Date.now()) return true;
-        return false;
-      },
+      isLocked() { return this.lockedUntil > Date.now(); },
       lockoutMs() {
-        // Экспоненциальная задержка: 5 попыток=30сек, 8=2мин, 10+=10мин
         if (this.attempts >= 10) return 10 * 60 * 1000;
         if (this.attempts >= 8)  return  2 * 60 * 1000;
         if (this.attempts >= 5)  return 30 * 1000;
@@ -1435,6 +1431,11 @@
 
   // TABS
   window.switchTab = (name) => {
+    // Подгрузка данных для аналитики
+    if (name === 'income' && !window.isFullDataLoaded) {
+      window.showToast('Загрузка данных для аналитики...', 'warn');
+      window.loadTransactions(true);
+    }
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     document.getElementById('tab-' + name).classList.add('active');
@@ -1516,6 +1517,11 @@
     document.getElementById("transferDate").value = getToday();
 
     window.setRange = (mode) => {
+      if ((mode === 'all' || mode === 'custom') && !window.isFullDataLoaded) {
+        window.showToast('Загрузка полной истории...', 'warn');
+        window.loadTransactions(true);
+      }
+
       ['today','yesterday','all','custom'].forEach(m => {
         const b = document.getElementById('btn-'+m);
         if (b) b.classList.toggle('active', m===mode);
@@ -1720,11 +1726,35 @@
       _renderTimer = setTimeout(() => { render(); _renderTimer = null; }, 80);
     };
 
-    fbMethods.onSnapshot(fbMethods.query(txRef, fbMethods.orderBy("date","desc")), (snap) => {
-      allTx = []; snap.forEach(d=>allTx.push({id:d.id,...d.data()})); window.allTx = allTx;
-      if (!document.getElementById("fromDate").value) setRange('today'); else debouncedRender();
-      if (document.getElementById('historySheet')?.classList.contains('open')) renderHistorySheet();
-    });
+    let txUnsub = null;
+    window.isFullDataLoaded = false;
+
+    // Умная загрузка: по умолчанию только 300 последних записей для скорости
+    window.loadTransactions = (loadAll = false) => {
+      if (txUnsub) txUnsub();
+
+      const listEl = document.getElementById('list');
+      if (listEl && allTx.length === 0) listEl.innerHTML = '<div style="color:#2a2a2a;font-size:13px;padding:8px 0;">Загрузка данных...</div>';
+
+      let q = loadAll
+        ? fbMethods.query(txRef, fbMethods.orderBy("date", "desc"))
+        : fbMethods.query(txRef, fbMethods.orderBy("date", "desc"), fbMethods.limit(300));
+
+      txUnsub = fbMethods.onSnapshot(q, (snap) => {
+        allTx = [];
+        snap.forEach(d => allTx.push({ id: d.id, ...d.data() }));
+        window.allTx = allTx;
+        
+        if (!document.getElementById("fromDate").value) setRange('today'); 
+        else debouncedRender();
+
+        if (document.getElementById('historySheet')?.classList.contains('open')) renderHistorySheet();
+      });
+      window.isFullDataLoaded = loadAll;
+    };
+
+    // Запускаем изначальную быструю загрузку
+    window.loadTransactions(false);
 
     document.getElementById("txForm").onsubmit = async (e) => {
       e.preventDefault();
@@ -1937,6 +1967,11 @@
   };
 
   window.openHistorySheet = () => {
+    if (!window.isFullDataLoaded) {
+      window.showToast('Загрузка полной истории...', 'warn');
+      window.loadTransactions(true);
+    }
+
     const cats = new Set();
     (window.allTx||[]).forEach(t => {
       if (t.type === 'transfer') return;
