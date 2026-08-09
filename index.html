@@ -40,6 +40,7 @@
       https://generativelanguage.googleapis.com
       https://api.anthropic.com
       https://api.openai.com
+      https://api.groq.com
       https://dashscope.aliyuncs.com;
     frame-src 'none';
     object-src 'none';
@@ -298,12 +299,10 @@
         localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
       });
     } catch(e) {
-      // Fallback для Android WebView и Safari
       db = getFirestore(app);
       console.warn('Firestore: offline cache недоступен, работаем без кэша:', e.message);
     }
     window.fbDB = db;
-    // Добавили limit в fbMethods
     window.fbMethods = { collection, addDoc, onSnapshot, query, orderBy, limit, deleteDoc, doc, updateDoc, setDoc, arrayUnion, getDoc };
     const auth = getAuth(app);
     const provider = new GoogleAuthProvider();
@@ -332,18 +331,15 @@
       window.fbUser = user;
       if (!window.appStarted) {
         window.appStarted = true;
-        // Показываем скелетон загрузки
         const listEl = document.getElementById('list');
         if (listEl) listEl.innerHTML = '<div style="color:#2a2a2a;font-size:13px;padding:8px 0;">Загрузка данных...</div>';
         setTimeout(() => {
           window.dispatchEvent(new Event("fbReady"));
-          // Загружаем адреса из Firebase сразу после авторизации
           if (window.loadCustomAddressesFromFirebase) window.loadCustomAddressesFromFirebase();
         }, 50);
       }
     }
 
-    // ── onAuthStateChanged — главный триггер ───────────────────────
     onAuthStateChanged(auth, user => {
       if (user) {
         startApp(user);
@@ -355,9 +351,7 @@
       }
     });
 
-    // ── receiveAuthToken — вызывается APK после входа ──────────────
     window.receiveAuthToken = async (data) => {
-      console.log("receiveAuthToken:", data && data.idToken ? "токен есть" : "нет токена");
       if (!data || !data.idToken) return;
       try {
         const credential = GoogleAuthProvider.credential(data.idToken);
@@ -367,7 +361,6 @@
       }
     };
 
-    // ── Кнопка входа ───────────────────────────────────────────────
     window.fbSignIn = async () => {
       if (window.AndroidBridge) {
         window.AndroidBridge.openBrowser("https://rydnichanin.github.io/MoneyTracker/auth.html");
@@ -799,19 +792,31 @@
         <div style="font-size:14px;font-weight:700;margin-bottom:10px;">🤖 Настройка ИИ Агента</div>
 
         <!-- Выбор провайдера -->
-        <div style="font-size:11px;color:#444;margin-bottom:6px;">Провайдер</div>
-        <div style="display:flex;gap:6px;margin-bottom:12px;">
+        <div style="font-size:11px;color:#444;margin-bottom:6px;">Провайдер (рекомендуется Groq)</div>
+        <div style="display:flex;gap:6px;margin-bottom:6px;">
+          <button onclick="selectProvider('groq')" id="provBtn-groq" style="flex:1;padding:8px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#facc15;font-size:12px;font-weight:600;cursor:pointer;">⚡ Groq</button>
           <button onclick="selectProvider('gemini')" id="provBtn-gemini" style="flex:1;padding:8px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#4a9eff;font-size:12px;font-weight:600;cursor:pointer;">🔵 Gemini</button>
-          <button onclick="selectProvider('claude')" id="provBtn-claude" style="flex:1;padding:8px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#c084fc;font-size:12px;font-weight:600;cursor:pointer;">🟣 Claude</button>
           <button onclick="selectProvider('openai')" id="provBtn-openai" style="flex:1;padding:8px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#65d48b;font-size:12px;font-weight:600;cursor:pointer;">🟢 OpenAI</button>
-          <button onclick="selectProvider('qwen')" id="provBtn-qwen" style="flex:1;padding:8px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fb923c;font-size:12px;font-weight:600;cursor:pointer;">🟠 Qwen</button>
         </div>
         <div style="display:flex;gap:6px;margin-bottom:12px;">
-          <button onclick="selectProvider('custom')" id="provBtn-custom" style="flex:1;padding:8px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#f472b6;font-size:12px;font-weight:600;cursor:pointer;">🔧 Custom API</button>
+          <button onclick="selectProvider('claude')" id="provBtn-claude" style="flex:1;padding:8px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#c084fc;font-size:12px;font-weight:600;cursor:pointer;">🟣 Claude</button>
+          <button onclick="selectProvider('qwen')" id="provBtn-qwen" style="flex:1;padding:8px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fb923c;font-size:12px;font-weight:600;cursor:pointer;">🟠 Qwen</button>
+          <button onclick="selectProvider('custom')" id="provBtn-custom" style="flex:1;padding:8px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#f472b6;font-size:12px;font-weight:600;cursor:pointer;">🔧 Custom</button>
         </div>
 
         <!-- Ключи для каждого провайдера -->
-        <div id="provSetup-gemini">
+        
+        <div id="provSetup-groq" style="display:none;">
+          <div style="font-size:11px;color:#444;margin-bottom:4px;">API ключ Groq (Бесплатно и быстро) · <span style="color:#facc15;">console.groq.com</span></div>
+          <input id="keyInput-groq" type="password" placeholder="gsk_..." style="width:100%;padding:10px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:14px;outline:none;box-sizing:border-box;margin-bottom:6px;" />
+          <div style="font-size:11px;color:#444;margin-bottom:4px;">Модель</div>
+          <select id="modelSelect-groq" style="width:100%;padding:10px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:13px;outline:none;margin-bottom:6px;">
+            <option value="llama-3.1-8b-instant">Llama 3.1 8B (Мгновенный парсинг)</option>
+            <option value="llama-3.3-70b-versatile">Llama 3.3 70B (Очень умный агент)</option>
+          </select>
+        </div>
+
+        <div id="provSetup-gemini" style="display:none;">
           <div style="font-size:11px;color:#444;margin-bottom:4px;">API ключ Gemini · <span style="color:#4a9eff;">aistudio.google.com</span></div>
           <input id="keyInput-gemini" type="password" placeholder="AIzaSy..." style="width:100%;padding:10px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:14px;outline:none;box-sizing:border-box;margin-bottom:6px;" />
           <button onclick="loadAiModels()" id="loadModelsBtn" style="width:100%;padding:9px;border-radius:8px;border:1px solid #2a2a2a;background:#111;color:#4a9eff;font-size:12px;font-weight:600;cursor:pointer;margin-bottom:6px;">📋 Загрузить модели</button>
@@ -859,7 +864,7 @@
             style="width:100%;padding:10px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:13px;outline:none;box-sizing:border-box;margin-bottom:6px;" />
           <input id="modelInput-custom" type="text" placeholder="Модель: gpt-4o / llama-3 / ..."
             style="width:100%;padding:10px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:13px;outline:none;box-sizing:border-box;margin-bottom:6px;" />
-          <div style="font-size:10px;color:#333;margin-bottom:4px;">Совместимо с: OpenRouter, Groq, Together AI, Mistral, LM Studio и др.</div>
+          <div style="font-size:10px;color:#333;margin-bottom:4px;">Совместимо с: OpenRouter, Together AI, Mistral и др.</div>
         </div>
 
         <button onclick="saveAiSettings()" style="width:100%;padding:12px;border-radius:10px;border:none;background:#65d48b;color:#000;font-weight:bold;font-size:14px;cursor:pointer;">✅ Сохранить и запустить агента</button>
@@ -1092,7 +1097,6 @@
 
   // Шифрование API ключей через Web Crypto API
   const _SEC = {
-    // Получаем или генерируем ключ шифрования на основе UID пользователя
     async getKey() {
       const uid = window.fbUser?.uid || 'anonymous';
       const keyMaterial = await crypto.subtle.importKey(
@@ -1111,13 +1115,11 @@
         const iv = crypto.getRandomValues(new Uint8Array(12));
         const encoded = new TextEncoder().encode(text);
         const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoded);
-        // Сохраняем iv + данные в base64
         const combined = new Uint8Array(iv.length + encrypted.byteLength);
         combined.set(iv);
         combined.set(new Uint8Array(encrypted), iv.length);
         return btoa(String.fromCharCode(...combined));
       } catch(e) {
-        // Fallback — без шифрования (старые браузеры)
         return text;
       }
     },
@@ -1131,29 +1133,22 @@
         const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, data);
         return new TextDecoder().decode(decrypted);
       } catch(e) {
-        // Если не удалось расшифровать — возможно старый формат (plain text)
         return b64;
       }
     },
 
-    // Сохраняем ключ зашифрованным
     async setKey(name, value) {
       if (!value) return;
       const encrypted = await this.encrypt(value);
       localStorage.setItem('sec_' + name, encrypted);
-      // Удаляем старый незашифрованный вариант
       localStorage.removeItem(name);
     },
 
-    // Читаем и расшифровываем ключ
     async getApiKey(name) {
-      // Сначала ищем зашифрованный
       const enc = localStorage.getItem('sec_' + name);
       if (enc) return await this.decrypt(enc);
-      // Fallback на старый незашифрованный (миграция)
       const plain = localStorage.getItem(name);
       if (plain) {
-        // Мигрируем в зашифрованный формат
         await this.setKey(name, plain);
         return plain;
       }
@@ -1162,7 +1157,7 @@
   };
   window._SEC = _SEC;
 
-  // HTTPS редирект (для веб версии)
+  // HTTPS редирект
   if (location.protocol === 'http:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
     location.replace('https:' + location.href.substring(5));
   }
@@ -1185,11 +1180,9 @@
       onConfirm();
     };
   };
-  // Псевдоним без window. для вызова внутри скриптов
   function showConfirm(msg, cb) { window.showConfirm(msg, cb); }
 
   // ── СПРАВОЧНИК АДРЕСОВ ─────────────────────────────────────────
-  // Фиксированные цены
   const FIXED_PRICES = {
     'F1':      { under: 150, flat: 300 },
     'F2':      { under: 150, flat: 300 },
@@ -1197,13 +1190,10 @@
     'ALLEY PUB': { under: 600, flat: 900 },
   };
 
-  // Адреса: кэш в памяти + Firebase как основное хранилище
   window._customAddrsCache = null;
 
-  // Загрузить адреса: сначала из кэша, потом из Firebase, потом из localStorage
   async function loadCustomAddressesAsync() {
     if (window._customAddrsCache !== null) return window._customAddrsCache;
-    // Пробуем Firebase
     try {
       const { fbDB, fbMethods, fbUser } = window;
       if (fbUser && fbUser.uid && fbDB && fbMethods.getDoc) {
@@ -1213,21 +1203,16 @@
           const arr = JSON.parse(data.customAddresses);
           window._customAddrsCache = arr;
           localStorage.setItem('waCustomAddrs', JSON.stringify(arr));
-          console.log('[Адреса] Из Firebase:', arr.length, 'адресов');
           return arr;
         } else {
-          console.log('[Адреса] В Firebase нет данных (поле customAddresses отсутствует)');
-          // Если в Firebase пусто но в localStorage есть — сохраняем в Firebase
           const local = JSON.parse(localStorage.getItem('waCustomAddrs') || '[]');
           if (local.length > 0) {
-            console.log('[Адреса] Синхронизируем localStorage→Firebase:', local.length, 'адресов');
             await saveCustomAddresses(local);
             return local;
           }
         }
       }
     } catch(e) { console.warn('Адреса load Firebase error:', e.message); }
-    // Fallback: localStorage
     try {
       const arr = JSON.parse(localStorage.getItem('waCustomAddrs') || '[]');
       window._customAddrsCache = arr;
@@ -1235,7 +1220,6 @@
     } catch(e) { return []; }
   }
 
-  // Синхронная версия — только из кэша/localStorage (для мест где нет await)
   function loadCustomAddresses() {
     if (window._customAddrsCache !== null) return window._customAddrsCache;
     try { return JSON.parse(localStorage.getItem('waCustomAddrs') || '[]'); } catch(e) { return []; }
@@ -1256,10 +1240,8 @@
   }
 
   async function loadCustomAddressesFromFirebase() {
-    // Всегда сбрасываем кэш — берём свежее из Firebase
     window._customAddrsCache = null;
     const arr = await loadCustomAddressesAsync();
-    console.log('[Адреса] Загружено из Firebase:', arr.length);
     updatePricesSummary();
     if (document.getElementById('pricesScreen')?.classList.contains('open')) renderAddrList();
   }
@@ -1308,7 +1290,6 @@
     updatePricesSummary();
   };
 
-  // Массовое добавление адресов (одна строка = один адрес)
   window.bulkAddAddrs = async () => {
     const text = document.getElementById('bulkAddrInput').value.trim();
     if (!text) return;
@@ -1356,7 +1337,6 @@
   window.openPricesScreen = async () => {
     selectAddrType('flat');
     document.getElementById('pricesScreen').classList.add('open');
-    // Сбрасываем кэш чтобы всегда брать свежие данные из Firebase
     window._customAddrsCache = null;
     await loadCustomAddressesAsync();
     renderAddrList();
@@ -1379,7 +1359,6 @@
         btn.disabled = false; btn.textContent = '☁️ Загрузить адреса в Firebase';
         return;
       }
-      // Берём адреса из localStorage (старая версия приложения хранит там)
       let arr = [];
       try { arr = JSON.parse(localStorage.getItem('waCustomAddrs') || '[]'); } catch(e) {}
       if (!arr.length) {
@@ -1404,7 +1383,6 @@
     }
   };
 
-  // Обновляем подпись кнопки
   function updatePricesSummary() {
     const list = loadCustomAddresses();
     const el = document.getElementById('pricesSummary');
@@ -1431,7 +1409,6 @@
 
   // TABS
   window.switchTab = (name) => {
-    // Подгрузка данных для аналитики
     if (name === 'income' && !window.isFullDataLoaded) {
       window.showToast('Загрузка данных для аналитики...', 'warn');
       window.loadTransactions(true);
@@ -1455,22 +1432,18 @@
     if (appInitialized) return;
     if (window.fbDB && window.fbMethods) { appInitialized = true; window.appInitialized = true; initApp(); }
   }
-  // Позволяем внешнему коду сбросить флаг
   window.resetApp = () => { appInitialized = false; window.appInitialized = false; };
   window.addEventListener("fbReady", tryInitApp);
   const checkFB = setInterval(() => {
     if (window.fbDB && window.fbMethods && window.fbUser) { clearInterval(checkFB); tryInitApp(); }
   }, 200);
 
-  // ── Отключаем console.log в продакшене ────────────────────────
   if (location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
     const _noop = () => {};
     console.log = _noop;
     console.debug = _noop;
-    // Оставляем warn и error для отладки реальных проблем
   }
 
-  // ── Валидация транзакции перед сохранением ─────────────────────
   window.validateTx = (data) => {
     const errors = [];
     const amt = Number(data.amount);
@@ -1486,12 +1459,10 @@
   function initApp() {
     const { fbDB, fbMethods } = window;
     const uid = window.fbUser.uid;
-    const userDoc = fbMethods.doc(fbDB, "users", uid);
     const txRef = fbMethods.collection(fbDB, "users", uid, "transactions");
     const setRef = fbMethods.collection(fbDB, "users", uid, "settings");
 
-    // ── Таймаут сессии — выход через 30 мин неактивности ──────────
-    const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 минут
+    const SESSION_TIMEOUT = 30 * 60 * 1000;
     let _sessionTimer = null;
     const resetSessionTimer = () => {
       if (_sessionTimer) clearTimeout(_sessionTimer);
@@ -1500,11 +1471,10 @@
         setTimeout(() => window.fbSignOut(), 1500);
       }, SESSION_TIMEOUT);
     };
-    // Сбрасываем таймер при любом действии пользователя
     ['touchstart','click','keydown','scroll'].forEach(evt => {
       document.addEventListener(evt, resetSessionTimer, { passive: true });
     });
-    resetSessionTimer(); // Запускаем сразу при входе
+    resetSessionTimer();
 
     const getToday = () => {
       const now = new Date();
@@ -1596,7 +1566,6 @@
     };
     window.deleteSet = (id) => { showConfirm("Удалить?", async () => { await fbMethods.deleteDoc(fbMethods.doc(fbDB,"users",window.fbUser.uid,"settings",id)); }); };
 
-    // Настройка значений по умолчанию
     window.updateDefCats = () => {
       const type = document.getElementById('defType').value;
       const cats = DEFAULTS[type] || [];
@@ -1627,12 +1596,10 @@
       window.showToast('✅ Сохранено! Форма будет открываться с этими значениями.');
     };
 
-    // Инициализируем селекты в настройках когда они открываются
     const origOpenSettings = window.openSettings;
     window.openSettings = () => {
       origOpenSettings();
       setTimeout(() => {
-        // Восстанавливаем текущие дефолты
         const lastType = localStorage.getItem('lastType') || 'income';
         const defTypeSel = document.getElementById('defType');
         if (defTypeSel) {
@@ -1672,8 +1639,6 @@
       const balSel=document.getElementById("setBalanceAcc");
       if (balSel) balSel.innerHTML=sorted.map(a=>`<option value="${a.id}">${a.name}</option>`).join("");
 
-      // restoreLast=true → берём дефолт из настроек (localStorage)
-      // restoreLast=false → берём то что в памяти сессии (window._s*)
       const defType = localStorage.getItem('lastType') || 'income';
       const defCat  = localStorage.getItem('lastCat')  || '';
       const defSub  = localStorage.getItem('lastSub')  || '';
@@ -1712,7 +1677,6 @@
         }
       };
 
-      // Запоминаем выбор только в памяти сессии — при обновлении сбросится на дефолт
       elT.onchange=()=>{ window._sType=elT.value; window._sCat=''; window._sSub=''; updateUI(false); };
       elC.onchange=()=>{ window._sCat=elC.value; window._sSub=''; fillSubs(false); };
       elS.onchange=()=>{ window._sSub=elS.value; };
@@ -1729,7 +1693,6 @@
     let txUnsub = null;
     window.isFullDataLoaded = false;
 
-    // Умная загрузка: по умолчанию только 300 последних записей для скорости
     window.loadTransactions = (loadAll = false) => {
       if (txUnsub) txUnsub();
 
@@ -1753,7 +1716,6 @@
       window.isFullDataLoaded = loadAll;
     };
 
-    // Запускаем изначальную быструю загрузку
     window.loadTransactions(false);
 
     document.getElementById("txForm").onsubmit = async (e) => {
@@ -1776,7 +1738,6 @@
           createdAt: Date.now(),
           comment: document.getElementById("comment").value
         };
-        // Валидация перед сохранением
         const errors = window.validateTx(txData);
         if (errors.length) {
           window.showToast('⚠️ ' + errors[0], 'error');
@@ -1821,7 +1782,6 @@
       return true;
     }).sort((a,b)=>{ if(b.date!==a.date)return b.date>a.date?1:-1; return(b.createdAt||0)-(a.createdAt||0); });
 
-    // ── Один проход по filtered вместо 6 отдельных filter/reduce ──
     let inc=0, exp=0, gas=0;
     const statsInc={}, statsExpRaw={};
     let totalGain=0;
@@ -1830,12 +1790,10 @@
     filtered.forEach(t=>{
       if(t.type==='income'){
         inc+=t.amount;
-        // statsInc
         const key=t.subcategory||t.categoryName;
         if(!statsInc[key])statsInc[key]={sum:0,cnt:0,br:{}};
         statsInc[key].sum+=t.amount; statsInc[key].cnt++;
         statsInc[key].br[t.amount]=(statsInc[key].br[t.amount]||0)+1;
-        // ВД
         if(vds.includes(t.subcategory)&&t.amount<3000){
           if(!vdStats[t.subcategory])vdStats[t.subcategory]={vdSum:0};
           let p=t.amount;
@@ -1846,11 +1804,9 @@
         }
       } else if(t.type==='expense'){
         exp+=t.amount;
-        // Бензин
         const lsub=String(t.subcategory||'').toLowerCase();
         const lcat=String(t.categoryName||'').toLowerCase();
         if(lsub.includes('бенз')||lcat.includes('бенз')) gas+=t.amount;
-        // statsExp
         const rawName=t.categoryName||'Прочее';
         const existingKey=Object.keys(statsExpRaw).find(k=>k.toLowerCase()===rawName.toLowerCase());
         const key=existingKey||rawName;
@@ -1892,15 +1848,12 @@
     document.getElementById("potentialStats").innerHTML=vdHtml||'<div class="muted">Нет данных ВД</div>';
     if(totalGain>0)document.getElementById("potentialStats").innerHTML+=`<div class="gain-box"><span>ВЫГОДА ВД:</span><span class="pos">+${totalGain.toLocaleString()} ₸</span></div>`;
 
-    // Дополнительно: если есть категория "Напитки" и есть "Еда" — переносим Напитки в Еда как подкат
-    const mergeMap = {}; // 'откуда (lower)' -> 'куда (lower)'
+    const mergeMap = {};
     const expKeys = Object.keys(statsExpRaw);
     expKeys.forEach(k => {
-      // Ищем категорию которая является подкатегорией другой категории
       expKeys.forEach(parent => {
         if (k === parent) return;
         const parentData = statsExpRaw[parent];
-        // Если имя k встречается как подкатегория parent — значит k надо слить с parent
         if (Object.keys(parentData.subs).some(s => s.toLowerCase() === k.toLowerCase())) {
           mergeMap[k.toLowerCase()] = parent;
         }
@@ -1911,14 +1864,11 @@
     Object.entries(statsExpRaw).forEach(([k, d]) => {
       const targetKey = mergeMap[k.toLowerCase()];
       if (targetKey) {
-        // Переносим сумму в родительскую категорию как подкатегорию
         if (!statsExp[targetKey]) statsExp[targetKey] = {...statsExpRaw[targetKey]};
         statsExp[targetKey].sum += d.sum;
-        // Добавляем подкатегории
         Object.entries(d.subs).forEach(([s,v]) => {
           statsExp[targetKey].subs[s] = (statsExp[targetKey].subs[s]||0) + v;
         });
-        // Если подкатегорий нет — добавляем само название как подкат
         if (Object.keys(d.subs).length === 0) {
           statsExp[targetKey].subs[k] = (statsExp[targetKey].subs[k]||0) + d.sum;
         }
@@ -1926,7 +1876,6 @@
         if (!statsExp[k]) statsExp[k] = d;
       }
     });
-    // Убеждаемся что родительские категории добавлены
     Object.values(mergeMap).forEach(parent => {
       if (!statsExp[parent] && statsExpRaw[parent]) statsExp[parent] = {...statsExpRaw[parent]};
     });
@@ -1945,7 +1894,6 @@
       return`<div class="hist-item"><div><b class="${t.type==='income'?'pos':'neg'}">${t.amount.toLocaleString()} ₸</b><br><small class="muted">${ts} | ${esc(t.subcategory||t.categoryName)}${acc}</small>${t.comment?`<div style="color:#65d48b;font-size:11px;margin-top:2px;">📝 ${esc(t.comment)}</div>`:''}</div><div style="display:flex;gap:4px;"><button onclick="editTx('${t.id}')" style="background:none;border:none;color:#ffd166;padding:8px;cursor:pointer;font-size:15px;opacity:0.8;">✏️</button><button class="hist-del" onclick="deleteTx('${t.id}')">✕</button></div></div>`;
     }).join("")||'<div class="muted">Нет записей</div>';
 
-    // Аналитика рендерится только если вкладка активна — иначе при следующем переключении
     if (document.getElementById('tab-income')?.classList.contains('active')) {
       renderAnalytics();
     } else {
@@ -1955,7 +1903,6 @@
 
   window.render = render;
 
-  // ── ИСТОРИЯ (всплывающий экран) ────────────────────────────────
   let _histTypeFilter   = 'all';
   let _histCatFilter    = 'all';
   let _histPeriodFilter = 'all';
@@ -2025,10 +1972,8 @@
     const search = (document.getElementById('histSearch').value||'').toLowerCase().trim();
     let list = [...(window.allTx||[])];
 
-    // Тип
     if (_histTypeFilter !== 'all') list = list.filter(t => t.type === _histTypeFilter);
 
-    // Период
     const today = _getHistToday();
     if (_histPeriodFilter === 'today') {
       list = list.filter(t => t.date === today);
@@ -2049,12 +1994,10 @@
       if (to)   list = list.filter(t => t.date <= to);
     }
 
-    // Категория
     if (_histCatFilter !== 'all') list = list.filter(t =>
       (t.subcategory||t.categoryName||'') === _histCatFilter
     );
 
-    // Поиск
     if (search) list = list.filter(t => {
       const cat = (t.subcategory||t.categoryName||'').toLowerCase();
       const comment = (t.comment||'').toLowerCase();
@@ -2086,9 +2029,7 @@
     const el=document.getElementById("analyticsContent"); if(!el)return;
     const DELIVERY_POINTS_BW=["F1","F2","F3","ALLEY PUB","Ночь"];
     const byDay={},byMonth={},byDayDeliv={};
-    // Исключаем старые записи переводов в/из депозита (← возврат, → пополнение)
     const isDepTransfer=t=>t.subcategory&&(t.subcategory.startsWith('← ')||t.subcategory.startsWith('→ '));
-    // byDay = весь доход за день (кроме переводов)
     allTx.forEach(t=>{
       if(t.type!=='income'||isDepTransfer(t))return;
       const d=t.date||'',m=d.slice(0,7);
@@ -2098,14 +2039,12 @@
       byMonth[m].inc+=t.amount;
     });
     allTx.forEach(t=>{if(t.type!=='expense'||isDepTransfer(t))return;const m=(t.date||'').slice(0,7);if(!byMonth[m])byMonth[m]={inc:0,exp:0};byMonth[m].exp+=t.amount;});
-    // byDayDeliv = только точки F1/F2/F3/ALLEY/Ночь за день
     allTx.forEach(t=>{
       if(t.type==='income'&&DELIVERY_POINTS_BW.includes(t.subcategory)){
         if(!byDayDeliv[t.date])byDayDeliv[t.date]=0;
         byDayDeliv[t.date]+=t.amount;
       }
     });
-    // Лучший/худший день — считаем только по дням где есть хоть одна запись с точки
     const delivDays=Object.entries(byDayDeliv).filter(([d])=>d);
     let bestDay=null,worstDay=null;
     if(delivDays.length>0){
@@ -2122,7 +2061,6 @@
       chartData={filteredDays,maxVal,W,H,pad};
       chartHtml=`<div class="sec-title">График дохода по дням</div><div style="text-align:center;height:24px;display:flex;align-items:center;justify-content:center;gap:8px;"><span id="chartTipDate" style="font-size:11px;color:#444;"></span><span id="chartTipVal" style="font-size:15px;font-weight:bold;color:#a78bfa;"></span></div><div class="chart-wrap"><canvas id="incomeChart" width="${W}" height="${H+20}" style="display:block;"></canvas></div>`;
     }
-    // Лучший/худший: зелёный = весь доход за тот день, жёлтый = только точки
     const bestAllDay = bestDay ? byDay[bestDay[0]]||0 : 0;
     const worstAllDay = worstDay ? byDay[worstDay[0]]||0 : 0;
     const bwHtml=bestDay?`<div class="sec-title">Лучший и худший день</div><div class="bw-grid">
@@ -2282,7 +2220,7 @@
     }
   };
 
-  // ── WHATSAPP ПАРСЕР ────────────────────────────────────────────
+  // ── WHATSAPP ПАРСЕР (МАШИННОЕ ОБУЧЕНИЕ) ─────────────────────────
   let waEntries = [];
   let nightMode = false;
 
@@ -2306,16 +2244,14 @@
     if (!text) return window.showToast('Вставь текст из WhatsApp', 'error');
 
     const btn = document.querySelector('#tab-wa .card button');
-    btn.textContent = '⏳ Анализирую...';
+    btn.textContent = '⏳ Нейросеть анализирует...';
     btn.disabled = true;
 
-    // Если ночной режим — простой парсинг без ИИ
     if (nightMode) {
-      // Считаем количество строк с адресами (номер дома)
       const lines = text.split('\n').filter(l => /\d+-\d+/.test(l));
       waEntries = lines.map(l => ({
         point: 'Ночь', amount: 500,
-        address: l.trim(), type: 'до подъезда'
+        address: l.trim(), type: 'до подъезда', msgTime: ''
       }));
       renderWAResult();
       btn.textContent = '🤖 Разобрать';
@@ -2323,158 +2259,108 @@
       return;
     }
 
-    // Фиксированные цены
-    const POINTS = {
-      'F1':        { under: 150, flat: 300 },
-      'F2':        { under: 150, flat: 300 },
-      'F3':        { under: 150, flat: 300 },
-      'ALLEY PUB': { under: 600, flat: 900 },
-    };
+    try {
+      // Идеально для парсера подходит Groq, но поддерживаем и других
+      const provider = localStorage.getItem('aiProvider') || 'groq';
+      let apiKey, baseUrl, model;
+      let isGemini = false;
 
-    // Справочник пользовательских адресов [{ addr, type, price }]
-    const customAddrs = await loadCustomAddressesAsync();
+      if (provider === 'groq') {
+        apiKey = await window._SEC.getApiKey('groqKey');
+        baseUrl = 'https://api.groq.com/openai/v1';
+        model = localStorage.getItem('groqModel') || 'llama-3.1-8b-instant';
+      } else if (provider === 'openai') {
+        apiKey = await window._SEC.getApiKey('openaiKey');
+        baseUrl = 'https://api.openai.com/v1';
+        model = localStorage.getItem('openaiModel') || 'gpt-4o-mini';
+      } else if (provider === 'custom') {
+        apiKey = await window._SEC.getApiKey('customKey');
+        baseUrl = (localStorage.getItem('customUrl') || 'https://api.groq.com/openai/v1').replace(/\/+$/, '');
+        model = localStorage.getItem('customModel') || 'llama-3.1-8b-instant';
+      } else if (provider === 'gemini') {
+        apiKey = await window._SEC.getApiKey('geminiKey');
+        model = localStorage.getItem('geminiModel') || 'gemini-2.5-flash';
+        isGemini = true;
+      } else {
+        throw new Error('Для парсера лучше использовать Groq, OpenAI или Gemini.');
+      }
 
-    // Парсим локально без ИИ — по шаблону
-    const entries = [];
-    const clientPhones = []; // собираем телефоны для базы клиентов
-    const rawBlocks = text.split(/(\[\d+\.\d+,\s*\d+:\d+\])/);
-    const blocks = [];
-    for (let i = 1; i < rawBlocks.length; i += 2) {
-      const timeTag = rawBlocks[i]; // [28.03, 17:02]
-      const body = rawBlocks[i+1] || '';
-      const timeMatch = timeTag.match(/(\d+:\d+)/);
-      const msgTime = timeMatch ? timeMatch[1] : '';
-      blocks.push({ body: body.trim(), msgTime });
+      if (!apiKey) throw new Error(`Настрой ключ ${provider} во вкладке ИИ`);
+
+      // Интеграция локального справочника адресов в мозг ИИ
+      const customAddrs = await loadCustomAddressesAsync();
+      const customRules = customAddrs.length ? 
+        `\nВАЖНО! Справочник твоих адресов и их типов:\n` + 
+        customAddrs.map(a => `- ${a.addr} -> тип: ${a.type==='under'?'under':'flat'}, цена: ${a.price||'стандартная'}`).join('\n') +
+        `\nЕсли адрес клиента похож на адрес из справочника, СТРОГО используй тип и цену оттуда.` : "";
+
+      const systemPrompt = `Ты — строгий JSON-парсер заказов. Тебе дают текст из WhatsApp.
+Верни СТРОГО массив JSON объектов. Без пояснений, без маркдауна.
+Правила:
+1. Точка: F1, F2, F3, ALLEY PUB. Если нет — пропусти.
+2. Адрес: очисти от телефонов и мусора.
+3. type: 'under' (до подъезда - если есть "п" или "п.п") или 'flat' (до квартиры).
+4. amount: Для F1/F2/F3 under=150, flat=300. Для ALLEY PUB under=600, flat=900.
+5. msgTime: Найди время сообщения (например 17:02).${customRules}
+Формат: {"orders": [{"point":"F1","address":"6а-1-20","type":"flat","amount":300,"msgTime":"17:02"}]}`;
+
+      let jsonString = "[]";
+
+      if (isGemini) {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            system_instruction: { parts: [{ text: systemPrompt }] },
+            contents: [{ role: 'user', parts: [{ text }] }],
+            generationConfig: { response_mime_type: "application/json", temperature: 0.1 }
+          })
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error.message);
+        let raw = data.candidates[0].content.parts[0].text.trim();
+        let parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) jsonString = JSON.stringify(parsed);
+        else if (parsed.orders) jsonString = JSON.stringify(parsed.orders);
+      } else {
+        const res = await fetch(`${baseUrl}/chat/completions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+          body: JSON.stringify({
+            model: model,
+            temperature: 0.1,
+            response_format: { type: "json_object" },
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: text }
+            ]
+          })
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error.message);
+        let raw = data.choices[0].message.content.trim();
+        // На всякий случай чистим от возможного маркдауна, если модель проигнорирует response_format
+        raw = raw.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/, '');
+        let parsed = JSON.parse(raw);
+        jsonString = JSON.stringify(parsed.orders || []);
+      }
+
+      const parsedOrders = JSON.parse(jsonString);
+      waEntries = parsedOrders.map(o => ({
+        point: o.point,
+        amount: Number(o.amount) || 300,
+        address: o.address,
+        type: o.type === 'under' ? 'до подъезда' : 'до квартиры',
+        msgTime: o.msgTime || ''
+      }));
+
+      // Сохраняем клиентов (телефоны в WhatsApp парсере пока опущены для скорости)
+      renderWAResult();
+
+    } catch (e) {
+      window.showToast('Ошибка парсера: ' + e.message, 'error');
     }
 
-    const isPhone = s => {
-      const cleaned = s.trim().replace(/[\s\-\(\)]/g, '');
-      return /^(\+7|8|7)\d{10}$/.test(cleaned) || /^\d{11}$/.test(cleaned);
-    };
-
-    // Убираем телефон из строки, не трогая адрес
-    const stripPhone = s => s
-      .replace(/(?<![0-9])(\+7|8)[\s\-]?\(?\d{3}\)?[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}/g, '')
-      .replace(/(?<![0-9])\+77\d{9}/g, '')
-      .replace(/(?<![0-9])87\d{9}/g, '')
-      .replace(/(?<![0-9])77\d{9}/g, '')
-      .replace(/,\s*$/, '')
-      .trim();
-
-    for (const block of blocks) {
-      const lines = block.body.split('\n').filter(l => l.trim());
-      if (!lines.length) continue;
-      const msgTime = block.msgTime;
-      const firstLine = lines[0].trim();
-
-      // Ищем телефон в блоке
-      let foundPhone = null;
-      for (const line of lines) {
-        const cleaned = line.trim().replace(/[\s\-\(\)]/g,'');
-        if (/^(\+7|8|7)\d{10}$/.test(cleaned) || /^\d{11}$/.test(cleaned)) {
-          foundPhone = cleaned;
-          break;
-        }
-      }
-      if (foundPhone) clientPhones.push({ phone: foundPhone, address: '' });
-
-      // Определяем точку
-      let point = null;
-      const fl = firstLine.toUpperCase();
-      if (/ALLEY|АЛЕЙ/.test(fl)) point = 'ALLEY PUB';
-      else if (/F\s*3/.test(fl)) point = 'F3';
-      else if (/F\s*2/.test(fl)) point = 'F2';
-      else if (/F\s*1/.test(fl)) point = 'F1';
-      if (!point) continue;
-
-      // Всё что идёт после "F1:" / "ALLEY PUB:" — потенциальный адрес
-      let afterColon = firstLine.replace(/^.*?(?:ALLEY\s*PUB|F\s*[123])\s*[:\-\s]/i, '').trim();
-      afterColon = stripPhone(afterColon);
-
-      let address = '';
-
-      // 1. Если после двоеточия что-то осталось (не пустое, не просто телефон)
-      if (afterColon && afterColon.length > 1 && !isPhone(afterColon)) {
-        address = afterColon;
-      }
-
-      // 2. Ищем адрес в следующих строках
-      if (!address) {
-        for (const line of lines.slice(1)) {
-          const stripped = stripPhone(line).trim();
-          if (!stripped || stripped.length < 2) continue;
-          if (isPhone(stripped)) continue;
-          if (/^(через|забрать|звонить|код|готов|с гаража|не|да$|нет$)/i.test(stripped)) continue;
-          address = stripped;
-          break;
-        }
-      }
-
-      if (!address) continue;
-
-      const prices = POINTS[point] || { under: 150, flat: 300 };
-      const a = address.toLowerCase().trim();
-
-      // 1. Проверяем справочник адресов (приоритет)
-      let amount = null;
-      let type = null;
-      for (const entry of customAddrs) {
-        if (a === entry.addr.toLowerCase() || a.includes(entry.addr.toLowerCase()) || entry.addr.toLowerCase().includes(a)) {
-          const typeLabel = { under: 'до подъезда', flat: 'до квартиры', other: 'другое' };
-          type = typeLabel[entry.type] || entry.type;
-          // Для подъезда/квартиры берём фиксированную цену, для "другое" — цену из справочника
-          if (entry.type === 'under') amount = prices.under;
-          else if (entry.type === 'flat') amount = prices.flat;
-          else amount = entry.price || prices.flat;
-          break;
-        }
-      }
-
-      // 2. Если не в справочнике — авто-определение по паттерну
-      if (amount === null) {
-        let addrType = 'flat';
-
-        if (/п\.п\.?$|пп$/i.test(a) || /последний\s*подъезд/i.test(a)) {
-          addrType = 'under';
-        } else if (/\d+кв$/i.test(a) || /кв\.?\s*\d+/i.test(a)) {
-          addrType = 'flat';
-        } else if (/^[а-яёa-z]/i.test(a) && !/^\d/.test(a)) {
-          // начинается с буквы — спецадрес, по умолчанию как квартира
-          addrType = 'flat';
-        } else {
-          const segs = a.split(/[-–]/).map(s => s.trim());
-          if (segs.length >= 3) {
-            const last = segs[segs.length - 1];
-            addrType = /^\d*п$/i.test(last) && !/кв/i.test(a) ? 'under' : 'flat';
-          } else if (segs.length === 2) {
-            const last = segs[1];
-            if (/^\d*п$/i.test(last)) addrType = 'under';
-            else if (/^\d+$/.test(last) && Number(last) <= 20) addrType = 'under';
-            else addrType = 'flat';
-          }
-        }
-
-        amount = addrType === 'under' ? prices.under : prices.flat;
-        type = addrType === 'under' ? 'до подъезда' : 'до квартиры';
-      }
-
-      entries.push({ point, amount, address, type, msgTime });
-      // Связываем телефон с адресом если нашли
-      if (foundPhone && address) {
-        const pi = clientPhones.findIndex(p => p.phone === foundPhone);
-        if (pi >= 0) clientPhones[pi].address = address;
-      }
-    }
-
-    waEntries = entries;
-    // Сохраняем клиентов в фоне
-    if (clientPhones.length) {
-      const today = (() => { const n=new Date(); if(n.getHours()<3)n.setDate(n.getDate()-1); return new Date(n-n.getTimezoneOffset()*60000).toISOString().split('T')[0]; })();
-      Promise.all(clientPhones.map(p => upsertClient(p.phone, p.address, today)))
-        .then(() => window.showToast(`👥 Клиентов обновлено: ${clientPhones.length}`, 'success'))
-        .catch(e => console.warn('Clients upsert error:', e.message));
-    }
-    renderWAResult();
     btn.textContent = '🤖 Разобрать';
     btn.disabled = false;
   };
@@ -2533,12 +2419,9 @@
     const time = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 
     try {
-      // Загружаем уже существующие записи за сегодня
       const existing = (window.allTx || []).filter(t =>
         t.date === today && t.type === 'income' && t.categoryName === 'Доставка'
       );
-      // Ключ для проверки дубля: точка + адрес
-      // Дубль = та же точка + адрес + время сообщения WhatsApp
       const existingKeys = new Set(existing.map(t =>
         `${t.subcategory}|${(t.comment||'').trim().toLowerCase()}|${t.waTime||''}`
       ));
@@ -2581,13 +2464,11 @@
     btn.disabled = false;
   };
 
-  // Обработка уведомлений от банков (вызывается из NotificationService -> MainActivity)
   window.onNotificationReceived = function(title, text, app) {
     console.log("Уведомление перехвачено:", title, text, app);
   };
 
   // ── БАЗА КЛИЕНТОВ ──────────────────────────────────────────────
-  // Клиент: { phone, name, addresses:[], orders:[], firstSeen, lastSeen }
   window._clientsCache = null;
 
   function normalizePhone(p) {
@@ -2624,7 +2505,6 @@
     } catch(e) { console.warn('Clients save error:', e.message); }
   }
 
-  // Добавить/обновить клиента из парсинга WhatsApp
   async function upsertClient(phone, address, today) {
     const norm = normalizePhone(phone);
     const clients = await loadClients();
@@ -2759,7 +2639,6 @@
   };
 </script>
 <script>
-  // PULL TO REFRESH
   let ptrStartY = 0, ptrActive = false;
   const PTR_THRESHOLD = 80;
 
@@ -2799,7 +2678,6 @@
       setTimeout(() => {
         ind.classList.remove('visible');
         spinner.classList.remove('spin');
-        // Перезапускаем initApp полностью — свежие данные из Firebase
         if (window.fbUser && window.fbDB && window.fbMethods) {
           if (window.resetApp) window.resetApp();
           window.appStarted = false;
@@ -2818,17 +2696,14 @@
 (function() {
 
 // ══════════════════════════════════════════════
-// ИИ АГЕНТ — Gemini/Claude/OpenAI/Qwen + Firebase memory
+// ИИ АГЕНТ — Groq/Gemini/Claude/OpenAI/Qwen
 // ══════════════════════════════════════════════
 let aiHistory = [];
-let currentProvider = 'gemini';
 let aiMemoryLoaded = false;
 
-// ── Выбор провайдера ──
 window.selectProvider = (p) => {
-  currentProvider = p;
-  const colors = {gemini:'#4a9eff', claude:'#c084fc', openai:'#65d48b', qwen:'#fb923c', custom:'#f472b6'};
-  ['gemini','claude','openai','qwen','custom'].forEach(x => {
+  const colors = {groq:'#facc15', gemini:'#4a9eff', claude:'#c084fc', openai:'#65d48b', qwen:'#fb923c', custom:'#f472b6'};
+  ['groq','gemini','claude','openai','qwen','custom'].forEach(x => {
     const btn = document.getElementById('provBtn-'+x);
     const setup = document.getElementById('provSetup-'+x);
     const active = x === p;
@@ -2837,14 +2712,13 @@ window.selectProvider = (p) => {
   });
 };
 
-// ── Загрузка моделей Gemini ──
 window.loadAiModels = async () => {
   const key = document.getElementById('keyInput-gemini').value.trim();
   if (!key) { window.showToast('Введи ключ Gemini'); return; }
   const btn = document.getElementById('loadModelsBtn');
   btn.textContent = '⏳ Загружаю...'; btn.disabled = true;
   try {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
+    const res = await fetch(`[https://generativelanguage.googleapis.com/v1beta/models?key=$](https://generativelanguage.googleapis.com/v1beta/models?key=$){key}`);
     const data = await res.json();
     if (data.error) throw new Error(data.error.message);
     const models = (data.models||[]).filter(m=>(m.supportedGenerationMethods||[]).includes('generateContent'));
@@ -2857,10 +2731,18 @@ window.loadAiModels = async () => {
   btn.disabled = false;
 };
 
-// ── Сохранение настроек ──
 window.saveAiSettings = async () => {
-  const p = currentProvider;
-  if (p==='gemini') {
+  // Находим активный провайдер по видимости блока
+  let p = 'groq';
+  ['groq','gemini','claude','openai','qwen','custom'].forEach(x => {
+    if (document.getElementById('provSetup-'+x)?.style.display === 'block') p = x;
+  });
+
+  if (p==='groq') {
+    const key=document.getElementById('keyInput-groq').value.trim();
+    if (!key) { window.showToast('Введи ключ Groq'); return; }
+    await _SEC.setKey('groqKey', key); localStorage.setItem('groqModel',document.getElementById('modelSelect-groq').value);
+  } else if (p==='gemini') {
     const key=document.getElementById('keyInput-gemini').value.trim();
     const sel=document.getElementById('aiModelSelect');
     if (!key) { window.showToast('Введи ключ Gemini'); return; }
@@ -2889,7 +2771,7 @@ window.saveAiSettings = async () => {
   }
   localStorage.setItem('aiProvider',p);
   document.getElementById('aiKeySetup').style.display='none';
-  const names={gemini:'Gemini 🔵',claude:'Claude 🟣',openai:'OpenAI 🟢',qwen:'Qwen 🟠',custom:'Custom 🔧'};
+  const names={groq:'Groq ⚡', gemini:'Gemini 🔵',claude:'Claude 🟣',openai:'OpenAI 🟢',qwen:'Qwen 🟠',custom:'Custom 🔧'};
   showAgentStatus(names[p]||p);
   if (!aiHistory.length) greetAgent();
 };
@@ -2898,20 +2780,22 @@ window.resetAiKey = async () => {
   document.getElementById('aiKeySetup').style.display='block';
   const statusEl=document.getElementById('aiAgentStatus');
   statusEl.style.display='none';
-  const p=localStorage.getItem('aiProvider')||'gemini';
+  const p=localStorage.getItem('aiProvider')||'groq';
   selectProvider(p);
-  // Показываем маску вместо реального ключа
   const mask = v => v ? '••••••••' + v.slice(-4) : '';
+  const rk = await _SEC.getApiKey('groqKey');
   const gk = await _SEC.getApiKey('geminiKey');
   const ck = await _SEC.getApiKey('claudeKey');
   const ok = await _SEC.getApiKey('openaiKey');
   const qk = await _SEC.getApiKey('qwenKey');
   const xk = await _SEC.getApiKey('customKey');
+  if(rk) document.getElementById('keyInput-groq').placeholder = mask(rk);
   if(gk) document.getElementById('keyInput-gemini').placeholder = mask(gk);
   if(ck) document.getElementById('keyInput-claude').placeholder = mask(ck);
   if(ok) document.getElementById('keyInput-openai').placeholder = mask(ok);
   if(qk) document.getElementById('keyInput-qwen').placeholder = mask(qk);
   if(xk) document.getElementById('keyInput-custom').placeholder = mask(xk);
+  const rm=localStorage.getItem('groqModel'); if(rm) document.getElementById('modelSelect-groq').value=rm;
   const xu=localStorage.getItem('customUrl'); if(xu) document.getElementById('urlInput-custom').value=xu;
   const xm=localStorage.getItem('customModel'); if(xm) document.getElementById('modelInput-custom').value=xm;
   const cm=localStorage.getItem('claudeModel'); if(cm) document.getElementById('modelSelect-claude').value=cm;
@@ -2926,7 +2810,6 @@ function showAgentStatus(name) {
   document.getElementById('aiStatusText').textContent=`🟢 Агент: ${name}`;
 }
 
-// ── Память в Firebase ──
 async function saveMemoryToFirebase() {
   const { fbDB, fbMethods, fbUser } = window;
   if (!fbUser?.uid || !fbDB) return;
@@ -2942,7 +2825,7 @@ async function loadMemoryFromFirebase() {
   const { fbDB, fbMethods, fbUser } = window;
   if (!fbUser?.uid || !fbDB || aiMemoryLoaded) return;
   try {
-    if (!fbMethods.getDoc) return; // getDoc not imported, skip
+    if (!fbMethods.getDoc) return;
     const snap = await fbMethods.getDoc(fbMethods.doc(fbDB,'users',fbUser.uid));
     if (!snap) return;
     const data = snap.data?.() || snap;
@@ -2951,7 +2834,6 @@ async function loadMemoryFromFirebase() {
       if (Array.isArray(saved) && saved.length) {
         aiHistory = saved;
         aiMemoryLoaded = true;
-        // Показываем последние 5 сообщений из памяти
         const el = document.getElementById('aiMessages');
         if (el && !el.children.length) {
           const divider = document.createElement('div');
@@ -2965,7 +2847,6 @@ async function loadMemoryFromFirebase() {
   } catch(e) { console.log('Memory load error:', e.message); }
 }
 
-// ── Контекст данных (полный, со временем) ──
 function buildContext() {
   const tx = window.allTx || [];
   const getToday = () => { const n=new Date(); if(n.getHours()<3)n.setDate(n.getDate()-1); return new Date(n-n.getTimezoneOffset()*60000).toISOString().split('T')[0]; };
@@ -2987,9 +2868,7 @@ function buildContext() {
   tx.filter(t=>t.type==='income').forEach(t=>{ const m=(t.date||'').slice(0,7); byMonth[m]=(byMonth[m]||0)+t.amount; });
   const monthsSummary=Object.entries(byMonth).sort((a,b)=>b[0]>a[0]?1:-1).slice(0,6).map(([m,v])=>`${m}:${v.toLocaleString()}₸`).join(', ');
 
-  // Последние 20 записей СО ВРЕМЕНЕМ
   const last20=tx.slice(-20).map(t=>`${t.date} ${t.time||'--:--'}|${t.type==='income'?'+':'−'}${t.amount}₸|${t.subcategory||t.categoryName}|id:${t.id}`).join('\n');
-
   const accs=(window.ACCOUNTS||[]).map(a=>a.name);
   const now = new Date().toLocaleString('ru-RU');
 
@@ -3007,7 +2886,6 @@ ${last20}
 ═══════════════════════`;
 }
 
-// ── Определения инструментов ──
 const TOOL_DEFS = [
   { name:'add_transaction', desc:'Записать доход или расход', params:{ type:{t:'STRING',d:'income или expense'}, amount:{t:'NUMBER',d:'Сумма'}, categoryName:{t:'STRING',d:'Категория'}, subcategory:{t:'STRING',d:'Точка: F1,F2,F3,ALLEY PUB,Ночь'}, account:{t:'STRING',d:'Счёт'}, date:{t:'STRING',d:'Дата YYYY-MM-DD'}, time:{t:'STRING',d:'Время HH:MM'}, comment:{t:'STRING',d:'Примечание'} }, req:['type','amount','categoryName'] },
   { name:'edit_transaction', desc:'Изменить запись', params:{ id:{t:'STRING',d:'ID или "last"'}, amount:{t:'NUMBER',d:'Новая сумма'}, categoryName:{t:'STRING',d:'Категория'}, subcategory:{t:'STRING',d:'Подкатегория'}, account:{t:'STRING',d:'Счёт'}, date:{t:'STRING',d:'Дата'}, time:{t:'STRING',d:'Время HH:MM'}, comment:{t:'STRING',d:'Примечание'} }, req:['id'] },
@@ -3031,9 +2909,8 @@ const toJsonProps = (params) => Object.fromEntries(Object.entries(params).map(([
 const AGENT_TOOLS_GEMINI = [{ functionDeclarations: TOOL_DEFS.map(t=>({ name:t.name, description:t.desc, parameters:{type:'OBJECT', properties:toGeminiProps(t.params), required:t.req} })) }];
 const AGENT_TOOLS_CLAUDE = TOOL_DEFS.map(t=>({ name:t.name, description:t.desc, input_schema:{type:'object', properties:toJsonProps(t.params), required:t.req} }));
 const AGENT_TOOLS_OPENAI = TOOL_DEFS.map(t=>({ type:'function', function:{name:t.name, description:t.desc, parameters:{type:'object', properties:toJsonProps(t.params), required:t.req}} }));
-const AGENT_TOOLS_QWEN = AGENT_TOOLS_OPENAI; // Qwen использует OpenAI-совместимый формат
+const AGENT_TOOLS_QWEN = AGENT_TOOLS_OPENAI;
 
-// ── Выполнение инструментов ──
 async function executeTool(name, args) {
   const { fbDB, fbMethods, fbUser } = window;
   const uid = fbUser?.uid;
@@ -3109,7 +2986,6 @@ async function executeTool(name, args) {
     if (args.subcategory) result=result.filter(t=>(t.subcategory||t.categoryName||'').toLowerCase().includes(args.subcategory.toLowerCase()));
     if (args.amount_min!==undefined) result=result.filter(t=>t.amount>=args.amount_min);
     if (args.amount_max!==undefined) result=result.filter(t=>t.amount<=args.amount_max);
-    // Сортировка
     const sortBy = args.sort_by || 'date';
     const sortDir = args.sort_dir === 'asc' ? 1 : -1;
     result.sort((a,b) => {
@@ -3183,7 +3059,6 @@ async function executeTool(name, args) {
   return '❌ Неизвестный инструмент: '+name;
 }
 
-// ── Отображение сообщений ──
 function appendAiMsg(role, text) {
   const el=document.getElementById('aiMessages');
   const div=document.createElement('div');
@@ -3195,16 +3070,14 @@ function appendAiMsg(role, text) {
 }
 
 function greetAgent() {
-  const p=localStorage.getItem('aiProvider')||'gemini';
-  const names={gemini:'Gemini',claude:'Claude',openai:'ChatGPT',qwen:'Qwen',custom:'Custom API'};
+  const p=localStorage.getItem('aiProvider')||'groq';
+  const names={groq:'Groq Llama', gemini:'Gemini',claude:'Claude',openai:'ChatGPT',qwen:'Qwen',custom:'Custom API'};
   appendAiMsg('bot',`👋 Привет! Агент на базе ${names[p]||p} готов.\nВижу все твои данные и могу:\n• Записывать/удалять/редактировать транзакции\n• Искать и фильтровать по дате, времени, сумме\n• Находить и удалять дубли\n• Управлять категориями и счетами\n• Переводить между счетами\n• Анализировать доходы за любой период\n\nЧто делаем?`);
 }
 
-// ── Отправка сообщения ──
-// ── Rate limit для ИИ запросов ─────────────────────────────────
 const _aiRateLimit = {
   requests: [],
-  maxPerHour: 30,
+  maxPerHour: 40,
   canRequest() {
     const now = Date.now();
     const hourAgo = now - 60 * 60 * 1000;
@@ -3224,17 +3097,15 @@ window.sendAiMsg = async () => {
   const input=document.getElementById('aiInput');
   const text=input.value.trim();
   if (!text) return;
-  const provider=localStorage.getItem('aiProvider');
+  const provider=localStorage.getItem('aiProvider')||'groq';
   if (!provider) { window.showToast('Настрой агента сначала'); return; }
 
-  // Rate limit проверка
   if (!_aiRateLimit.canRequest()) {
-    window.showToast('⚠️ Лимит 30 запросов/час исчерпан. Подождите.', 'error');
+    window.showToast('⚠️ Лимит запросов исчерпан. Подождите.', 'error');
     return;
   }
   _aiRateLimit.record();
 
-  // Предупреждение при приближении к лимиту
   const rem = _aiRateLimit.remaining();
   if (rem <= 5) {
     window.showToast(`⚠️ Осталось ${rem} запросов ИИ в час`, 'warn');
@@ -3256,7 +3127,8 @@ ${buildContext()}
 
   try {
     let reply='';
-    if (provider==='gemini') reply=await sendGemini(systemPrompt,text,typing);
+    if (provider==='groq') reply=await sendGroq(systemPrompt,text,typing);
+    else if (provider==='gemini') reply=await sendGemini(systemPrompt,text,typing);
     else if (provider==='claude') reply=await sendClaude(systemPrompt,text,typing);
     else if (provider==='openai') reply=await sendOpenAI(systemPrompt,text,typing);
     else if (provider==='qwen') reply=await sendQwen(systemPrompt,text,typing);
@@ -3268,7 +3140,6 @@ ${buildContext()}
     aiHistory.push({role:'assistant',content:reply});
     if (aiHistory.length>40) aiHistory=aiHistory.slice(-40);
 
-    // Сохраняем память в Firebase
     saveMemoryToFirebase();
 
   } catch(e) {
@@ -3277,13 +3148,36 @@ ${buildContext()}
   }
 };
 
+// ── Groq Agent ──
+async function sendGroq(systemPrompt,text,typing) {
+  const key = await _SEC.getApiKey('groqKey');
+  const model=localStorage.getItem('groqModel')||'llama-3.3-70b-versatile'; // 70b лучше для агента
+  if (!key) throw new Error('Нет ключа Groq');
+  const messages=[{role:'system',content:systemPrompt},...aiHistory.map(m=>({role:m.role==='assistant'?'assistant':'user',content:m.content})),{role:'user',content:text}];
+  let res=await fetch('[https://api.groq.com/openai/v1/chat/completions](https://api.groq.com/openai/v1/chat/completions)',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model,messages,tools:AGENT_TOOLS_OPENAI,tool_choice:'auto',max_tokens:2048})});
+  let data=await res.json();
+  if (data.error) throw new Error(data.error.message);
+  const msg=data.choices?.[0]?.message;
+  if (msg?.tool_calls?.length) {
+    const tc=msg.tool_calls[0];
+    typing.textContent=`⚙️ ${tc.function.name}...`;
+    const result=await executeTool(tc.function.name,JSON.parse(tc.function.arguments));
+    messages.push(msg);
+    messages.push({role:'tool',tool_call_id:tc.id,content:result});
+    res=await fetch('[https://api.groq.com/openai/v1/chat/completions](https://api.groq.com/openai/v1/chat/completions)',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model,messages,tools:AGENT_TOOLS_OPENAI,max_tokens:2048})});
+    data=await res.json();
+    if (data.error) throw new Error(data.error.message);
+  }
+  return data.choices?.[0]?.message?.content||'(нет ответа)';
+}
+
 // ── Gemini ──
 async function sendGemini(systemPrompt,text,typing) {
   const key = await _SEC.getApiKey('geminiKey');
   const model=localStorage.getItem('geminiModel')||'gemini-2.5-flash';
   if (!key) throw new Error('Нет ключа Gemini');
   const contents=[...aiHistory.map(m=>({role:m.role==='assistant'?'model':'user',parts:[{text:m.content}]})),{role:'user',parts:[{text}]}];
-  let res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system_instruction:{parts:[{text:systemPrompt}]},contents,tools:AGENT_TOOLS_GEMINI})});
+  let res=await fetch(`[https://generativelanguage.googleapis.com/v1beta/models/$](https://generativelanguage.googleapis.com/v1beta/models/$){model}:generateContent?key=${key}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system_instruction:{parts:[{text:systemPrompt}]},contents,tools:AGENT_TOOLS_GEMINI})});
   let data=await res.json();
   if (data.error) throw new Error(data.error.message);
   const part=data.candidates?.[0]?.content?.parts?.[0];
@@ -3293,20 +3187,19 @@ async function sendGemini(systemPrompt,text,typing) {
     const result=await executeTool(name,args);
     contents.push({role:'model',parts:[{functionCall:{name,args}}]});
     contents.push({role:'user',parts:[{functionResponse:{name,response:{result}}}]});
-    res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system_instruction:{parts:[{text:systemPrompt}]},contents,tools:AGENT_TOOLS_GEMINI})});
+    res=await fetch(`[https://generativelanguage.googleapis.com/v1beta/models/$](https://generativelanguage.googleapis.com/v1beta/models/$){model}:generateContent?key=${key}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system_instruction:{parts:[{text:systemPrompt}]},contents,tools:AGENT_TOOLS_GEMINI})});
     data=await res.json();
     if (data.error) throw new Error(data.error.message);
   }
   return data.candidates?.[0]?.content?.parts?.[0]?.text||'(нет ответа)';
 }
 
-// ── Claude ──
 async function sendClaude(systemPrompt,text,typing) {
   const key = await _SEC.getApiKey('claudeKey');
   const model=localStorage.getItem('claudeModel')||'claude-haiku-4-5';
   if (!key) throw new Error('Нет ключа Claude');
   const messages=[...aiHistory.map(m=>({role:m.role==='assistant'?'assistant':'user',content:m.content})),{role:'user',content:text}];
-  let res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model,max_tokens:2048,system:systemPrompt,tools:AGENT_TOOLS_CLAUDE,messages})});
+  let res=await fetch('[https://api.anthropic.com/v1/messages](https://api.anthropic.com/v1/messages)',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model,max_tokens:2048,system:systemPrompt,tools:AGENT_TOOLS_CLAUDE,messages})});
   let data=await res.json();
   if (data.error) throw new Error(data.error.message||JSON.stringify(data.error));
   if (data.stop_reason==='tool_use') {
@@ -3316,7 +3209,7 @@ async function sendClaude(systemPrompt,text,typing) {
       const result=await executeTool(toolUse.name,toolUse.input);
       messages.push({role:'assistant',content:data.content});
       messages.push({role:'user',content:[{type:'tool_result',tool_use_id:toolUse.id,content:result}]});
-      res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model,max_tokens:2048,system:systemPrompt,tools:AGENT_TOOLS_CLAUDE,messages})});
+      res=await fetch('[https://api.anthropic.com/v1/messages](https://api.anthropic.com/v1/messages)',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model,max_tokens:2048,system:systemPrompt,tools:AGENT_TOOLS_CLAUDE,messages})});
       data=await res.json();
       if (data.error) throw new Error(data.error.message||JSON.stringify(data.error));
     }
@@ -3324,13 +3217,12 @@ async function sendClaude(systemPrompt,text,typing) {
   return data.content?.find(b=>b.type==='text')?.text||'(нет ответа)';
 }
 
-// ── OpenAI ──
 async function sendOpenAI(systemPrompt,text,typing) {
   const key = await _SEC.getApiKey('openaiKey');
   const model=localStorage.getItem('openaiModel')||'gpt-4o-mini';
   if (!key) throw new Error('Нет ключа OpenAI');
   const messages=[{role:'system',content:systemPrompt},...aiHistory.map(m=>({role:m.role==='assistant'?'assistant':'user',content:m.content})),{role:'user',content:text}];
-  let res=await fetch('https://api.openai.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model,messages,tools:AGENT_TOOLS_OPENAI,tool_choice:'auto',max_tokens:2048})});
+  let res=await fetch('[https://api.openai.com/v1/chat/completions](https://api.openai.com/v1/chat/completions)',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model,messages,tools:AGENT_TOOLS_OPENAI,tool_choice:'auto',max_tokens:2048})});
   let data=await res.json();
   if (data.error) throw new Error(data.error.message);
   const msg=data.choices?.[0]?.message;
@@ -3340,20 +3232,19 @@ async function sendOpenAI(systemPrompt,text,typing) {
     const result=await executeTool(tc.function.name,JSON.parse(tc.function.arguments));
     messages.push(msg);
     messages.push({role:'tool',tool_call_id:tc.id,content:result});
-    res=await fetch('https://api.openai.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model,messages,tools:AGENT_TOOLS_OPENAI,max_tokens:2048})});
+    res=await fetch('[https://api.openai.com/v1/chat/completions](https://api.openai.com/v1/chat/completions)',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model,messages,tools:AGENT_TOOLS_OPENAI,max_tokens:2048})});
     data=await res.json();
     if (data.error) throw new Error(data.error.message);
   }
   return data.choices?.[0]?.message?.content||'(нет ответа)';
 }
 
-// ── Qwen (Alibaba) — OpenAI-совместимый API ──
 async function sendQwen(systemPrompt,text,typing) {
   const key = await _SEC.getApiKey('qwenKey');
   const model=localStorage.getItem('qwenModel')||'qwen-turbo';
   if (!key) throw new Error('Нет ключа Qwen');
   const messages=[{role:'system',content:systemPrompt},...aiHistory.map(m=>({role:m.role==='assistant'?'assistant':'user',content:m.content})),{role:'user',content:text}];
-  let res=await fetch('https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model,messages,tools:AGENT_TOOLS_QWEN,tool_choice:'auto',max_tokens:2048})});
+  let res=await fetch('[https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions](https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions)',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model,messages,tools:AGENT_TOOLS_QWEN,tool_choice:'auto',max_tokens:2048})});
   let data=await res.json();
   if (data.error) throw new Error(data.error.message||JSON.stringify(data.error));
   const msg=data.choices?.[0]?.message;
@@ -3363,14 +3254,13 @@ async function sendQwen(systemPrompt,text,typing) {
     const result=await executeTool(tc.function.name,JSON.parse(tc.function.arguments));
     messages.push(msg);
     messages.push({role:'tool',tool_call_id:tc.id,content:result});
-    res=await fetch('https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model,messages,tools:AGENT_TOOLS_QWEN,max_tokens:2048})});
+    res=await fetch('[https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions](https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions)',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model,messages,tools:AGENT_TOOLS_QWEN,max_tokens:2048})});
     data=await res.json();
     if (data.error) throw new Error(data.error.message||JSON.stringify(data.error));
   }
   return data.choices?.[0]?.message?.content||'(нет ответа)';
 }
 
-// ── Custom (любой OpenAI-совместимый провайдер) ──
 async function sendCustom(systemPrompt,text,typing) {
   const key = await _SEC.getApiKey('customKey');
   const baseUrl=(localStorage.getItem('customUrl')||'').replace(/\/+$/,'');
@@ -3379,12 +3269,10 @@ async function sendCustom(systemPrompt,text,typing) {
   if (!baseUrl) throw new Error('Нет Base URL для Custom провайдера');
   const messages=[{role:'system',content:systemPrompt},...aiHistory.map(m=>({role:m.role==='assistant'?'assistant':'user',content:m.content})),{role:'user',content:text}];
   const headers={'Content-Type':'application/json','Authorization':'Bearer '+key};
-  // Некоторые провайдеры (напр. OpenRouter) требуют дополнительных заголовков
   let res=await fetch(baseUrl+'/chat/completions',{method:'POST',headers,body:JSON.stringify({model,messages,max_tokens:2048})});
   let data=await res.json();
   if (data.error) throw new Error(data.error.message||JSON.stringify(data.error));
   const msg=data.choices?.[0]?.message;
-  // Tool calling поддерживается если провайдер совместим (не обязательно)
   if (msg?.tool_calls?.length) {
     const tc=msg.tool_calls[0];
     typing.textContent=`⚙️ ${tc.function.name}...`;
@@ -3398,32 +3286,27 @@ async function sendCustom(systemPrompt,text,typing) {
   return data.choices?.[0]?.message?.content||'(нет ответа)';
 }
 
-// ── Инициализация вкладки ──
 async function initAiTab() {
-  const p=localStorage.getItem('aiProvider');
-  selectProvider(p||'gemini');
-  if (p) {
-    const keyMap = {gemini:'geminiKey', claude:'claudeKey', openai:'openaiKey', qwen:'qwenKey', custom:'customKey'};
-    const hasKey = await _SEC.getApiKey(keyMap[p] || 'geminiKey');
-    if (hasKey) {
-      document.getElementById('aiKeySetup').style.display='none';
-      const names={gemini:'Gemini 🔵',claude:'Claude 🟣',openai:'OpenAI 🟢',qwen:'Qwen 🟠',custom:'Custom 🔧'};
-      showAgentStatus(names[p]||p);
-      loadMemoryFromFirebase().then(()=>{
-        if (!aiHistory.length) greetAgent();
-      });
-    }
+  const p=localStorage.getItem('aiProvider')||'groq';
+  selectProvider(p);
+  const keyMap = {groq:'groqKey', gemini:'geminiKey', claude:'claudeKey', openai:'openaiKey', qwen:'qwenKey', custom:'customKey'};
+  const hasKey = await _SEC.getApiKey(keyMap[p] || 'groqKey');
+  if (hasKey) {
+    document.getElementById('aiKeySetup').style.display='none';
+    const names={groq:'Groq ⚡', gemini:'Gemini 🔵',claude:'Claude 🟣',openai:'OpenAI 🟢',qwen:'Qwen 🟠',custom:'Custom 🔧'};
+    showAgentStatus(names[p]||p);
+    loadMemoryFromFirebase().then(()=>{
+      if (!aiHistory.length) greetAgent();
+    });
   }
 }
 
-// ── Переключение вкладок ──
 const origSwitchTab = window.switchTab;
 window.switchTab = (tab) => {
   if (origSwitchTab) origSwitchTab(tab);
   const bar=document.getElementById('aiInputBar');
   if (bar) bar.style.display=tab==='ai'?'block':'none';
   if (tab==='ai') initAiTab();
-  // Lazy рендер аналитики — только при переходе на вкладку
   if (tab==='income' && window._analyticsStale) {
     window._analyticsStale = false;
     renderAnalytics();
@@ -3434,12 +3317,10 @@ window.switchTab = (tab) => {
 </script>
 
 <script>
-// ── Service Worker регистрация ─────────────────────────────────
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
       .then(reg => {
-        console.log('[SW] Зарегистрирован, scope:', reg.scope);
         reg.addEventListener('updatefound', () => {
           const nw = reg.installing;
           nw.addEventListener('statechange', () => {
@@ -3450,16 +3331,13 @@ if ('serviceWorker' in navigator) {
         });
       })
       .catch(e => {
-        // SW не критичен — приложение работает и без него
-        console.warn('[SW] Не зарегистрирован (убедись что sw.js лежит в корне репо):', e.message);
+        console.warn('[SW] Не зарегистрирован:', e.message);
       });
   });
 }
 
-// ── Онлайн / Офлайн индикатор ─────────────────────────────────
 window.addEventListener('online', () => {
   window.showToast('✅ Подключение восстановлено');
-  // Перерисовываем данные — Firebase мог накопить изменения
   if (window.render) window.render();
 });
 window.addEventListener('offline', () => {
