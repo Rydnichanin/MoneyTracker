@@ -1638,7 +1638,11 @@
         if (Array.isArray(parsed)) jsonString = JSON.stringify(parsed); else if (parsed.orders) jsonString = JSON.stringify(parsed.orders);
       } else {
         const res = await fetch(`${baseUrl}/chat/completions`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` }, body: JSON.stringify({ model: model, temperature: 0.1, response_format: { type: "json_object" }, messages: [ { role: 'system', content: systemPrompt }, { role: 'user', content: text } ] }) });
-        const data = await res.json(); if (data.error) throw new Error(data.error.message);
+        const textResp = await res.text();
+        if (textResp.trim().startsWith('<')) throw new Error('Сервер вернул HTML вместо данных (возможно, блокировка сети или неверный URL).');
+        let data;
+        try { data = JSON.parse(textResp); } catch(e) { throw new Error('Ошибка ответа сервера: ' + textResp.slice(0, 80)); }
+        if (data.error) throw new Error(data.error.message);
         let raw = data.choices[0].message.content.trim(); raw = raw.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/, '');
         let parsed = JSON.parse(raw); jsonString = JSON.stringify(parsed.orders || []);
       }
@@ -1881,7 +1885,7 @@ async function executeTool(name, args) {
   if (name==='search_transactions') { let result = allTx; if (args.date_from) result=result.filter(t=>t.date>=args.date_from); if (args.date_to) result=result.filter(t=>t.date<=args.date_to); if (args.time_from) result=result.filter(t=>(t.time||'00:00')>=args.time_from); if (args.time_to) result=result.filter(t=>(t.time||'23:59')<=args.time_to); if (args.type) result=result.filter(t=>t.type===args.type); if (args.subcategory) result=result.filter(t=>(t.subcategory||t.categoryName||'').toLowerCase().includes(args.subcategory.toLowerCase())); if (args.amount_min!==undefined) result=result.filter(t=>t.amount>=args.amount_min); if (args.amount_max!==undefined) result=result.filter(t=>t.amount<=args.amount_max); const sortBy = args.sort_by || 'date', sortDir = args.sort_dir === 'asc' ? 1 : -1; result.sort((a,b) => { if (sortBy==='time') return ((a.time||'')>(b.time||'')?1:-1)*sortDir; if (sortBy==='amount') return (a.amount-b.amount)*sortDir; return ((a.date+' '+(a.time||''))>(b.date+' '+(b.time||''))?1:-1)*sortDir; }); result = result.slice(0, args.limit||20); if (!result.length) return '❌ Ничего не найдено'; return `🔍 ${result.length} записей:\n`+result.map(t=>`${t.date} ${t.time||'--:--'}|${t.type==='income'?'+':'−'}${t.amount}₸|${t.subcategory||t.categoryName}|id:${t.id}`).join('\n'); }
   if (name==='get_stats') { let filtered=allTx; const p=args.period; if (p==='today') filtered=allTx.filter(t=>t.date===today); else if (p==='week') { const d=new Date(); d.setDate(d.getDate()-7); const ds=new Date(d-d.getTimezoneOffset()*60000).toISOString().split('T')[0]; filtered=allTx.filter(t=>t.date>=ds); } else if (p==='month') filtered=allTx.filter(t=>(t.date||'').startsWith(today.slice(0,7))); else if (p==='year') filtered=allTx.filter(t=>(t.date||'').startsWith(today.slice(0,4))); else if (p.includes(':')) { const [f,t2]=p.split(':'); filtered=allTx.filter(t=>t.date>=f&&t.date<=t2); } const inc=filtered.filter(t=>t.type==='income'&&!(t.subcategory&&(t.subcategory.startsWith('← ')||t.subcategory.startsWith('→ ')))).reduce((s,t)=>s+t.amount,0), exp=filtered.filter(t=>t.type==='expense'&&!(t.subcategory&&(t.subcategory.startsWith('← ')||t.subcategory.startsWith('→ ')))).reduce((s,t)=>s+t.amount,0); const POINTS=['F1','F2','F3','ALLEY PUB','Ночь'], byPoint={}; filtered.filter(t=>t.type==='income'&&POINTS.includes(t.subcategory)).forEach(t=>{ byPoint[t.subcategory]=(byPoint[t.subcategory]||0)+t.amount; }); const days=new Set(filtered.filter(t=>t.type==='income').map(t=>t.date)).size; return `📊 ${p}: Доход:${inc.toLocaleString()}₸ | Расход:${exp.toLocaleString()}₸ | Чистая:${(inc-exp).toLocaleString()}₸ | Записей:${filtered.length} | Дней:${days}\nПо точкам: ${Object.entries(byPoint).map(([k,v])=>`${k}:${v.toLocaleString()}₸`).join(', ')||'нет'}`; }
   if (name==='get_all_data') { let filtered=allTx; if (args.period==='today') filtered=allTx.filter(t=>t.date===today); else if (args.period==='month') filtered=allTx.filter(t=>(t.date||'').startsWith(today.slice(0,7))); if (!filtered.length) return 'Нет данных'; return `Всего ${filtered.length}:\n`+filtered.map(t=>`${t.date} ${t.time||''}|${t.type==='income'?'+':'−'}${t.amount}₸|${t.subcategory||t.categoryName}|id:${t.id}`).join('\n'); }
-  if (name==='add_category') { await fbMethods.addDoc(setRef(), {type:'category',name:args.name,catType:args.catType,sub:[]}); return `✅ Категория "${args.name}" добавлена`; }
+  if (name==='add_category') { await fbMethods.addDoc(setRef(),{type:'category',name:args.name,catType:args.catType,sub:[]}); return `✅ Категория "${args.name}" добавлена`; }
   if (name==='delete_category') { const cats=[...(window.DEFAULTS?.income||[]),...(window.DEFAULTS?.expense||[])], cat=cats.find(c=>c.name.toLowerCase()===args.name.toLowerCase()); if (!cat) return `❌ Категория не найдена`; await fbMethods.deleteDoc(fbMethods.doc(fbDB,'users',uid,'settings',cat.id)); return `✅ Категория удалена`; }
   if (name==='add_subcategory') { const cats=[...(window.DEFAULTS?.income||[]),...(window.DEFAULTS?.expense||[])], cat=cats.find(c=>c.name.toLowerCase()===args.categoryName.toLowerCase()); if (!cat) return `❌ Категория не найдена`; await fbMethods.updateDoc(fbMethods.doc(fbDB,'users',uid,'settings',cat.id),{sub:fbMethods.arrayUnion(args.subName)}); return `✅ Подкатегория добавлена`; }
   if (name==='add_account') { await fbMethods.addDoc(setRef(),{type:'account',name:args.name,initialBalance:0}); return `✅ Счёт добавлен`; }
@@ -1929,13 +1933,19 @@ window.sendAiMsg = async () => {
 async function sendGroq(systemPrompt,text,typing) {
   const key = await _SEC.getApiKey('groqKey'), model=localStorage.getItem('groqModel')||'llama-3.3-70b-versatile'; if (!key) throw new Error('Нет ключа Groq');
   const messages=[{role:'system',content:systemPrompt},...aiHistory.map(m=>({role:m.role==='assistant'?'assistant':'user',content:m.content})),{role:'user',content:text}];
-  let res=await fetch('[https://api.groq.com/openai/v1/chat/completions](https://api.groq.com/openai/v1/chat/completions)',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model,messages,tools:AGENT_TOOLS_OPENAI,tool_choice:'auto',max_tokens:2048})}), data=await res.json();
+  let res=await fetch('[https://api.groq.com/openai/v1/chat/completions](https://api.groq.com/openai/v1/chat/completions)',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model,messages,tools:AGENT_TOOLS_OPENAI,tool_choice:'auto',max_tokens:2048})});
+  const textResp = await res.text();
+  if (textResp.trim().startsWith('<')) throw new Error('Сервер вернул HTML вместо данных (возможно, блокировка сети или неверный URL).');
+  let data; try { data = JSON.parse(textResp); } catch(e) { throw new Error('Ошибка ответа сервера: ' + textResp.slice(0, 80)); }
   if (data.error) throw new Error(data.error.message);
   const msg=data.choices?.[0]?.message;
   if (msg?.tool_calls?.length) {
     const tc=msg.tool_calls[0]; typing.textContent=`⚙️ ${tc.function.name}...`; const result=await executeTool(tc.function.name,JSON.parse(tc.function.arguments));
     messages.push(msg); messages.push({role:'tool',tool_call_id:tc.id,content:result});
-    res=await fetch('[https://api.groq.com/openai/v1/chat/completions](https://api.groq.com/openai/v1/chat/completions)',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model,messages,tools:AGENT_TOOLS_OPENAI,max_tokens:2048})}); data=await res.json();
+    res=await fetch('[https://api.groq.com/openai/v1/chat/completions](https://api.groq.com/openai/v1/chat/completions)',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model,messages,tools:AGENT_TOOLS_OPENAI,max_tokens:2048})});
+    const textResp2 = await res.text();
+    if (textResp2.trim().startsWith('<')) throw new Error('Сервер вернул HTML вместо данных.');
+    try { data = JSON.parse(textResp2); } catch(e) { throw new Error('Ошибка ответа сервера'); }
     if (data.error) throw new Error(data.error.message);
   }
   return data.choices?.[0]?.message?.content||'(нет ответа)';
@@ -1944,13 +1954,19 @@ async function sendGroq(systemPrompt,text,typing) {
 async function sendGemini(systemPrompt,text,typing) {
   const key = await _SEC.getApiKey('geminiKey'), model=localStorage.getItem('geminiModel')||'gemini-2.5-flash'; if (!key) throw new Error('Нет ключа Gemini');
   const contents=[...aiHistory.map(m=>({role:m.role==='assistant'?'model':'user',parts:[{text:m.content}]})),{role:'user',parts:[{text}]}];
-  let res=await fetch(`[https://generativelanguage.googleapis.com/v1beta/models/$](https://generativelanguage.googleapis.com/v1beta/models/$){model}:generateContent?key=${key}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system_instruction:{parts:[{text:systemPrompt}]},contents,tools:AGENT_TOOLS_GEMINI})}), data=await res.json();
+  let res=await fetch(`[https://generativelanguage.googleapis.com/v1beta/models/$](https://generativelanguage.googleapis.com/v1beta/models/$){model}:generateContent?key=${key}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system_instruction:{parts:[{text:systemPrompt}]},contents,tools:AGENT_TOOLS_GEMINI})});
+  const textResp = await res.text();
+  if (textResp.trim().startsWith('<')) throw new Error('Сервер вернул HTML вместо данных.');
+  let data; try { data = JSON.parse(textResp); } catch(e) { throw new Error('Ошибка ответа сервера'); }
   if (data.error) throw new Error(data.error.message);
   const part=data.candidates?.[0]?.content?.parts?.[0];
   if (part?.functionCall) {
     const {name,args}=part.functionCall; typing.textContent=`⚙️ ${name}...`; const result=await executeTool(name,args);
     contents.push({role:'model',parts:[{functionCall:{name,args}}]}); contents.push({role:'user',parts:[{functionResponse:{name,response:{result}}}]});
-    res=await fetch(`[https://generativelanguage.googleapis.com/v1beta/models/$](https://generativelanguage.googleapis.com/v1beta/models/$){model}:generateContent?key=${key}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system_instruction:{parts:[{text:systemPrompt}]},contents,tools:AGENT_TOOLS_GEMINI})}); data=await res.json();
+    res=await fetch(`[https://generativelanguage.googleapis.com/v1beta/models/$](https://generativelanguage.googleapis.com/v1beta/models/$){model}:generateContent?key=${key}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system_instruction:{parts:[{text:systemPrompt}]},contents,tools:AGENT_TOOLS_GEMINI})});
+    const textResp2 = await res.text();
+    if (textResp2.trim().startsWith('<')) throw new Error('Сервер вернул HTML вместо данных.');
+    try { data = JSON.parse(textResp2); } catch(e) { throw new Error('Ошибка ответа сервера'); }
     if (data.error) throw new Error(data.error.message);
   }
   return data.candidates?.[0]?.content?.parts?.[0]?.text||'(нет ответа)';
@@ -1959,14 +1975,20 @@ async function sendGemini(systemPrompt,text,typing) {
 async function sendClaude(systemPrompt,text,typing) {
   const key = await _SEC.getApiKey('claudeKey'), model=localStorage.getItem('claudeModel')||'claude-haiku-4-5'; if (!key) throw new Error('Нет ключа Claude');
   const messages=[...aiHistory.map(m=>({role:m.role==='assistant'?'assistant':'user',content:m.content})),{role:'user',content:text}];
-  let res=await fetch('[https://api.anthropic.com/v1/messages](https://api.anthropic.com/v1/messages)',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model,max_tokens:2048,system:systemPrompt,tools:AGENT_TOOLS_CLAUDE,messages})}), data=await res.json();
+  let res=await fetch('[https://api.anthropic.com/v1/messages](https://api.anthropic.com/v1/messages)',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model,max_tokens:2048,system:systemPrompt,tools:AGENT_TOOLS_CLAUDE,messages})});
+  const textResp = await res.text();
+  if (textResp.trim().startsWith('<')) throw new Error('Сервер вернул HTML вместо данных.');
+  let data; try { data = JSON.parse(textResp); } catch(e) { throw new Error('Ошибка ответа сервера'); }
   if (data.error) throw new Error(data.error.message||JSON.stringify(data.error));
   if (data.stop_reason==='tool_use') {
     const toolUse=data.content.find(b=>b.type==='tool_use');
     if (toolUse) {
       typing.textContent=`⚙️ ${toolUse.name}...`; const result=await executeTool(toolUse.name,toolUse.input);
       messages.push({role:'assistant',content:data.content}); messages.push({role:'user',content:[{type:'tool_result',tool_use_id:toolUse.id,content:result}]});
-      res=await fetch('[https://api.anthropic.com/v1/messages](https://api.anthropic.com/v1/messages)',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model,max_tokens:2048,system:systemPrompt,tools:AGENT_TOOLS_CLAUDE,messages})}); data=await res.json();
+      res=await fetch('[https://api.anthropic.com/v1/messages](https://api.anthropic.com/v1/messages)',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model,max_tokens:2048,system:systemPrompt,tools:AGENT_TOOLS_CLAUDE,messages})});
+      const textResp2 = await res.text();
+      if (textResp2.trim().startsWith('<')) throw new Error('Сервер вернул HTML вместо данных.');
+      try { data = JSON.parse(textResp2); } catch(e) { throw new Error('Ошибка ответа сервера'); }
       if (data.error) throw new Error(data.error.message||JSON.stringify(data.error));
     }
   }
@@ -1976,13 +1998,19 @@ async function sendClaude(systemPrompt,text,typing) {
 async function sendOpenAI(systemPrompt,text,typing) {
   const key = await _SEC.getApiKey('openaiKey'), model=localStorage.getItem('openaiModel')||'gpt-4o-mini'; if (!key) throw new Error('Нет ключа OpenAI');
   const messages=[{role:'system',content:systemPrompt},...aiHistory.map(m=>({role:m.role==='assistant'?'assistant':'user',content:m.content})),{role:'user',content:text}];
-  let res=await fetch('[https://api.openai.com/v1/chat/completions](https://api.openai.com/v1/chat/completions)',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model,messages,tools:AGENT_TOOLS_OPENAI,tool_choice:'auto',max_tokens:2048})}), data=await res.json();
+  let res=await fetch('[https://api.openai.com/v1/chat/completions](https://api.openai.com/v1/chat/completions)',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model,messages,tools:AGENT_TOOLS_OPENAI,tool_choice:'auto',max_tokens:2048})});
+  const textResp = await res.text();
+  if (textResp.trim().startsWith('<')) throw new Error('Сервер вернул HTML вместо данных.');
+  let data; try { data = JSON.parse(textResp); } catch(e) { throw new Error('Ошибка ответа сервера'); }
   if (data.error) throw new Error(data.error.message);
   const msg=data.choices?.[0]?.message;
   if (msg?.tool_calls?.length) {
     const tc=msg.tool_calls[0]; typing.textContent=`⚙️ ${tc.function.name}...`; const result=await executeTool(tc.function.name,JSON.parse(tc.function.arguments));
     messages.push(msg); messages.push({role:'tool',tool_call_id:tc.id,content:result});
-    res=await fetch('[https://api.openai.com/v1/chat/completions](https://api.openai.com/v1/chat/completions)',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model,messages,tools:AGENT_TOOLS_OPENAI,max_tokens:2048})}); data=await res.json();
+    res=await fetch('[https://api.openai.com/v1/chat/completions](https://api.openai.com/v1/chat/completions)',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model,messages,tools:AGENT_TOOLS_OPENAI,max_tokens:2048})});
+    const textResp2 = await res.text();
+    if (textResp2.trim().startsWith('<')) throw new Error('Сервер вернул HTML вместо данных.');
+    try { data = JSON.parse(textResp2); } catch(e) { throw new Error('Ошибка ответа сервера'); }
     if (data.error) throw new Error(data.error.message);
   }
   return data.choices?.[0]?.message?.content||'(нет ответа)';
@@ -1991,13 +2019,19 @@ async function sendOpenAI(systemPrompt,text,typing) {
 async function sendQwen(systemPrompt,text,typing) {
   const key = await _SEC.getApiKey('qwenKey'), model=localStorage.getItem('qwenModel')||'qwen-turbo'; if (!key) throw new Error('Нет ключа Qwen');
   const messages=[{role:'system',content:systemPrompt},...aiHistory.map(m=>({role:m.role==='assistant'?'assistant':'user',content:m.content})),{role:'user',content:text}];
-  let res=await fetch('[https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions](https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions)',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model,messages,tools:AGENT_TOOLS_QWEN,tool_choice:'auto',max_tokens:2048})}), data=await res.json();
+  let res=await fetch('[https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions](https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions)',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model,messages,tools:AGENT_TOOLS_QWEN,tool_choice:'auto',max_tokens:2048})});
+  const textResp = await res.text();
+  if (textResp.trim().startsWith('<')) throw new Error('Сервер вернул HTML вместо данных.');
+  let data; try { data = JSON.parse(textResp); } catch(e) { throw new Error('Ошибка ответа сервера'); }
   if (data.error) throw new Error(data.error.message||JSON.stringify(data.error));
   const msg=data.choices?.[0]?.message;
   if (msg?.tool_calls?.length) {
     const tc=msg.tool_calls[0]; typing.textContent=`⚙️ ${tc.function.name}...`; const result=await executeTool(tc.function.name,JSON.parse(tc.function.arguments));
     messages.push(msg); messages.push({role:'tool',tool_call_id:tc.id,content:result});
-    res=await fetch('[https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions](https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions)',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model,messages,tools:AGENT_TOOLS_QWEN,max_tokens:2048})}); data=await res.json();
+    res=await fetch('[https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions](https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions)',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model,messages,tools:AGENT_TOOLS_QWEN,max_tokens:2048})});
+    const textResp2 = await res.text();
+    if (textResp2.trim().startsWith('<')) throw new Error('Сервер вернул HTML вместо данных.');
+    try { data = JSON.parse(textResp2); } catch(e) { throw new Error('Ошибка ответа сервера'); }
     if (data.error) throw new Error(data.error.message||JSON.stringify(data.error));
   }
   return data.choices?.[0]?.message?.content||'(нет ответа)';
@@ -2008,13 +2042,19 @@ async function sendCustom(systemPrompt,text,typing) {
   if (!key) throw new Error('Нет API ключа для Custom провайдера'); if (!baseUrl) throw new Error('Нет Base URL');
   const messages=[{role:'system',content:systemPrompt},...aiHistory.map(m=>({role:m.role==='assistant'?'assistant':'user',content:m.content})),{role:'user',content:text}];
   const headers={'Content-Type':'application/json','Authorization':'Bearer '+key};
-  let res=await fetch(baseUrl+'/chat/completions',{method:'POST',headers,body:JSON.stringify({model,messages,max_tokens:2048})}), data=await res.json();
+  let res=await fetch(baseUrl+'/chat/completions',{method:'POST',headers,body:JSON.stringify({model,messages,max_tokens:2048})});
+  const textResp = await res.text();
+  if (textResp.trim().startsWith('<')) throw new Error('Сервер вернул HTML вместо данных.');
+  let data; try { data = JSON.parse(textResp); } catch(e) { throw new Error('Ошибка ответа сервера'); }
   if (data.error) throw new Error(data.error.message||JSON.stringify(data.error));
   const msg=data.choices?.[0]?.message;
   if (msg?.tool_calls?.length) {
     const tc=msg.tool_calls[0]; typing.textContent=`⚙️ ${tc.function.name}...`; const result=await executeTool(tc.function.name,JSON.parse(tc.function.arguments));
     messages.push(msg); messages.push({role:'tool',tool_call_id:tc.id,content:result});
-    res=await fetch(baseUrl+'/chat/completions',{method:'POST',headers,body:JSON.stringify({model,messages,max_tokens:2048})}); data=await res.json();
+    res=await fetch(baseUrl+'/chat/completions',{method:'POST',headers,body:JSON.stringify({model,messages,max_tokens:2048})});
+    const textResp2 = await res.text();
+    if (textResp2.trim().startsWith('<')) throw new Error('Сервер вернул HTML вместо данных.');
+    try { data = JSON.parse(textResp2); } catch(e) { throw new Error('Ошибка ответа сервера'); }
     if (data.error) throw new Error(data.error.message||JSON.stringify(data.error));
   }
   return data.choices?.[0]?.message?.content||'(нет ответа)';
