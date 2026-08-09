@@ -836,7 +836,7 @@
 
       <div id="aiMessages" class="ai-messages"></div>
       
-      <!-- ИСПРАВЛЕНО: Отступ снизу увеличен до 150px, чтобы поле ввода не закрывало текст -->
+      <!-- Отступ снизу увеличен до 150px, чтобы поле ввода не закрывало текст -->
       <div style="height:150px;"></div> 
     </div>
 
@@ -908,7 +908,7 @@
     </div>
   </div>
 
-  <!-- ЭКРАН СПРАВОЧНИКА АДРЕСОВ -->
+  <!-- ЭКРАН НАСТРОЕК ЦЕН (СПРАВОЧНИК) -->
   <div class="prices-screen" id="pricesScreen">
     <div class="prices-topbar">
       <button class="back-btn" onclick="closePricesScreen()">‹</button>
@@ -1646,8 +1646,53 @@
         let raw = data.choices[0].message.content.trim(); raw = raw.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/, '');
         let parsed = JSON.parse(raw); jsonString = JSON.stringify(parsed.orders || []);
       }
+      
       const parsedOrders = JSON.parse(jsonString);
-      waEntries = parsedOrders.map(o => ({ point: o.point, amount: Number(o.amount) || 300, address: o.address, type: o.type === 'under' ? 'до подъезда' : 'до квартиры', msgTime: o.msgTime || '' }));
+      const customAddrsLocal = loadCustomAddresses(); // Берем базу локально
+      
+      waEntries = (parsedOrders.orders || parsedOrders).map(o => {
+        const pt = (o.point || '').toUpperCase();
+        const cleanAddr = (o.address || '').toLowerCase().trim();
+        
+        // 1. Ищем совпадение в вашем Справочнике из Firebase
+        const found = customAddrsLocal.find(ca => 
+          cleanAddr.includes(ca.addr.toLowerCase()) || 
+          ca.addr.toLowerCase().includes(cleanAddr)
+        );
+        
+        let isFlat = false;
+        let fixedPrice = null;
+        
+        if (found) {
+          // Если адрес найден в базе — берем тип и цену оттуда строго!
+          isFlat = found.type === 'flat';
+          if (found.price && found.price > 0) fixedPrice = found.price;
+        } else {
+          // Если в базе нет — определяем по старинке (ключевые слова или вердикт ИИ)
+          isFlat = o.type === 'flat' || 
+                   String(o.type).toLowerCase().includes('квард') || 
+                   String(o.address).toLowerCase().includes('кв');
+        }
+        
+        // 2. Считаем сумму
+        let amt = 300;
+        if (fixedPrice !== null) {
+          amt = fixedPrice;
+        } else if (pt.includes('ALLEY')) {
+          amt = isFlat ? 900 : 600;
+        } else {
+          amt = isFlat ? 300 : 150;
+        }
+
+        return {
+          point: o.point || 'F1',
+          amount: amt,
+          address: o.address || '',
+          type: found?.type === 'other' ? 'другое' : (isFlat ? 'до квартиры' : 'до подъезда'),
+          msgTime: o.msgTime || ''
+        };
+      });
+
       renderWAResult();
     } catch (e) { window.showToast('Ошибка парсера: ' + e.message, 'error'); }
     btn.textContent = '🤖 Разобрать'; btn.disabled = false;
@@ -1894,7 +1939,6 @@ async function executeTool(name, args) {
   return '❌ Неизвестный инструмент: '+name;
 }
 
-// ИСПРАВЛЕННАЯ ФУНКЦИЯ (ПЛАВНЫЙ СКРОЛЛ)
 function appendAiMsg(role, text) {
   const el = document.getElementById('aiMessages');
   const div = document.createElement('div');
@@ -1902,7 +1946,6 @@ function appendAiMsg(role, text) {
   div.textContent = text;
   el.appendChild(div);
   
-  // Прокручиваем всю страницу в самый низ
   setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 50);
   return div;
 }
