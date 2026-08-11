@@ -38,7 +38,7 @@ jobs:
             echo 'ERROR: inline style block remains in _site/index.html'
             exit 1
           fi
-          if grep -Eq '<script[^>]+src=["'"'][^"'"']*ai_parser\.js' _site/index.html; then
+          if grep -q 'ai_parser.js' _site/index.html; then
             echo 'ERROR: AI parser is directly referenced by initial HTML'
             exit 1
           fi
