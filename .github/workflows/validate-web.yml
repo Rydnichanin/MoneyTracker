@@ -1,6 +1,20 @@
 name: Validate optimized web build
 
 on:
+  push:
+    branches:
+      - 'perf/startup-optimization'
+    paths:
+      - 'index.html'
+      - 'auth.html'
+      - 'style.css'
+      - 'sw.js'
+      - 'ai_parser.js'
+      - 'manifest.json'
+      - 'icon.png'
+      - 'js/**'
+      - 'scripts/**'
+      - '.github/workflows/validate-web.yml'
   pull_request:
     paths:
       - 'index.html'
