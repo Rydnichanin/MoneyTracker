@@ -28,6 +28,7 @@ def patch_priority_loading(body: str) -> str:
       allTx = todayTx.slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
       window.allTx = allTx;
       currentRangeCache.set(cacheKey(todayForPriority, todayForPriority), allTx.slice());
+      window.mtStartupProfiler?.stamp('TODAY_RENDER_READY', `records=${allTx.length}`);
       debouncedRender();
     };
 
@@ -42,7 +43,9 @@ def patch_priority_loading(body: str) -> str:
       const constraints = [fbMethods.where("date", ">=", from)];
       if (to) constraints.push(fbMethods.where("date", "<=", to));
       constraints.push(fbMethods.orderBy("date", "desc"));
+      window.mtStartupProfiler?.stamp('HISTORY_QUERY_START', `${from}..${to || ''}`);
       const snap = await fbMethods.getDocs(fbMethods.query(txRef, ...constraints));
+      window.mtStartupProfiler?.stamp('HISTORY_QUERY_END');
       const requested = [];
       snap.forEach(d => requested.push({id:d.id, ...d.data()}));
       currentRangeCache.set(key, requested.slice());
@@ -54,17 +57,18 @@ def patch_priority_loading(body: str) -> str:
     const todayForPriority = getToday();
     const todayQuery = fbMethods.query(txRef, fbMethods.where("date", "==", todayForPriority), fbMethods.orderBy("date", "desc"));
 
+    window.mtStartupProfiler?.stamp('TODAY_QUERY_START', todayForPriority);
     // Only today's listener is active during startup. No full-history request is made.
     fbMethods.onSnapshot(todayQuery, (snap) => {
       todayTx = [];
       snap.forEach(d => todayTx.push({id:d.id,...d.data()}));
+      window.mtStartupProfiler?.stamp('TODAY_SNAPSHOT_RECEIVED', `records=${todayTx.length}`);
       rebuildToday();
       setRange('today');
       if (document.getElementById('historySheet')?.classList.contains('open')) renderHistorySheet();
     });'''
     body = body.replace(marker, replacement)
 
-    # Replace filter-mode rendering so every non-today period explicitly requests only its range.
     old = '''      } else { f.value=""; t.value=""; dateRow.style.display='none'; }
       render();'''
     new = '''      } else { f.value=""; t.value=""; dateRow.style.display='none'; }
@@ -86,8 +90,6 @@ def patch_priority_loading(body: str) -> str:
       }
 
       if (mode === 'all') {
-        // Full history is deliberately opt-in. The query runs only after the
-        // user explicitly selects "all" in the filter.
         loadDateRange('0000-01-01', '9999-12-31', false).then(() => render()).catch(e => {
           console.warn('[Priority] Full history load failed:', e.message);
           render();
@@ -152,6 +154,10 @@ def main() -> None:
     if loader.exists():
         shutil.copy2(loader, OUT/"js"/"ai-loader.js")
         index=index.replace("</head>",'  <script defer src="./js/ai-loader.js"></script>\n</head>',1)
+    profiler=ROOT/"js"/"startup-profiler.js"
+    if profiler.exists():
+        shutil.copy2(profiler, OUT/"js"/"startup-profiler.js")
+        index=index.replace("</head>",'  <script defer src="./js/startup-profiler.js"></script>\n</head>',1)
     for name in ["auth.html","manifest.json","sw.js","ai_parser.js","icon.png"]:
         src=ROOT/name
         if src.exists(): shutil.copy2(src, OUT/name)
