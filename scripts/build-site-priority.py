@@ -13,14 +13,8 @@ def extract_blocks(text: str, pattern: str):
 
 
 def patch_firebase_module(body: str) -> str:
-    body = body.replace(
-        "collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc, setDoc, arrayUnion, getDoc, initializeFirestore",
-        "collection, addDoc, onSnapshot, query, where, orderBy, getDocs, deleteDoc, doc, updateDoc, setDoc, arrayUnion, getDoc, initializeFirestore",
-    )
-    body = body.replace(
-        "window.fbMethods = { collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc, setDoc, arrayUnion, getDoc };",
-        "window.fbMethods = { collection, addDoc, onSnapshot, query, where, orderBy, getDocs, deleteDoc, doc, updateDoc, setDoc, arrayUnion, getDoc };",
-    )
+    body = body.replace("collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc, setDoc, arrayUnion, getDoc, initializeFirestore", "collection, addDoc, onSnapshot, query, where, orderBy, getDocs, deleteDoc, doc, updateDoc, setDoc, arrayUnion, getDoc, initializeFirestore")
+    body = body.replace("window.fbMethods = { collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc, setDoc, arrayUnion, getDoc };", "window.fbMethods = { collection, addDoc, onSnapshot, query, where, orderBy, getDocs, deleteDoc, doc, updateDoc, setDoc, arrayUnion, getDoc };")
     return body
 
 
@@ -70,15 +64,18 @@ def patch_priority_loading(body: str) -> str:
     };
 
     const todayForPriority = getToday();
-    const todayQuery = fbMethods.query(
-      txRef,
-      fbMethods.where("date", "==", todayForPriority),
-      fbMethods.orderBy("date", "desc")
-    );
+    const todayQuery = fbMethods.query(txRef, fbMethods.where("date", "==", todayForPriority), fbMethods.orderBy("date", "desc"));
 
     fbMethods.onSnapshot(todayQuery, (snap) => {
-      allTx = [];
-      snap.forEach(d=>allTx.push({id:d.id,...d.data()}));
+      const todayTx = [];
+      snap.forEach(d=>todayTx.push({id:d.id,...d.data()}));
+      if (fullHistoryLoaded) {
+        // Keep the live today listener without throwing away older history.
+        const older = allTx.filter(t => t.date !== todayForPriority);
+        allTx = [...todayTx, ...older];
+      } else {
+        allTx = todayTx;
+      }
       window.allTx = allTx;
       setRange('today');
       scheduleFullHistory();
