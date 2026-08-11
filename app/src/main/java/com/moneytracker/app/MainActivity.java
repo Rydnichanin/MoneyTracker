@@ -66,7 +66,7 @@ public class MainActivity extends Activity {
             @Override
             public void onGeolocationPermissionsShowPrompt(String origin,
                     GeolocationPermissions.Callback callback) {
-                if (origin != null && origin.startsWith(WEB_ORIGIN)) {
+                if (WEB_ORIGIN.equals(origin)) {
                     callback.invoke(origin, true, false);
                 } else {
                     callback.invoke(origin, false, false);
