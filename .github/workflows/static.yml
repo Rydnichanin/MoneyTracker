@@ -11,6 +11,7 @@ on:
       - 'sw.js'
       - 'ai_parser.js'
       - 'icon.png'
+      - 'js/**'
       - 'scripts/**'
       - '.github/workflows/static.yml'
   workflow_dispatch:
