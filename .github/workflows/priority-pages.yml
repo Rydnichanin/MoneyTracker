@@ -31,16 +31,22 @@ jobs:
       - name: Build with priority Firebase loading
         run: python3 scripts/build-site-priority.py
 
-      - name: Verify priority query is in production bundle
+      - name: Verify on-demand Firebase loading in production bundle
         run: |
           set -euo pipefail
           grep -q 'where("date", "==", todayForPriority)' _site/js/inline-*.js
-          grep -q 'loadFullHistory' _site/js/inline-*.js
+          grep -q 'loadDateRange' _site/js/inline-*.js
+          grep -q 'mode === .yesterday.' _site/js/inline-*.js
+          grep -q 'mode === .all. || mode === .custom.' _site/js/inline-*.js
+          if grep -q 'requestIdleCallback.*loadFullHistory\|scheduleFullHistory' _site/js/inline-*.js; then
+            echo 'ERROR: full history is still scheduled automatically at startup'
+            exit 1
+          fi
           if grep -q 'ai_parser.js' _site/index.html; then
             echo 'ERROR: AI parser is still referenced from initial HTML'
             exit 1
           fi
-          echo 'Priority Firebase loading verified.'
+          echo 'On-demand Firebase history loading verified.'
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
