@@ -11,6 +11,7 @@ on:
       - 'sw.js'
       - 'ai_parser.js'
       - 'icon.png'
+      - 'scripts/**'
       - '.github/workflows/static.yml'
   workflow_dispatch:
 
@@ -33,12 +34,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Prepare web artifact
-        run: |
-          set -e
-          rm -rf _site
-          mkdir -p _site
-          cp index.html auth.html manifest.json style.css sw.js ai_parser.js icon.png _site/
+      - name: Build optimized web artifact
+        run: python3 scripts/build-site.py
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
