@@ -11,6 +11,15 @@ on:
       - 'gradle.properties'
       - 'gradlew'
       - '.github/workflows/build.yml'
+  pull_request:
+    paths:
+      - 'app/**'
+      - 'gradle/**'
+      - 'build.gradle'
+      - 'settings.gradle'
+      - 'gradle.properties'
+      - 'gradlew'
+      - '.github/workflows/build.yml'
   workflow_dispatch:
 
 jobs:
