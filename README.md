@@ -1,63 +1,61 @@
-# Учёт Курьера Pro — Android APK
+# Учёт Курьера Pro
 
-## Что нужно сделать один раз
+MoneyTracker — web/PWA-приложение для учёта доходов и расходов курьера, с Firebase, AI-парсером и Android WebView-обёрткой.
 
-### 1. Исправь URL в MainActivity.java
-Открой файл:
-```
-app/src/main/java/com/moneytracker/app/MainActivity.java
-```
-Найди строку:
-```java
-private static final String APP_URL = "https://ТВОЙ_ЛОГИН.github.io/MoneyTracker/";
-```
-Замени `ТВОЙ_ЛОГИН` на свой логин GitHub.
+## Web-приложение
 
-### 2. Скачай gradle-wrapper.jar
-Это нужно сделать один раз. Скачай файл по ссылке:
-https://github.com/gradle/gradle/raw/v8.1.1/gradle/wrapper/gradle-wrapper.jar
+Production URL:
 
-И положи его в папку: `gradle/wrapper/gradle-wrapper.jar`
+`https://rydnichanin.github.io/MoneyTracker/`
 
-### 3. Загрузи всё в GitHub репозиторий MoneyTracker
+GitHub Pages публикует только собранный web-артефакт `_site`.
 
-Загрузи все файлы из этой папки в репозиторий.
-Можно через GitHub.com → Upload files.
+### Быстрый старт
 
-**Важно:** index.html тоже должен лежать в корне репозитория.
+Основной исходник сайта находится в `index.html`. Большой inline CSS и inline JavaScript не нужно вручную переносить: `scripts/build-site.py` делает это во время Pages build.
 
-### 4. GitHub Actions соберёт APK автоматически
+AI-парсер (`ai_parser.js`) не блокирует первый экран. Он загружается отдельным `js/ai-loader.js` после первичного отображения/в idle.
 
-После загрузки файлов:
-- Зайди на github.com → твой репозиторий MoneyTracker
-- Нажми вкладку **Actions**
-- Увидишь процесс сборки (занимает 3-5 минут)
-- Когда появится зелёная галочка — нажми на сборку
-- Внизу найди **Artifacts** → скачай **MoneyTracker-APK**
+### GitHub Pages
 
-### 5. Установи APK на телефон
+Изменения web-файлов запускают `.github/workflows/static.yml`.
+Workflow:
 
-- Скачай APK на телефон
-- Разреши установку из неизвестных источников
-- Установи
-- При первом запуске разреши доступ к уведомлениям
+1. собирает `_site` через `scripts/build-site.py`;
+2. проверяет/готовит production-артефакт;
+3. публикует только `_site` в GitHub Pages.
 
-## Как работает автозапись
+Android-папки и Gradle-файлы в web-артефакт не попадают.
 
-После установки приложение будет читать уведомления WhatsApp и Kaspi.
-Твой HTML (index.html) должен содержать обработчик:
+## Android
 
-```javascript
-window.onAndroidNotification = function(app, title, text) {
-    // app = "whatsapp" или "kaspi"
-    // title = заголовок уведомления  
-    // text = текст уведомления
-    console.log("Уведомление от", app, ":", text);
-    // Здесь ИИ будет парсить текст и добавлять транзакцию
-};
-```
+Android WebView загружает:
 
-## Обновление приложения
+`https://rydnichanin.github.io/MoneyTracker/index.html`
 
-- Обновить HTML → просто загрузи новый index.html на GitHub, APK трогать не нужно
-- Обновить APK → загрузи изменённые Java файлы, Actions пересоберёт автоматически
+APK собирается workflow `.github/workflows/build.yml` только при изменениях Android/Gradle-файлов.
+
+Release-сборка использует R8 и resource shrinking.
+
+### Gradle
+
+Wrapper configuration использует Gradle 8.2. GitHub Actions устанавливает Gradle 8.2 перед сборкой.
+
+Примечание: `gradle/wrapper/gradle-wrapper.jar` сейчас отсутствует в репозитории, поэтому CI использует установленный через `gradle/actions/setup-gradle` Gradle, а не `./gradlew`.
+
+## Android-функции
+
+- WebView + JavaScript bridge;
+- GPS/маршрут через `LocationService`;
+- обработка уведомлений через `NotificationService`;
+- deep link `moneytracker://auth`.
+
+## Обновление
+
+### Только сайт
+
+Изменить web-файлы и отправить commit в `main`. APK пересобираться не будет.
+
+### Android
+
+Изменить Android/Gradle-файлы. GitHub Actions автоматически соберёт Release APK и загрузит его как artifact `MoneyTracker-APK`.
