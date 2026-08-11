@@ -10,6 +10,7 @@ on:
       - 'ai_parser.js'
       - 'manifest.json'
       - 'icon.png'
+      - 'js/**'
       - 'scripts/**'
       - '.github/workflows/validate-web.yml'
   workflow_dispatch:
@@ -33,6 +34,7 @@ jobs:
           test -s _site/index.html
           test -s _site/style.css
           test -s _site/sw.js
+          test -s _site/js/ai-loader.js
           if grep -qi '<style' _site/index.html; then
             echo 'ERROR: inline style block remains in _site/index.html'
             exit 1
@@ -41,5 +43,13 @@ jobs:
             echo 'ERROR: AI parser is still referenced from the initial HTML'
             exit 1
           fi
-          test "$(find _site/js -type f -name '*.js' | wc -l)" -ge 1
+          if ! grep -q 'ai_parser.js' _site/js/ai-loader.js; then
+            echo 'ERROR: external AI loader does not reference the parser'
+            exit 1
+          fi
+          if ! grep -q 'ai-loader.js' _site/index.html; then
+            echo 'ERROR: AI loader is not included in the initial HTML'
+            exit 1
+          fi
+          test "$(find _site/js -type f -name '*.js' | wc -l)" -ge 2
           echo 'Optimized artifact is valid'
