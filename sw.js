@@ -1,5 +1,5 @@
 // Service Worker — Учёт Курьера Pro
-const CACHE_VERSION = 'v5-perf';
+const CACHE_VERSION = 'v6-startup';
 const CACHE_NAME = 'courier-' + CACHE_VERSION;
 const RUNTIME_CACHE = 'courier-runtime-' + CACHE_VERSION;
 const PRECACHE = [
@@ -9,7 +9,6 @@ const PRECACHE = [
   './manifest.json',
   './style.css',
   './sw.js',
-  './ai_parser.js',
   './icon.png'
 ];
 const CACHEABLE_ORIGINS = ['https://www.gstatic.com'];
