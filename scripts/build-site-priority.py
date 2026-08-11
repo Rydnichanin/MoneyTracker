@@ -14,6 +14,19 @@ def patch_firebase_module(body: str) -> str:
     body = body.replace("window.fbMethods = { collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc, setDoc, arrayUnion, getDoc };", "window.fbMethods = { collection, addDoc, onSnapshot, query, where, orderBy, getDocs, deleteDoc, doc, updateDoc, setDoc, arrayUnion, getDoc };")
     return body
 
+def patch_startup(body: str) -> str:
+    old = '''        setTimeout(() => {
+          window.dispatchEvent(new Event("fbReady"));
+          // Загружаем адреса из Firebase сразу после авторизации
+          if (window.loadCustomAddressesFromFirebase) window.loadCustomAddressesFromFirebase();
+        }, 50);'''
+    new = '''        // Auth остаётся первым барьером безопасности: все данные запрашиваются только после UID.
+        // Не блокируем старт вторичным справочником адресов — он загружается только при открытии нужного раздела.
+        window.dispatchEvent(new Event("fbReady"));'''
+    if old in body:
+        body = body.replace(old, new, 1)
+    return body
+
 def patch_priority_loading(body: str) -> str:
     marker = '    fbMethods.onSnapshot(fbMethods.query(txRef, fbMethods.orderBy("date","desc")), (snap) => {'
     if marker not in body: return body
@@ -81,6 +94,7 @@ def main() -> None:
         if re.search(r"\bsrc\s*=",attrs,flags=re.I): continue
         script_no+=1; is_module=bool(re.search(r"\btype\s*=\s*[\"']module[\"']",attrs,flags=re.I))
         if is_module: body=patch_firebase_module(body)
+        body=patch_startup(body)
         body=patch_priority_loading(body); name=f"inline-{script_no:02d}.js"
         body=body.replace("'/sw.js'","'../sw.js'").replace('"/sw.js"','"../sw.js"').replace("'/manifest.json'","'../manifest.json'").replace('"/manifest.json"','"../manifest.json"')
         (OUT/"js").mkdir(exist_ok=True); (OUT/"js"/name).write_text(body.strip()+"\n",encoding="utf-8")
@@ -103,5 +117,5 @@ def main() -> None:
         src=ROOT/name
         if src.exists(): shutil.copy2(src,OUT/name)
     (OUT/"index.html").write_text(index,encoding="utf-8")
-    print(f"Built {OUT}: {script_no} scripts, today-only startup and on-demand history enabled.")
+    print(f"Built {OUT}: {script_no} scripts, Auth-first + today-only startup + on-demand history enabled.")
 if __name__=="__main__": main()
