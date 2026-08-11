@@ -1,0 +1,55 @@
+name: Priority Firebase Pages deploy
+
+on:
+  workflow_run:
+    workflows: ["Deploy static content to Pages"]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages-priority"
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout deployed commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.sha || github.event.workflow_run.head_sha }}
+
+      - name: Build with priority Firebase loading
+        run: python3 scripts/build-site-priority.py
+
+      - name: Verify priority query is in production bundle
+        run: |
+          set -euo pipefail
+          grep -q 'where("date", "==", todayForPriority)' _site/js/inline-*.js
+          grep -q 'loadFullHistory' _site/js/inline-*.js
+          if grep -q 'ai_parser.js' _site/index.html; then
+            echo 'ERROR: AI parser is still referenced from initial HTML'
+            exit 1
+          fi
+          echo 'Priority Firebase loading verified.'
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '_site'
+
+      - name: Deploy priority artifact to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
