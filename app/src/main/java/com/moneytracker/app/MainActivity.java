@@ -18,61 +18,108 @@ import android.webkit.WebViewClient;
 
 public class MainActivity extends Activity {
 
-    private WebView webView;
     private static final int PERMISSION_REQUEST_CODE = 100;
+    private static final String WEB_ORIGIN = "https://rydnichanin.github.io";
+    private WebView webView;
+    private boolean receiverRegistered;
 
-    // Приемник данных из фонового GPS-сервиса
     private final BroadcastReceiver gpsReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            if (intent != null && intent.hasExtra("distance_km")) {
-                float distance = intent.getFloatExtra("distance_km", 0f);
-                webView.post(() -> webView.evaluateJavascript("updateDistance(" + distance + ");", null));
-            }
+            if (intent == null || !intent.hasExtra("distance_km") || webView == null) return;
+            float distance = intent.getFloatExtra("distance_km", 0f);
+            webView.post(() -> {
+                if (webView == null || !webView.isAttachedToWindow()) return;
+                String js = "if (typeof updateDistance === 'function') updateDistance(" + distance + ");";
+                webView.evaluateJavascript(js, null);
+            });
         }
     };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
 
-        webView = new WebView(this);
-        setContentView(webView);
+        webView = findViewById(R.id.webview);
+        configureWebView();
+        handleAuthIntent(getIntent());
 
-        WebSettings webSettings = webView.getSettings();
-        webSettings.setJavaScriptEnabled(true);
-        webSettings.setDomStorageEnabled(true);
-        webSettings.setGeolocationEnabled(true); // ← включаем геолокацию в WebView
+        webView.loadUrl("https://rydnichanin.github.io/MoneyTracker/index.html");
+        checkAndRequestPermissions();
+    }
 
-        // Регистрируем "мост" между Java и JS
-        webView.addJavascriptInterface(new WebAppInterface(), "AndroidBridge");
+    private void configureWebView() {
+        WebSettings settings = webView.getSettings();
+        settings.setJavaScriptEnabled(true);
+        settings.setDomStorageEnabled(true);
+        settings.setGeolocationEnabled(true);
+        settings.setDatabaseEnabled(true);
+        settings.setCacheMode(WebSettings.LOAD_DEFAULT);
+        settings.setMediaPlaybackRequiresUserGesture(true);
+        settings.setAllowFileAccess(false);
+        settings.setAllowContentAccess(false);
+
         webView.setWebViewClient(new WebViewClient());
-
-        // ↓ ГЛАВНОЕ ИСПРАВЛЕНИЕ: разрешаем GPS-запросы от JavaScript
+        webView.addJavascriptInterface(new WebAppInterface(), "AndroidBridge");
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
             public void onGeolocationPermissionsShowPrompt(String origin,
                     GeolocationPermissions.Callback callback) {
-                // Автоматически разрешаем геолокацию для нашего сайта
-                callback.invoke(origin, true, false);
+                if (origin != null && origin.startsWith(WEB_ORIGIN)) {
+                    callback.invoke(origin, true, false);
+                } else {
+                    callback.invoke(origin, false, false);
+                }
             }
         });
+    }
 
-        webView.loadUrl("https://rydnichanin.github.io/MoneyTracker/index.html");
+    private void handleAuthIntent(Intent intent) {
+        if (intent == null) return;
+        String authUrl = intent.getStringExtra("authUrl");
+        if (authUrl != null && webView != null) {
+            webView.post(() -> webView.evaluateJavascript(
+                    "if (typeof handleAndroidAuth === 'function') handleAndroidAuth(" +
+                            org.json.JSONObject.quote(authUrl) + ");", null));
+        }
+    }
 
-        checkAndRequestPermissions();
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleAuthIntent(intent);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        registerReceiver(gpsReceiver, new IntentFilter("GPS_UPDATE"), Context.RECEIVER_NOT_EXPORTED);
+        if (!receiverRegistered) {
+            registerReceiver(gpsReceiver, new IntentFilter("GPS_UPDATE"), Context.RECEIVER_NOT_EXPORTED);
+            receiverRegistered = true;
+        }
     }
 
     @Override
     protected void onPause() {
+        if (receiverRegistered) {
+            unregisterReceiver(gpsReceiver);
+            receiverRegistered = false;
+        }
         super.onPause();
-        unregisterReceiver(gpsReceiver);
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (webView != null) {
+            webView.loadUrl("about:blank");
+            webView.stopLoading();
+            webView.removeJavascriptInterface("AndroidBridge");
+            webView.destroy();
+            webView = null;
+        }
+        super.onDestroy();
     }
 
     public class WebAppInterface {
@@ -96,14 +143,13 @@ public class MainActivity extends Activity {
     }
 
     private void checkAndRequestPermissions() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(new String[]{
-                        Manifest.permission.ACCESS_FINE_LOCATION,
-                        Manifest.permission.ACCESS_COARSE_LOCATION,
-                        Manifest.permission.POST_NOTIFICATIONS
-                }, PERMISSION_REQUEST_CODE);
-            }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
+                checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION,
+                    Manifest.permission.POST_NOTIFICATIONS
+            }, PERMISSION_REQUEST_CODE);
         }
     }
 }
