@@ -29,11 +29,17 @@ jobs:
 
       - name: Validate artifact
         run: |
-          set -e
+          set -euo pipefail
           test -s _site/index.html
           test -s _site/style.css
           test -s _site/sw.js
-          ! grep -qi '<style' _site/index.html
-          ! grep -Eq 'src=["'"']/ai_parser\.js' _site/index.html
+          if grep -qi '<style' _site/index.html; then
+            echo 'ERROR: inline style block remains in _site/index.html'
+            exit 1
+          fi
+          if grep -q 'ai_parser.js' _site/index.html; then
+            echo 'ERROR: AI parser is still referenced from the initial HTML'
+            exit 1
+          fi
           test "$(find _site/js -type f -name '*.js' | wc -l)" -ge 1
-          echo "Optimized artifact is valid"
+          echo 'Optimized artifact is valid'
