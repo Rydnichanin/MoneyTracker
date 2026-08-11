@@ -1,0 +1,52 @@
+name: Validate optimized web build
+
+on:
+  pull_request:
+    paths:
+      - 'index.html'
+      - 'auth.html'
+      - 'style.css'
+      - 'sw.js'
+      - 'ai_parser.js'
+      - 'manifest.json'
+      - 'icon.png'
+      - 'scripts/**'
+      - '.github/workflows/validate-web.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build optimized site
+        run: python3 scripts/build-site.py
+
+      - name: Validate artifact
+        run: |
+          set -euo pipefail
+          test -s _site/index.html
+          test -s _site/style.css
+          test -s _site/sw.js
+          test -s _site/js/ai-loader.js
+          if grep -qi '<style' _site/index.html; then
+            echo 'ERROR: inline style block remains in _site/index.html'
+            exit 1
+          fi
+          if grep -Eq '<script[^>]+src=["'"'][^"'"']*ai_parser\.js' _site/index.html; then
+            echo 'ERROR: AI parser is directly referenced by initial HTML'
+            exit 1
+          fi
+          if grep -q 'ai_parser.js' _site/js/ai-loader.js; then
+            echo 'AI parser is lazy-loaded by ai-loader.js'
+          else
+            echo 'ERROR: AI loader does not contain the parser URL'
+            exit 1
+          fi
+          test "$(find _site/js -type f -name '*.js' | wc -l)" -ge 2
+          echo 'Optimized artifact is valid'
