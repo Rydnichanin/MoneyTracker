@@ -2,7 +2,7 @@ name: Priority Firebase Pages deploy
 
 on:
   push:
-    branches: [main]
+    branches: [Test]
   workflow_dispatch:
 
 permissions:
@@ -11,7 +11,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages-priority"
+  group: "pages-priority-test"
   cancel-in-progress: true
 
 jobs:
@@ -21,7 +21,7 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout current main
+      - name: Checkout current Test branch
         uses: actions/checkout@v4
 
       - name: Build with priority Firebase loading
@@ -51,6 +51,6 @@ jobs:
         with:
           path: '_site'
 
-      - name: Deploy priority artifact to GitHub Pages
+      - name: Deploy Test artifact to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
