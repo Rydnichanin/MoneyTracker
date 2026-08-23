@@ -15,7 +15,7 @@
       const script = document.createElement('script');
       script.src = './ai_parser.js?v=3';
       script.async = true;
-      script.dataset.moneyTrackerAi = '1';
+      script.dataset.moneytrackerAi = '1';
       script.onload = () => resolve();
       script.onerror = () => {
         promise = null;
@@ -41,7 +41,7 @@
       const script = document.createElement('script');
       script.src = './js/address-parser.js?v=1';
       script.async = true;
-      script.dataset.moneyTrackerAddressParser = '1';
+      script.dataset.moneytrackerAddressParser = '1';
       script.onload = () => resolve();
       script.onerror = () => reject(new Error('Address parser failed to load'));
       document.head.appendChild(script);
