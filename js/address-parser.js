@@ -156,6 +156,8 @@
       let localAddresses = [];
       try { localAddresses = JSON.parse(localStorage.getItem('waCustomAddrs') || '[]'); } catch (_) {}
       const sources = [...firebaseAddresses, ...localAddresses];
+      const originalLocalAddresses = localStorage.getItem('waCustomAddrs');
+      const temporaryGarageEntries = [];
 
       const blocks = originalText.split(/(\[\d+\.\d+,\s*\d+:\d+\])/);
       for (let i = 1; i < blocks.length; i += 2) {
@@ -168,6 +170,8 @@
           const address = stripPhone(pointMatch[2]).trim();
           if (address && !isPhone(address)) {
             const saved = findSaved(address, sources);
+            const detected = saved?.type ? typeFromSaved(saved.type) : detectType(address);
+            if (detected === 'other') temporaryGarageEntries.push({ addr: address, type: 'other', price: Number(saved?.price) || 0 });
             lines[0] = pointMatch[1] + transformAddress(address, saved);
           }
         }
@@ -177,6 +181,8 @@
           if (!candidate || isPhone(candidate)) continue;
           if (/^(через|забрать|звонить|код|готов|не|да$|нет$)/i.test(candidate)) continue;
           const saved = findSaved(candidate, sources);
+          const detected = saved?.type ? typeFromSaved(saved.type) : detectType(candidate);
+          if (detected === 'other') temporaryGarageEntries.push({ addr: candidate, type: 'other', price: Number(saved?.price) || 0 });
           lines[j] = transformAddress(candidate, saved);
           break;
         }
@@ -191,6 +197,8 @@
           const address = stripPhone(m[2]).trim();
           if (!address || isPhone(address)) continue;
           const saved = findSaved(address, sources);
+          const detected = saved?.type ? typeFromSaved(saved.type) : detectType(address);
+          if (detected === 'other') temporaryGarageEntries.push({ addr: address, type: 'other', price: Number(saved?.price) || 0 });
           lines[j] = m[1] + transformAddress(address, saved);
         }
         input.value = lines.join('\n');
@@ -199,8 +207,20 @@
       }
 
       try {
+        if (temporaryGarageEntries.length) {
+          let current = [];
+          try { current = JSON.parse(localStorage.getItem('waCustomAddrs') || '[]'); } catch (_) {}
+          const keys = new Set(current.map(x => cleanForMatch(x.addr || x.address)));
+          for (const item of temporaryGarageEntries) {
+            const key = cleanForMatch(item.addr);
+            if (!keys.has(key)) { current.push(item); keys.add(key); }
+          }
+          localStorage.setItem('waCustomAddrs', JSON.stringify(current));
+        }
         return await originalParseWA();
       } finally {
+        if (originalLocalAddresses === null) localStorage.removeItem('waCustomAddrs');
+        else localStorage.setItem('waCustomAddrs', originalLocalAddresses);
         input.value = originalText;
       }
     };
