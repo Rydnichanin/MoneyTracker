@@ -61,7 +61,6 @@
       out.push({ addr: String(addr), type: mapped, price: Number(price) || 0 });
     };
 
-    // 1. Dedicated Firebase address collection.
     try {
       const snap = await fbMethods.getDocs(fbMethods.collection(fbDB, 'users', fbUser.uid, 'addresses'));
       snap.forEach(d => {
@@ -72,7 +71,6 @@
       console.warn('Firebase address dictionary read skipped:', e);
     }
 
-    // 2. Possible address books saved inside settings.
     try {
       const snap = await fbMethods.getDocs(fbMethods.collection(fbDB, 'users', fbUser.uid, 'settings'));
       snap.forEach(d => {
@@ -90,7 +88,6 @@
       console.warn('Settings address book read skipped:', e);
     }
 
-    // 3. Existing transaction history in Firebase.
     try {
       const snap = await fbMethods.getDocs(fbMethods.collection(fbDB, 'users', fbUser.uid, 'transactions'));
       const seen = new Set(out.map(x => cleanForMatch(x.addr)));
@@ -128,16 +125,19 @@
 
     const normalized = normalize(address);
     if (type === 'under') {
-      if (/(?:^|[\s-])\d+\s*(?:пд?|под|подъ|подъезд)\b/i.test(normalized)) return address;
+      const threeWithWord = normalized.match(/^(\d+)\s*-\s*(\d+)\s*-\s*(\d+)\s*(?:пд?|под|подъ|подъезд)\b(.*)$/i);
+      if (threeWithWord) return `${threeWithWord[1]}-${threeWithWord[2]}-${threeWithWord[3]}п${threeWithWord[4]}`;
+      const three = normalized.match(/^(\d+)\s*-\s*(\d+)\s*-\s*(\d+)(.*)$/i);
+      if (three && /(?:пд?|под|подъ|подъезд)/i.test(three[4])) return `${three[1]}-${three[2]}-${three[3]}п${three[4].replace(/(?:пд?|под|подъ|подъезд)/i, '')}`;
+      const spacedThree = normalized.match(/^(\d+)\s*-\s*(\d+)\s+(\d+)\s*(?:пд?|под|подъ|подъезд)\b(.*)$/i);
+      if (spacedThree) return `${spacedThree[1]}-${spacedThree[2]}-${spacedThree[3]}п${spacedThree[4]}`;
       const two = normalized.match(/^(\d+)\s*-\s*(\d+)(.*)$/i);
       if (two) return `${two[1]}-${two[2]}п${two[3]}`;
-      const three = normalized.match(/^(\d+\s*-\s*\d+\s*-\s*)(\d+)(.*)$/i);
-      if (three) return `${three[1]}${three[2]}п${three[3]}`;
     }
     if (type === 'flat') {
       if (/\bквартир|\bкв\b/i.test(normalized)) return address;
-      const three = normalized.match(/^(\d+\s*-\s*\d+\s*-\s*)(\d+)(.*)$/i);
-      if (three) return `${three[1]}${three[2]}кв${three[3]}`;
+      const three = normalized.match(/^(\d+)\s*-\s*(\d+)\s*-\s*(\d+)(.*)$/i);
+      if (three) return `${three[1]}-${three[2]}-${three[3]}кв${three[4]}`;
     }
     return address;
   }
