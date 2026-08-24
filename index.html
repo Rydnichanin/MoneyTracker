@@ -2219,26 +2219,68 @@
         if (/\bгараж\b/i.test(a) || /\bгаражи\b/i.test(a) || /\bгаражный\b/i.test(a)) {
           addrType = 'other';
         }
+                // 4.2 ЯВНЫЙ ПОДЪЕЗД (поддержка п и пд)
         else if (
           /\bподъезд\b/i.test(a) || 
           /\bпод\b/i.test(a) || 
           /\bпо\b/i.test(a) || 
-          /\bпд\b/i.test(a) ||            // <--- Добавили проверку на "пд"
+          /\bпд\b/i.test(a) || 
           /\bп\.?п\.?\b/i.test(a) || 
           /\bп\b/i.test(a) || 
-          /(?:^|[-\s])\d+\s*(?:п|пд)\b/i.test(a) // <--- Ловит цифру перед "п" или "пд"
+          /(?:^|[-\s])\d+\s*(?:п|пд)\b/i.test(a)
         ) {
           addrType = 'under';
-  }
-        else if (/\bквартир[аыуе]?\b/i.test(a) || /\bкв\.?\s*\d+/i.test(a) || /\b\d+\s*кв\.?\b/i.test(a) || /\bкварт\.?\s*\d+/i.test(a)) {
+        }
+
+        // 4.3 ЯВНАЯ КВАРТИРА
+        else if (
+          /\bквартир[аыуе]?\b/i.test(a) || 
+          /\bкв\.?\s*\d+/i.test(a) || 
+          /\b\d+\s*кв\.?\b/i.test(a) || 
+          /\bкварт\.?\s*\d+/i.test(a)
+        ) {
           addrType = 'flat';
         }
-        else if (/последний\s+подъезд/i.test(a)) {
+
+        // 4.4 ПОСЛЕДНИЙ ПОДЪЕЗД
+        else if (
+          /последний\s+подъезд/i.test(a)
+        ) {
           addrType = 'under';
         }
-        else if (/(?:^|[-\s])\d+п$/i.test(a)) {
+
+        // 4.5 Формат с "п" или "пд" в конце (например, 2-27-2пд)
+        else if (
+          /(?:^|[-\s])\d+(?:п|пд)$/i.test(a)
+        ) {
           addrType = 'under';
         }
+
+        // 4.6 Двухтиповые адреса (12-23)
+        else if (/^\d+[а-яa-z]?\s*-\s*\d+$/.test(a)) {
+          const parts = a.split('-').map(x => x.trim());
+          if (parts.length === 2) {
+            const secondNum = Number(parts[1]);
+            if (Number.isFinite(secondNum) && secondNum >= 1 && secondNum <= 20) {
+              addrType = 'under';
+            } else {
+              addrType = 'flat';
+            }
+          }
+        }
+
+        // 4.7 Адрес с тремя частями (например, 11-7-2пд)
+        else {
+          const parts = a.split('-').map(x => x.trim());
+          if (parts.length >= 3) {
+            const last = parts[parts.length - 1];
+            // Ищем цифру, за которой идет "п" или "пд" (опционально с точкой)
+            if (/^\d+(?:п|пд)\.?$/i.test(last)) {
+              addrType = 'under';
+            }
+          }
+        }
+
         else if (/^\d+[а-яa-z]?\s*-\s*\d+$/.test(a)) {
           const parts = a.split('-').map(x => x.trim());
           if (parts.length === 2) {
