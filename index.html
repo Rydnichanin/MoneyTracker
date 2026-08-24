@@ -2219,9 +2219,17 @@
         if (/\bгараж\b/i.test(a) || /\bгаражи\b/i.test(a) || /\bгаражный\b/i.test(a)) {
           addrType = 'other';
         }
-        else if (/\bподъезд\b/i.test(a) || /\bпод\b/i.test(a) || /\bпо\b/i.test(a) || /\bп\.?п\.?\b/i.test(a) || /\bп\b/i.test(a) || /(?:^|[-\s])\d+\s*п\.?(?:$|[\s-])/i.test(a)) {
+        else if (
+          /\bподъезд\b/i.test(a) || 
+          /\bпод\b/i.test(a) || 
+          /\bпо\b/i.test(a) || 
+          /\bпд\b/i.test(a) ||            // <--- Добавили проверку на "пд"
+          /\bп\.?п\.?\b/i.test(a) || 
+          /\bп\b/i.test(a) || 
+          /(?:^|[-\s])\d+\s*(?:п|пд)\b/i.test(a) // <--- Ловит цифру перед "п" или "пд"
+        ) {
           addrType = 'under';
-        }
+  }
         else if (/\bквартир[аыуе]?\b/i.test(a) || /\bкв\.?\s*\d+/i.test(a) || /\b\d+\s*кв\.?\b/i.test(a) || /\bкварт\.?\s*\d+/i.test(a)) {
           addrType = 'flat';
         }
