@@ -319,6 +319,18 @@
         // Показываем skeleton-заглушку вместо текста — воспринимается быстрее
         const listEl = document.getElementById('list');
         if (listEl) listEl.innerHTML = Array(5).fill('<div class="skeleton-row"></div>').join('');
+        // Сторожевой таймер: если через 8 сек список так и не наполнился реальными
+        // данными (например, слушатель Firebase не смог подключиться), показываем
+        // явную ошибку с кнопкой "Обновить" вместо бесконечной анимации загрузки.
+        setTimeout(() => {
+          const el = document.getElementById('list');
+          if (el && el.querySelector('.skeleton-row')) {
+            el.innerHTML = `<div class="muted" style="padding:10px 0;">
+              ⚠️ Загрузка занимает дольше обычного.<br>
+              <button onclick="location.reload()" style="margin-top:8px;padding:8px 16px;border-radius:8px;border:1px solid #2a2a2a;background:#1c1c1e;color:#65d48b;font-size:13px;cursor:pointer;">🔄 Обновить</button>
+            </div>`;
+          }
+        }, 8000);
         setTimeout(() => {
           window.dispatchEvent(new Event("fbReady"));
           // Загружаем адреса из Firebase сразу после авторизации
@@ -1503,33 +1515,43 @@
     }
 
     fbMethods.onSnapshot(setRef, (snap) => {
-      DEFAULTS = { income: [], expense: [] }; ACCOUNTS = [];
-      let setHtml = "";
-      snap.forEach(d => {
-        const data = d.data();
-        if (data.type === 'category') {
-          DEFAULTS[data.catType].push({ id: d.id, ...data });
-          const subBtns = (data.sub||[]).map(s =>
-            `<span style="display:inline-flex;align-items:center;gap:3px;background:#2a2a2a;border-radius:5px;padding:2px 7px;margin:2px;font-size:12px;">
-              ${s}<button onclick="deleteSub('${d.id}','${s}')" style="background:none;border:none;color:var(--neg);font-size:11px;padding:0;cursor:pointer;line-height:1;">✕</button>
-            </span>`).join("");
-          setHtml += `<div class="set-item">
-            <div class="set-item-top"><span>📂 ${data.name} <span style="color:#333;font-size:11px;">${data.catType==='income'?'(+)':'(−)'}</span></span>
-            <button class="set-del" onclick="deleteSet('${d.id}')">✕</button></div>
-            <div style="margin-top:5px;display:flex;flex-wrap:wrap;">${subBtns||'<span style="color:#2a2a2a;font-size:10px;">нет подкатегорий</span>'}</div>
-          </div>`;
-        } else if (data.type === 'account') {
-          ACCOUNTS.push({ id: d.id, ...data }); window.ACCOUNTS = ACCOUNTS;
-          const ib = Number(data.initialBalance)||0;
-          setHtml += `<div class="set-item">
-            <div class="set-item-top"><span>💳 ${data.name}</span><button class="set-del" onclick="deleteSet('${d.id}')">✕</button></div>
-            <div style="font-size:10px;color:#333;margin-top:3px;">Нач. баланс: ${ib.toLocaleString()} ₸</div>
-          </div>`;
-        }
-      });
-      document.getElementById("settingsList").innerHTML = setHtml || '<div class="muted" style="font-size:13px;padding:8px 0;">Нет настроек</div>';
-      updateUI(true);
-      cacheSettingsToLocal();
+      try {
+        DEFAULTS = { income: [], expense: [] }; ACCOUNTS = [];
+        let setHtml = "";
+        snap.forEach(d => {
+          const data = d.data();
+          if (data.type === 'category') {
+            DEFAULTS[data.catType].push({ id: d.id, ...data });
+            const subBtns = (data.sub||[]).map(s =>
+              `<span style="display:inline-flex;align-items:center;gap:3px;background:#2a2a2a;border-radius:5px;padding:2px 7px;margin:2px;font-size:12px;">
+                ${s}<button onclick="deleteSub('${d.id}','${s}')" style="background:none;border:none;color:var(--neg);font-size:11px;padding:0;cursor:pointer;line-height:1;">✕</button>
+              </span>`).join("");
+            setHtml += `<div class="set-item">
+              <div class="set-item-top"><span>📂 ${data.name} <span style="color:#333;font-size:11px;">${data.catType==='income'?'(+)':'(−)'}</span></span>
+              <button class="set-del" onclick="deleteSet('${d.id}')">✕</button></div>
+              <div style="margin-top:5px;display:flex;flex-wrap:wrap;">${subBtns||'<span style="color:#2a2a2a;font-size:10px;">нет подкатегорий</span>'}</div>
+            </div>`;
+          } else if (data.type === 'account') {
+            ACCOUNTS.push({ id: d.id, ...data }); window.ACCOUNTS = ACCOUNTS;
+            const ib = Number(data.initialBalance)||0;
+            setHtml += `<div class="set-item">
+              <div class="set-item-top"><span>💳 ${data.name}</span><button class="set-del" onclick="deleteSet('${d.id}')">✕</button></div>
+              <div style="font-size:10px;color:#333;margin-top:3px;">Нач. баланс: ${ib.toLocaleString()} ₸</div>
+            </div>`;
+          }
+        });
+        document.getElementById("settingsList").innerHTML = setHtml || '<div class="muted" style="font-size:13px;padding:8px 0;">Нет настроек</div>';
+        updateUI(true);
+        cacheSettingsToLocal();
+      } catch(err) {
+        console.error('Ошибка обработки настроек:', err);
+        window.showToast('⚠️ Ошибка отображения настроек: ' + err.message, 'error');
+      }
+    }, (err) => {
+      // Обработчик ошибок onSnapshot — без него слушатель молча "умирает"
+      // при проблемах с доступом/сетью, и экран навсегда останется в состоянии загрузки.
+      console.error('Ошибка загрузки настроек из Firebase:', err);
+      window.showToast('⚠️ Не удалось загрузить настройки: ' + err.message, 'error');
     });
 
     window.addCategory = async () => {
@@ -1692,14 +1714,34 @@
     let pendingTx = []; // оптимистичные записи, ещё не подтверждённые Firebase
 
     fbMethods.onSnapshot(fbMethods.query(txRef, fbMethods.orderBy("date","desc")), (snap) => {
-      const serverTx = [];
-      snap.forEach(d=>serverTx.push({id:d.id,...d.data()}));
-      // Оставляем только те оптимистичные записи, которых сервер ещё не вернул
-      pendingTx = pendingTx.filter(p => !serverTx.some(s => s.createdAt === p.createdAt));
-      allTx = [...pendingTx, ...serverTx]; window.allTx = allTx;
-      if (!document.getElementById("fromDate").value) setRange('today'); else debouncedRender();
-      if (document.getElementById('historySheet')?.classList.contains('open')) renderHistorySheet();
-      cacheTxToLocal();
+      try {
+        const serverTx = [];
+        snap.forEach(d=>serverTx.push({id:d.id,...d.data()}));
+        // Оставляем только те оптимистичные записи, которых сервер ещё не вернул,
+        // и не старше 15 секунд — если по какой-то причине сверка не сработала,
+        // запись всё равно перестаёт выглядеть "вечно загружающейся".
+        const now = Date.now();
+        pendingTx = pendingTx.filter(p => !serverTx.some(s => s.createdAt === p.createdAt) && (now - p.createdAt) < 15000);
+        allTx = [...pendingTx, ...serverTx]; window.allTx = allTx;
+        if (!document.getElementById("fromDate").value) setRange('today'); else debouncedRender();
+        if (document.getElementById('historySheet')?.classList.contains('open')) renderHistorySheet();
+        cacheTxToLocal();
+      } catch(err) {
+        console.error('Ошибка обработки транзакций:', err);
+        window.showToast('⚠️ Ошибка отображения записей: ' + err.message, 'error');
+      }
+    }, (err) => {
+      // Обработчик ошибок onSnapshot — без него слушатель молча "умирает"
+      // при проблемах с доступом/сетью, и список навсегда останется на skeleton-заглушке.
+      console.error('Ошибка загрузки записей из Firebase:', err);
+      window.showToast('⚠️ Не удалось загрузить историю: ' + err.message, 'error');
+      const listEl = document.getElementById('list');
+      if (listEl && listEl.querySelector('.skeleton-row')) {
+        listEl.innerHTML = `<div class="muted" style="padding:10px 0;">
+          ⚠️ Не удалось загрузить историю.<br>
+          <button onclick="location.reload()" style="margin-top:8px;padding:8px 16px;border-radius:8px;border:1px solid #2a2a2a;background:#1c1c1e;color:#65d48b;font-size:13px;cursor:pointer;">🔄 Обновить</button>
+        </div>`;
+      }
     });
 
     document.getElementById("txForm").onsubmit = async (e) => {
