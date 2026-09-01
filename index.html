@@ -278,6 +278,7 @@
 
     // Firestore с офлайн кэшем — правильный способ для Firebase 10+
     let db;
+    let usingPersistentCache = true;
     try {
       db = initializeFirestore(app, {
         localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
@@ -285,10 +286,34 @@
     } catch(e) {
       // Fallback для Android WebView и Safari где IndexedDB может быть недоступен
       db = getFirestore(app);
+      usingPersistentCache = false;
       console.warn('Firestore: offline cache недоступен, работаем без кэша:', e.message);
     }
     window.fbDB = db;
     window.fbMethods = { collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc, setDoc, arrayUnion, getDoc };
+
+    // ── Сторожевой таймер для офлайн-кэша Firestore ─────────────────
+    // Известная проблема persistentMultipleTabManager: в некоторых мобильных
+    // браузерах/WebView блокировка IndexedDB между вкладками подвисает молча —
+    // ни одного onSnapshot не срабатывает, и ошибки при этом тоже нет.
+    // Если за 6 сек ни разу не пришли данные — переключаемся на Firestore
+    // без офлайн-кэша (в памяти) и перезапускаем загрузку.
+    window._fbDataArrived = false;
+    if (usingPersistentCache) {
+      setTimeout(() => {
+        if (!window._fbDataArrived && window.fbUser) {
+          console.warn('Firestore: офлайн-кэш завис — переключаемся в режим без кэша и перезапускаем');
+          try {
+            db = getFirestore(app);
+            window.fbDB = db;
+            if (window.resetApp) window.resetApp();
+            window.dispatchEvent(new Event('fbReady'));
+            if (window.showToast) window.showToast('🔄 Переподключение к базе…', 'warn');
+          } catch(e2) { console.error('Firestore fallback re-init failed:', e2); }
+        }
+      }, 6000);
+    }
+
     const auth = getAuth(app);
     const provider = new GoogleAuthProvider();
 
@@ -319,8 +344,9 @@
         // Показываем skeleton-заглушку вместо текста — воспринимается быстрее
         const listEl = document.getElementById('list');
         if (listEl) listEl.innerHTML = Array(5).fill('<div class="skeleton-row"></div>').join('');
-        // Сторожевой таймер: если через 8 сек список так и не наполнился реальными
-        // данными (например, слушатель Firebase не смог подключиться), показываем
+        // Сторожевой таймер: если через 14 сек список так и не наполнился реальными
+        // данными (например, слушатель Firebase не смог подключиться даже после
+        // автоматического отката с офлайн-кэша на обычный режим), показываем
         // явную ошибку с кнопкой "Обновить" вместо бесконечной анимации загрузки.
         setTimeout(() => {
           const el = document.getElementById('list');
@@ -330,7 +356,7 @@
               <button onclick="location.reload()" style="margin-top:8px;padding:8px 16px;border-radius:8px;border:1px solid #2a2a2a;background:#1c1c1e;color:#65d48b;font-size:13px;cursor:pointer;">🔄 Обновить</button>
             </div>`;
           }
-        }, 8000);
+        }, 14000);
         setTimeout(() => {
           window.dispatchEvent(new Event("fbReady"));
           // Загружаем адреса из Firebase сразу после авторизации
@@ -1515,6 +1541,7 @@
     }
 
     fbMethods.onSnapshot(setRef, (snap) => {
+      window._fbDataArrived = true;
       try {
         DEFAULTS = { income: [], expense: [] }; ACCOUNTS = [];
         let setHtml = "";
@@ -1714,6 +1741,7 @@
     let pendingTx = []; // оптимистичные записи, ещё не подтверждённые Firebase
 
     fbMethods.onSnapshot(fbMethods.query(txRef, fbMethods.orderBy("date","desc")), (snap) => {
+      window._fbDataArrived = true;
       try {
         const serverTx = [];
         snap.forEach(d=>serverTx.push({id:d.id,...d.data()}));
