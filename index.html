@@ -1859,6 +1859,33 @@
     document.getElementById("totalIncome").textContent=inc.toLocaleString()+" ₸";
     document.getElementById("totalExpense").textContent=exp.toLocaleString()+" ₸";
 
+    // ── Список записей рендерим СРАЗУ, до статистики/аналитики ────
+    // (если ниже в статистике вылетит ошибка — список всё равно уже
+    // на экране, а не застрянет на заглушке загрузки)
+    const visibleTx = filtered.slice(0, _txRenderLimit);
+    const hasMore = filtered.length > _txRenderLimit;
+
+    document.getElementById("list").innerHTML=visibleTx.map(t=>{
+      const acc=t.account&&t.account!=='undefined'&&t.account!==''&&t.account!=='Счет не выбран'?` [${t.account}]`:'';
+      const ts=t.time?`${t.date} ${t.time}`:t.date;
+      const pendingStyle=t._pending?' style="opacity:0.55;"':'';
+      const pendingTag=t._pending?' <span style="color:#888;font-size:10px;">⏳ сохраняется…</span>':'';
+      if(t.type==='transfer')return`<div class="hist-item"${pendingStyle}><div><b style="color:#ffd166;">↔ ${t.amount.toLocaleString()} ₸</b>${pendingTag}<br><small class="muted">${ts} | ${esc(t.fromAccount)} → ${esc(t.toAccount)}</small></div><div style="display:flex;gap:4px;"><button class="hist-del" onclick="deleteTx('${t.id}')">✕</button></div></div>`;
+      return`<div class="hist-item"${pendingStyle}><div><b class="${t.type==='income'?'pos':'neg'}">${t.amount.toLocaleString()} ₸</b>${pendingTag}<br><small class="muted">${ts} | ${esc(t.subcategory||t.categoryName)}${acc}</small>${t.comment?`<div style="color:#65d48b;font-size:11px;margin-top:2px;">📝 ${esc(t.comment)}</div>`:''}</div><div style="display:flex;gap:4px;"><button onclick="editTx('${t.id}')" style="background:none;border:none;color:#ffd166;padding:8px;cursor:pointer;font-size:15px;opacity:0.8;">✏️</button><button class="hist-del" onclick="deleteTx('${t.id}')">✕</button></div></div>`;
+    }).join("")||'<div class="muted">Нет записей</div>';
+
+    if (hasMore) {
+      document.getElementById("list").innerHTML += `
+        <button onclick="window.showMoreTx()" style="width:100%;padding:12px;margin-top:8px;border-radius:10px;border:1px solid #2a2a2a;background:#1c1c1e;color:#888;font-size:13px;cursor:pointer;">
+          Показать ещё (${filtered.length - _txRenderLimit} из ${filtered.length})
+        </button>`;
+    }
+
+    // ── Всё, что ниже (счета/статистика/аналитика), — не критично для
+    // самого списка операций, поэтому оборачиваем в try/catch: если тут
+    // что-то упадёт, список выше всё равно уже отрисован и виден. ──
+    try {
+
     const accs={};
     ACCOUNTS.forEach(a=>{accs[a.name]=Number(a.initialBalance)||0;});
     allTx.forEach(t=>{
@@ -1933,25 +1960,8 @@
         <div class="stat-sub">${Object.entries(d.subs).map(([s,v])=>`${s}: ${v.toLocaleString()}`).join(" | ")}</div></div>`)
       .join("")||'<div class="muted">Нет расходов</div>';
 
-    // ── Пагинация списка: рендерим не все сразу, а порциями ──────
-    // (избегаем сотен/тысяч DOM-узлов одновременно — так быстрее и легче для телефона)
-    const visibleTx = filtered.slice(0, _txRenderLimit);
-    const hasMore = filtered.length > _txRenderLimit;
-
-    document.getElementById("list").innerHTML=visibleTx.map(t=>{
-      const acc=t.account&&t.account!=='undefined'&&t.account!==''&&t.account!=='Счет не выбран'?` [${t.account}]`:'';
-      const ts=t.time?`${t.date} ${t.time}`:t.date;
-      const pendingStyle=t._pending?' style="opacity:0.55;"':'';
-      const pendingTag=t._pending?' <span style="color:#888;font-size:10px;">⏳ сохраняется…</span>':'';
-      if(t.type==='transfer')return`<div class="hist-item"${pendingStyle}><div><b style="color:#ffd166;">↔ ${t.amount.toLocaleString()} ₸</b>${pendingTag}<br><small class="muted">${ts} | ${esc(t.fromAccount)} → ${esc(t.toAccount)}</small></div><div style="display:flex;gap:4px;"><button class="hist-del" onclick="deleteTx('${t.id}')">✕</button></div></div>`;
-      return`<div class="hist-item"${pendingStyle}><div><b class="${t.type==='income'?'pos':'neg'}">${t.amount.toLocaleString()} ₸</b>${pendingTag}<br><small class="muted">${ts} | ${esc(t.subcategory||t.categoryName)}${acc}</small>${t.comment?`<div style="color:#65d48b;font-size:11px;margin-top:2px;">📝 ${esc(t.comment)}</div>`:''}</div><div style="display:flex;gap:4px;"><button onclick="editTx('${t.id}')" style="background:none;border:none;color:#ffd166;padding:8px;cursor:pointer;font-size:15px;opacity:0.8;">✏️</button><button class="hist-del" onclick="deleteTx('${t.id}')">✕</button></div></div>`;
-    }).join("")||'<div class="muted">Нет записей</div>';
-
-    if (hasMore) {
-      document.getElementById("list").innerHTML += `
-        <button onclick="window.showMoreTx()" style="width:100%;padding:12px;margin-top:8px;border-radius:10px;border:1px solid #2a2a2a;background:#1c1c1e;color:#888;font-size:13px;cursor:pointer;">
-          Показать ещё (${filtered.length - _txRenderLimit} из ${filtered.length})
-        </button>`;
+    } catch(errStats) {
+      console.error('Ошибка отрисовки статистики/счетов (список операций не затронут):', errStats);
     }
 
     // Аналитика рендерится только если вкладка активна — иначе при следующем переключении
