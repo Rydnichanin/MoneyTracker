@@ -264,7 +264,7 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc, setDoc, arrayUnion, getDoc, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc, setDoc, arrayUnion, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
     import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithCredential, signOut, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
     const app = initializeApp({
@@ -276,43 +276,16 @@
       appId: "1:440589448883:web:5ad507b270fa414731a2c6"
     });
 
-    // Firestore с офлайн кэшем — правильный способ для Firebase 10+
-    let db;
-    let usingPersistentCache = true;
-    try {
-      db = initializeFirestore(app, {
-        localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
-      });
-    } catch(e) {
-      // Fallback для Android WebView и Safari где IndexedDB может быть недоступен
-      db = getFirestore(app);
-      usingPersistentCache = false;
-      console.warn('Firestore: offline cache недоступен, работаем без кэша:', e.message);
-    }
+    // Firestore без встроенного офлайн-кэша Firestore (persistentLocalCache +
+    // persistentMultipleTabManager убраны: в некоторых мобильных браузерах/WebView
+    // блокировка IndexedDB между вкладками подвисает молча — ни одного onSnapshot
+    // не срабатывает, и ошибки при этом тоже нет, список навсегда остаётся
+    // на skeleton-заглушке). Мгновенный первый рендер обеспечивает свой
+    // облегчённый кэш в localStorage — см. loadCachedDataInstant/cacheTxToLocal ниже.
+    const db = getFirestore(app);
     window.fbDB = db;
     window.fbMethods = { collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc, setDoc, arrayUnion, getDoc };
-
-    // ── Сторожевой таймер для офлайн-кэша Firestore ─────────────────
-    // Известная проблема persistentMultipleTabManager: в некоторых мобильных
-    // браузерах/WebView блокировка IndexedDB между вкладками подвисает молча —
-    // ни одного onSnapshot не срабатывает, и ошибки при этом тоже нет.
-    // Если за 6 сек ни разу не пришли данные — переключаемся на Firestore
-    // без офлайн-кэша (в памяти) и перезапускаем загрузку.
     window._fbDataArrived = false;
-    if (usingPersistentCache) {
-      setTimeout(() => {
-        if (!window._fbDataArrived && window.fbUser) {
-          console.warn('Firestore: офлайн-кэш завис — переключаемся в режим без кэша и перезапускаем');
-          try {
-            db = getFirestore(app);
-            window.fbDB = db;
-            if (window.resetApp) window.resetApp();
-            window.dispatchEvent(new Event('fbReady'));
-            if (window.showToast) window.showToast('🔄 Переподключение к базе…', 'warn');
-          } catch(e2) { console.error('Firestore fallback re-init failed:', e2); }
-        }
-      }, 6000);
-    }
 
     const auth = getAuth(app);
     const provider = new GoogleAuthProvider();
@@ -1750,18 +1723,8 @@
         // запись всё равно перестаёт выглядеть "вечно загружающейся".
         const now = Date.now();
         pendingTx = pendingTx.filter(p => !serverTx.some(s => s.createdAt === p.createdAt) && (now - p.createdAt) < 15000);
-        
         allTx = [...pendingTx, ...serverTx]; window.allTx = allTx;
-        
-        // Инициализируем дефолтную дату только 1 раз за запуск, чтобы не сбрасывать фильтр "Всё время"
-        if (typeof window._isTxLoaded === 'undefined') {
-          window._isTxLoaded = true;
-          if (!document.getElementById("fromDate").value) setRange('today');
-          else debouncedRender();
-        } else {
-          debouncedRender();
-        }
-        
+        if (!document.getElementById("fromDate").value) setRange('today'); else debouncedRender();
         if (document.getElementById('historySheet')?.classList.contains('open')) renderHistorySheet();
         cacheTxToLocal();
       } catch(err) {
@@ -2022,7 +1985,7 @@
     const catBar = document.getElementById('histCatFilters');
     catBar.innerHTML = `<div class="hf-chip on" data-cat="all" onclick="toggleHistFilter(this,'cat')">Все</div>` +
       [...cats].sort().map(c =>
-        `<div class="hf-chip" data-cat="${esc(c)}" onclick="toggleHistFilter(this,'cat')">${esc(c)}</div>`
+        `<div class="hf-chip" data-cat="${c}" onclick="toggleHistFilter(this,'cat')">${c}</div>`
       ).join('');
     _histTypeFilter   = 'all';
     _histCatFilter    = 'all';
@@ -2109,8 +2072,8 @@
       return (b.createdAt||0) - (a.createdAt||0);
     });
 
-    const inc = list.filter(t=>t.type==='income').reduce((s,t)=>s + (Number(t.amount) || 0), 0);
-    const exp = list.filter(t=>t.type==='expense').reduce((s,t)=>s + (Number(t.amount) || 0), 0);
+    const inc = list.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+    const exp = list.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
     document.getElementById('histSummary').innerHTML =
       `<span>${list.length} записей</span>` +
       `<span><span class="pos">+${inc.toLocaleString()}</span> / <span class="neg">-${exp.toLocaleString()}</span> ₸</span>`;
@@ -2118,8 +2081,8 @@
     document.getElementById('histList').innerHTML = list.map(t => {
       const acc = t.account&&t.account!=='undefined'&&t.account!==''&&t.account!=='Счет не выбран'?` [${t.account}]`:'';
       const ts = t.time ? `${t.date} ${t.time}` : t.date;
-      if (t.type==='transfer') return `<div class="hist-item"><div><b style="color:#ffd166;">↔ ${Number(t.amount || 0).toLocaleString()} ₸</b><br><small class="muted">${ts} | ${esc(t.fromAccount)} → ${esc(t.toAccount)}</small></div><div style="display:flex;gap:4px;"><button class="hist-del" onclick="deleteTx('${t.id}')">✕</button></div></div>`;
-      return `<div class="hist-item"><div><b class="${t.type==='income'?'pos':'neg'}">${Number(t.amount || 0).toLocaleString()} ₸</b><br><small class="muted">${ts} | ${esc(t.subcategory||t.categoryName)}${acc}</small>${t.comment?`<div style="color:#65d48b;font-size:11px;margin-top:2px;">📝 ${esc(t.comment)}</div>`:''}</div><div style="display:flex;gap:4px;"><button onclick="editTx('${t.id}')" style="background:none;border:none;color:#ffd166;padding:8px;cursor:pointer;font-size:15px;opacity:0.8;">✏️</button><button class="hist-del" onclick="deleteTx('${t.id}')">✕</button></div></div>`;
+      if (t.type==='transfer') return `<div class="hist-item"><div><b style="color:#ffd166;">↔ ${t.amount.toLocaleString()} ₸</b><br><small class="muted">${ts} | ${esc(t.fromAccount)} → ${esc(t.toAccount)}</small></div><div style="display:flex;gap:4px;"><button class="hist-del" onclick="deleteTx('${t.id}')">✕</button></div></div>`;
+      return `<div class="hist-item"><div><b class="${t.type==='income'?'pos':'neg'}">${t.amount.toLocaleString()} ₸</b><br><small class="muted">${ts} | ${esc(t.subcategory||t.categoryName)}${acc}</small>${t.comment?`<div style="color:#65d48b;font-size:11px;margin-top:2px;">📝 ${esc(t.comment)}</div>`:''}</div><div style="display:flex;gap:4px;"><button onclick="editTx('${t.id}')" style="background:none;border:none;color:#ffd166;padding:8px;cursor:pointer;font-size:15px;opacity:0.8;">✏️</button><button class="hist-del" onclick="deleteTx('${t.id}')">✕</button></div></div>`;
     }).join('') || '<div class="muted" style="padding:20px 0;text-align:center;">Ничего не найдено</div>';
   };
 
