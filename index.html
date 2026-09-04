@@ -1380,6 +1380,9 @@
   let DEFAULTS = { income: [], expense: [] };
   let ACCOUNTS = []; window.ACCOUNTS = ACCOUNTS;
   let allTx = []; window.allTx = allTx;
+  let _txRenderLimit = 60; // пагинация списка транзакций — рендерим порциями. Объявлена
+  // здесь (а не внутри initApp), т.к. render() — отдельная функция вне initApp() и не
+  // видит переменных, объявленных через let/const внутри initApp().
 
   // ── Локальный кэш для мгновенной отрисовки при входе ───────────
   // Firestore уже кэширует данные офлайн (persistentLocalCache), но первая
@@ -1500,7 +1503,6 @@
     };
     window.onCustomDate = () => { _txRenderLimit = 60; render(); };
 
-    let _txRenderLimit = 60; // пагинация списка транзакций — рендерим порциями
     window.showMoreTx = () => { _txRenderLimit += 60; render(); };
 
     // ── Мгновенная отрисовка из локального кэша ────────────────────
