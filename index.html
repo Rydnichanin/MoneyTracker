@@ -1526,11 +1526,11 @@
             DEFAULTS[data.catType].push({ id: d.id, ...data });
             const subBtns = (data.sub||[]).map(s =>
               `<span style="display:inline-flex;align-items:center;gap:3px;background:#2a2a2a;border-radius:5px;padding:2px 7px;margin:2px;font-size:12px;">
-                ${s}<button onclick="deleteSub('${d.id}','${s}')" style="background:none;border:none;color:var(--neg);font-size:11px;padding:0;cursor:pointer;line-height:1;">✕</button>
+                ${esc(s)}<button onclick="editSubcategory('${d.id}','${s}')" style="background:none;border:none;color:var(--accent);font-size:11px;padding:0;cursor:pointer;line-height:1;">✏️</button><button onclick="deleteSub('${d.id}','${s}')" style="background:none;border:none;color:var(--neg);font-size:11px;padding:0;cursor:pointer;line-height:1;">✕</button>
               </span>`).join("");
             setHtml += `<div class="set-item">
-              <div class="set-item-top"><span>📂 ${data.name} <span style="color:#333;font-size:11px;">${data.catType==='income'?'(+)':'(−)'}</span></span>
-              <button class="set-del" onclick="deleteSet('${d.id}')">✕</button></div>
+              <div class="set-item-top"><span>📂 ${esc(data.name)} <span style="color:#333;font-size:11px;">${data.catType==='income'?'(+)':'(−)'}</span></span>
+              <div style="display:flex;gap:6px;"><button onclick="editCategory('${d.id}')" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:14px;padding:4px;">✏️</button><button class="set-del" onclick="deleteSet('${d.id}')">✕</button></div></div>
               <div style="margin-top:5px;display:flex;flex-wrap:wrap;">${subBtns||'<span style="color:#2a2a2a;font-size:10px;">нет подкатегорий</span>'}</div>
             </div>`;
           } else if (data.type === 'account') {
@@ -1647,6 +1647,70 @@
         if (!cat) return;
         await fbMethods.updateDoc(fbMethods.doc(fbDB,"users",window.fbUser.uid,"settings",catId), { sub:(cat.sub||[]).filter(s=>s!==subName) });
       });
+    };
+
+    // ── Редактирование названий категорий и подкатегорий ───────────
+    window.editCategory = (catId) => {
+      const cat = [...DEFAULTS.income,...DEFAULTS.expense].find(c=>c.id===catId);
+      if (!cat) return;
+      const old = document.getElementById('_catEditDialog');
+      if (old) old.remove();
+      const div = document.createElement('div');
+      div.id = '_catEditDialog';
+      div.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;padding:20px;';
+      div.innerHTML = `<div style="background:#1c1c1e;border-radius:16px;padding:20px;width:100%;max-width:320px;border:1px solid #2a2a2a;">
+        <div style="font-size:14px;font-weight:600;margin-bottom:12px;">Название категории</div>
+        <input id="_catEditInput" type="text" value="${esc(cat.name||'')}" placeholder="Название"
+          style="width:100%;padding:11px;border-radius:10px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:15px;outline:none;box-sizing:border-box;margin-bottom:12px;" />
+        <div style="display:flex;gap:8px;">
+          <button onclick="document.getElementById('_catEditDialog').remove()" style="flex:1;padding:11px;border-radius:10px;border:1px solid #333;background:none;color:#888;font-size:14px;cursor:pointer;">Отмена</button>
+          <button onclick="saveCategoryName('${catId}')" style="flex:1;padding:11px;border-radius:10px;border:none;background:#65d48b;color:#000;font-size:14px;font-weight:bold;cursor:pointer;">Сохранить</button>
+        </div>
+      </div>`;
+      document.body.appendChild(div);
+      setTimeout(() => { const inp = document.getElementById('_catEditInput'); inp.focus(); inp.select(); }, 100);
+    };
+
+    window.saveCategoryName = async (catId) => {
+      const name = document.getElementById('_catEditInput').value.trim();
+      const dialog = document.getElementById('_catEditDialog');
+      if (dialog) dialog.remove();
+      if (!name) return;
+      await fbMethods.updateDoc(fbMethods.doc(fbDB,"users",window.fbUser.uid,"settings",catId), { name });
+      window.showToast('✅ Категория переименована');
+    };
+
+    window.editSubcategory = (catId, subName) => {
+      const cat = [...DEFAULTS.income,...DEFAULTS.expense].find(c=>c.id===catId);
+      if (!cat) return;
+      const old = document.getElementById('_subEditDialog');
+      if (old) old.remove();
+      const div = document.createElement('div');
+      div.id = '_subEditDialog';
+      div.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;padding:20px;';
+      div.innerHTML = `<div style="background:#1c1c1e;border-radius:16px;padding:20px;width:100%;max-width:320px;border:1px solid #2a2a2a;">
+        <div style="font-size:14px;font-weight:600;margin-bottom:12px;">Название подкатегории</div>
+        <input id="_subEditInput" type="text" value="${esc(subName||'')}" placeholder="Название"
+          style="width:100%;padding:11px;border-radius:10px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:15px;outline:none;box-sizing:border-box;margin-bottom:12px;" />
+        <div style="display:flex;gap:8px;">
+          <button onclick="document.getElementById('_subEditDialog').remove()" style="flex:1;padding:11px;border-radius:10px;border:1px solid #333;background:none;color:#888;font-size:14px;cursor:pointer;">Отмена</button>
+          <button onclick="saveSubcategoryName('${catId}','${subName}')" style="flex:1;padding:11px;border-radius:10px;border:none;background:#65d48b;color:#000;font-size:14px;font-weight:bold;cursor:pointer;">Сохранить</button>
+        </div>
+      </div>`;
+      document.body.appendChild(div);
+      setTimeout(() => { const inp = document.getElementById('_subEditInput'); inp.focus(); inp.select(); }, 100);
+    };
+
+    window.saveSubcategoryName = async (catId, oldSubName) => {
+      const newName = document.getElementById('_subEditInput').value.trim();
+      const dialog = document.getElementById('_subEditDialog');
+      if (dialog) dialog.remove();
+      if (!newName || newName === oldSubName) return;
+      const cat = [...DEFAULTS.income,...DEFAULTS.expense].find(c=>c.id===catId);
+      if (!cat) return;
+      const newSub = (cat.sub||[]).map(s => s===oldSubName ? newName : s);
+      await fbMethods.updateDoc(fbMethods.doc(fbDB,"users",window.fbUser.uid,"settings",catId), { sub: newSub });
+      window.showToast('✅ Подкатегория переименована');
     };
 
     function updateUI(restoreLast=false) {
