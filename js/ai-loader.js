@@ -15,7 +15,7 @@
       const script = document.createElement('script');
       script.src = './ai_parser.js?v=3';
       script.async = true;
-      script.dataset.moneytrackerAi = '1';
+      script.dataset.moneyTrackerAi = '1';
       script.onload = () => resolve();
       script.onerror = () => {
         promise = null;
@@ -41,7 +41,7 @@
       const script = document.createElement('script');
       script.src = './js/address-parser.js?v=1';
       script.async = true;
-      script.dataset.moneytrackerAddressParser = '1';
+      script.dataset.moneyTrackerAddressParser = '1';
       script.onload = () => resolve();
       script.onerror = () => reject(new Error('Address parser failed to load'));
       document.head.appendChild(script);
@@ -51,19 +51,21 @@
   }
 
   // Переименование уже существующих категорий. Создание и удаление не меняем.
-  function initCategoryEditor() {
-    const root = document.getElementById('settingsPage');
+  function initCategoryEditor(root) {
     if (!root || root.dataset.categoryEditorReady === '1') return;
     root.dataset.categoryEditorReady = '1';
 
     const getItems = () => Array.from(root.querySelectorAll('.set-item')).filter((item) => {
       const top = item.querySelector('.set-item-top');
-      return top && /\(\+\)|\(−\)/.test(top.textContent || '');
+      const text = top?.textContent || '';
+      // Категории имеют (+) или (−). Счета/аккаунты этих меток не имеют.
+      return top && (text.includes('(+)') || text.includes('(−)') || text.includes('(-)'));
     });
 
     const getId = (item) => {
       const del = item.querySelector('.set-del[onclick*="deleteSet"]');
-      const m = (del?.getAttribute('onclick') || '').match(/deleteSet\(['\"]([^'\"]+)['\"]\)/);
+      const onclick = del?.getAttribute('onclick') || '';
+      const m = onclick.match(/deleteSet\(['"]([^'"]+)['"]\)/);
       return m ? m[1] : null;
     };
 
@@ -71,20 +73,29 @@
       const top = item.querySelector('.set-item-top');
       const span = top?.querySelector(':scope > span');
       let name = (span?.textContent || top?.textContent || '').trim();
-      return name.replace(/^📂\s*/, '').replace(/\s*\((?:\+|−)\)\s*$/, '').trim();
+      name = name.replace(/^📂\s*/, '');
+      name = name.replace(/\s*\((?:\+|−|-)\)\s*$/, '');
+      return name.trim();
     };
 
     const rename = async (id, oldName) => {
       const newName = window.prompt('Новое название категории:', oldName);
       if (newName === null) return;
       const clean = newName.trim();
-      if (!clean) return window.alert('Название не может быть пустым.');
+      if (!clean) {
+        window.alert('Название не может быть пустым.');
+        return;
+      }
       if (clean === oldName) return;
-      if (clean.length > 100) return window.alert('Название слишком длинное (максимум 100 символов).');
+      if (clean.length > 100) {
+        window.alert('Название слишком длинное (максимум 100 символов).');
+        return;
+      }
 
       const { fbDB, fbMethods, fbUser } = window;
       if (!fbDB || !fbMethods || !fbUser?.uid) {
-        return window.alert('Firebase ещё не готов. Попробуйте ещё раз.');
+        window.alert('Firebase ещё не готов. Попробуйте ещё раз.');
+        return;
       }
 
       try {
@@ -100,6 +111,7 @@
       getItems().forEach((item) => {
         const top = item.querySelector('.set-item-top');
         if (!top || top.querySelector('.set-edit')) return;
+
         const id = getId(item);
         if (!id) return;
 
@@ -108,6 +120,7 @@
         edit.type = 'button';
         edit.className = 'set-edit';
         edit.title = 'Переименовать категорию';
+        edit.setAttribute('aria-label', 'Переименовать категорию');
         edit.textContent = '✏️';
         edit.style.cssText = 'background:none;border:none;color:#ffd166;font-size:17px;cursor:pointer;padding:0;line-height:1;';
         edit.addEventListener('click', (event) => {
@@ -118,6 +131,7 @@
 
         if (del) {
           const actions = document.createElement('span');
+          actions.className = 'set-actions';
           actions.style.cssText = 'display:flex;align-items:center;gap:8px;';
           del.replaceWith(actions);
           actions.append(edit, del);
@@ -127,21 +141,41 @@
       });
     };
 
-    new MutationObserver(addButtons).observe(root, { childList: true, subtree: true });
     addButtons();
+    new MutationObserver(addButtons).observe(root, { childList: true, subtree: true });
+  }
+
+  function watchForSettingsPage() {
+    const tryInit = () => {
+      const root = document.getElementById('settingsPage');
+      if (root) initCategoryEditor(root);
+    };
+
+    tryInit();
+
+    // Настройки могут появиться/перерисоваться после загрузки приложения.
+    // Следим за document, пока settingsPage не найден, затем его собственный observer
+    // продолжает следить за списком категорий.
+    if (!document.getElementById('settingsPage') && document.body) {
+      const bodyObserver = new MutationObserver(() => {
+        const root = document.getElementById('settingsPage');
+        if (!root) return;
+        initCategoryEditor(root);
+        bodyObserver.disconnect();
+      });
+      bodyObserver.observe(document.body, { childList: true, subtree: true });
+    }
   }
 
   window.loadMoneyTrackerAI = loadAI;
   window.loadMoneyTrackerAddressParser = loadAddressParser;
 
-  // Address recognition is always enabled. It checks Firebase before applying
-  // pattern-based rules, while the AI parser remains secondary functionality.
   loadAddressParser().catch(error => console.warn(error));
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initCategoryEditor, { once: true });
+    document.addEventListener('DOMContentLoaded', watchForSettingsPage, { once: true });
   } else {
-    initCategoryEditor();
+    watchForSettingsPage();
   }
 
   const idle = window.requestIdleCallback || ((callback) => setTimeout(callback, 2500));
