@@ -1,9 +1,9 @@
 // ── Service Worker: кэш статики приложения ──────────────────────
-// Кэшируем только "оболочку" приложения (сам index.html и статику).
-// Firebase/Firestore запросы НИКОГДА не кэшируем и не перехватываем —
-// это живые данные, они должны всегда идти в сеть напрямую.
+// Кэшируем оболочку приложения и статику.
+// Firebase/Firestore запросы не кэшируем — это живые данные.
 
-const CACHE_NAME = 'courier-app-v1';
+// Версия увеличена, чтобы браузер/PWA гарантированно получил новую статику.
+const CACHE_NAME = 'courier-app-v2';
 const APP_SHELL = [
   './',
   './index.html',
@@ -13,8 +13,6 @@ const APP_SHELL = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(async (cache) => {
-      // Кэшируем по одному — если какого-то файла нет (например manifest.json),
-      // это не должно ломать установку всего Service Worker'а
       await Promise.all(
         APP_SHELL.map((url) => cache.add(url).catch(() => {}))
       );
@@ -36,16 +34,12 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const req = event.request;
-
-  // Кэшируем только GET-запросы к нашему же origin.
-  // Всё остальное (Firebase, Firestore, Google Auth, CDN скрипты и т.д.)
-  // пропускаем мимо Service Worker'а — пусть идёт в сеть как обычно.
   if (req.method !== 'GET') return;
+
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
 
-  // HTML-навигация — "network first", чтобы всегда открывать свежую версию
-  // приложения, когда есть сеть, и откатываться на кэш, когда сети нет.
+  // HTML — сначала сеть, чтобы новые версии приложения появлялись сразу.
   if (req.mode === 'navigate') {
     event.respondWith(
       fetch(req)
@@ -59,8 +53,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Статика (js/css/картинки/манифест) — "cache first" для мгновенной загрузки,
-  // с фоновым обновлением кэша.
+  // Статика — кэш с обновлением из сети.
   event.respondWith(
     caches.match(req).then((cached) => {
       const network = fetch(req)
