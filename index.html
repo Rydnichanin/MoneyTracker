@@ -119,6 +119,21 @@
     .sec-title { font-size: 11px; color: #444; text-transform: uppercase; letter-spacing: 1px; margin: 14px 0 8px; }
     .chart-wrap { overflow-x: scroll; -webkit-overflow-scrolling: touch; }
 
+    .heatmap-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
+    .heatmap-grid { display: grid; grid-auto-flow: column; grid-template-rows: repeat(7, 12px); gap: 3px; }
+    .heatmap-cell { width: 12px; height: 12px; border-radius: 3px; background: #1a1a1a; }
+    .heatmap-legend { display: flex; align-items: center; gap: 4px; font-size: 9px; color: #444; margin-top: 6px; }
+    .heatmap-legend .heatmap-cell { width: 9px; height: 9px; }
+
+    .goal-box { background: #17131f; border: 1px solid #2a2350; border-radius: 12px; padding: 12px; }
+    .goal-bar-bg { height: 8px; background: #1a1a1a; border-radius: 4px; margin-top: 8px; overflow: hidden; }
+    .goal-bar-fill { height: 100%; border-radius: 4px; transition: 0.4s; background: linear-gradient(90deg,#a78bfa,#65d48b); }
+
+    .donut-row { display: flex; align-items: center; gap: 14px; margin: 8px 0; }
+    .point-share-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; font-size: 12px; }
+    .point-share-bar-bg { flex: 1; height: 6px; background: #1a1a1a; border-radius: 3px; margin: 0 8px; }
+    .point-share-bar-fill { height: 100%; border-radius: 3px; }
+
     .pos { color: var(--pos); } .neg { color: var(--neg); } .muted { color: #444; }
     .hidden { display: none; }
 
@@ -733,7 +748,10 @@
         <div id="potentialStats"><div class="muted">Нет данных</div></div>
       </div>
       <div class="card" style="border-color:#1a1a2a;">
-        <div class="card-title" style="color:#a78bfa;">📊 Аналитика</div>
+        <div class="card-title" style="color:#a78bfa;display:flex;justify-content:space-between;align-items:center;">
+          <span>📊 Аналитика</span>
+          <button onclick="shareAnalytics()" style="background:none;border:1px solid #2a2a2a;border-radius:8px;color:#a78bfa;font-size:11px;padding:5px 9px;cursor:pointer;">📤 Поделиться</button>
+        </div>
         <div id="analyticsContent"></div>
       </div>
     </div>
@@ -1383,6 +1401,7 @@
   let _txRenderLimit = 60; // пагинация списка транзакций — рендерим порциями. Объявлена
   // здесь (а не внутри initApp), т.к. render() — отдельная функция вне initApp() и не
   // видит переменных, объявленных через let/const внутри initApp().
+  let _analyticsMonthsLimit = 6; // сколько месяцев показывать в "Сравнение по месяцам" (0 = все)
 
   // ── Локальный кэш для мгновенной отрисовки при входе ───────────
   // Firestore уже кэширует данные офлайн (persistentLocalCache), но первая
@@ -2185,7 +2204,7 @@
         byDayDeliv[t.date]+=t.amount;
       }
     });
-    // Лучший/худший день — считаем только по дням где есть хоть одна запись с точки
+    // Лучший/худший день — считаем только по дням где есть хоть одна запись с точки, за ВСЁ ВРЕМЯ (не зависит от фильтра периода вверху)
     const delivDays=Object.entries(byDayDeliv).filter(([d])=>d);
     let bestDay=null,worstDay=null;
     if(delivDays.length>0){
@@ -2194,18 +2213,42 @@
     }
     const fmtD=d=>{if(!d)return'—';const[y,mo,day]=d.split('-');return`${day}.${mo}.${y}`;};
     const fmtM=m=>{if(!m)return'—';const mn=['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];const[y,mo]=m.split('-');return`${mn[parseInt(mo)-1]} ${y}`;};
+    // Локальная дата "сегодня" (смена до 3 утра считается предыдущим днём — как и в остальном приложении)
+    const getTodayLocal=()=>{const now=new Date();if(now.getHours()<3)now.setDate(now.getDate()-1);const off=now.getTimezoneOffset()*60000;return new Date(now-off).toISOString().split('T')[0];};
+    const prevMonthKey=(m)=>{let[y,mo]=m.split('-').map(Number);mo-=1;if(mo===0){mo=12;y--;}return`${y}-${String(mo).padStart(2,'0')}`;};
+    const daysInMonthCalc=(m)=>{const[y,mo]=m.split('-').map(Number);return new Date(y,mo,0).getDate();};
+    const todayLocal=getTodayLocal(), currentMonthKey=todayLocal.slice(0,7), dayOfMonth=parseInt(todayLocal.slice(8,10),10);
     const from=document.getElementById("fromDate").value,to=document.getElementById("toDate").value;
-    const filteredDays=Object.entries(byDay).filter(([d])=>d&&(!from||d>=from)&&(!to||d<=to)).sort((a,b)=>a[0]>b[0]?1:-1);
+    const filteredDaysRaw=Object.entries(byDay).filter(([d])=>d&&(!from||d>=from)&&(!to||d<=to)).sort((a,b)=>a[0]>b[0]?1:-1);
+    // Если точек слишком много (напр. выбрано "Всё время" на большом периоде) — группируем по неделям,
+    // иначе график из сотен точек становится нечитаемым и очень широким.
+    const AGG_THRESHOLD=60;
+    let filteredDays=filteredDaysRaw, isWeekly=false;
+    if(filteredDaysRaw.length>AGG_THRESHOLD){
+      isWeekly=true;
+      const weekly={};
+      filteredDaysRaw.forEach(([d,v])=>{
+        const dt=new Date(d+'T00:00:00');
+        const day=dt.getDay();
+        const diffToMon=(day===0?-6:1-day);
+        const monday=new Date(dt); monday.setDate(dt.getDate()+diffToMon);
+        const key=new Date(monday-monday.getTimezoneOffset()*60000).toISOString().split('T')[0];
+        if(!weekly[key])weekly[key]=0;
+        weekly[key]+=v;
+      });
+      filteredDays=Object.entries(weekly).sort((a,b)=>a[0]>b[0]?1:-1);
+    }
     let chartHtml='',chartData=null;
     if(filteredDays.length>1){
-      const maxVal=Math.max(...filteredDays.map(([,v])=>v)),W=Math.max(filteredDays.length*50,300),H=80,pad=10;
-      chartData={filteredDays,maxVal,W,H,pad};
-      chartHtml=`<div class="sec-title">График дохода по дням</div><div style="text-align:center;height:24px;display:flex;align-items:center;justify-content:center;gap:8px;"><span id="chartTipDate" style="font-size:11px;color:#444;"></span><span id="chartTipVal" style="font-size:15px;font-weight:bold;color:#a78bfa;"></span></div><div class="chart-wrap"><canvas id="incomeChart" width="${W}" height="${H+20}" style="display:block;"></canvas></div>`;
+      const maxVal=Math.max(...filteredDays.map(([,v])=>v)),W=Math.max(filteredDays.length*(isWeekly?60:50),300),H=80,pad=10;
+      chartData={filteredDays,maxVal,W,H,pad,isWeekly};
+      const chartTitle=isWeekly?'График дохода по неделям':'График дохода по дням';
+      chartHtml=`<div class="sec-title">${chartTitle}</div><div style="text-align:center;height:24px;display:flex;align-items:center;justify-content:center;gap:8px;"><span id="chartTipDate" style="font-size:11px;color:#444;"></span><span id="chartTipVal" style="font-size:15px;font-weight:bold;color:#a78bfa;"></span></div><div class="chart-wrap"><canvas id="incomeChart" width="${W}" height="${H+20}" style="display:block;"></canvas></div>`;
     }
-    // Лучший/худший: зелёный = весь доход за тот день, жёлтый = только точки
+    // Лучший/худший: зелёный = весь доход за тот день, жёлтый = только точки. Всегда за всё время.
     const bestAllDay = bestDay ? byDay[bestDay[0]]||0 : 0;
     const worstAllDay = worstDay ? byDay[worstDay[0]]||0 : 0;
-    const bwHtml=bestDay?`<div class="sec-title">Лучший и худший день</div><div class="bw-grid">
+    const bwHtml=bestDay?`<div class="sec-title">Лучший и худший день (за всё время)</div><div class="bw-grid">
       <div class="bw-card best">
         <div class="bw-label">🏆 Лучший</div>
         <div class="bw-val pos">${bestAllDay.toLocaleString()} ₸</div>
@@ -2221,20 +2264,131 @@
         <div style="font-size:13px;font-weight:bold;color:#ffd166;">${worstDay?worstDay[1].toLocaleString():'—'} ₸</div>
       </div>
     </div>`:'';
+    // Прогноз на текущий месяц — по темпу (доход / прошедшие дни * дни в месяце)
+    const curMonthInc = (byMonth[currentMonthKey]&&byMonth[currentMonthKey].inc) || 0;
+    const daysInCurMonth = daysInMonthCalc(currentMonthKey);
+    const forecast = dayOfMonth>0 ? Math.round(curMonthInc/dayOfMonth*daysInCurMonth) : 0;
+    const forecastHtml = curMonthInc>0 ? `<div class="sec-title">🔮 Прогноз на ${fmtM(currentMonthKey)}</div><div class="goal-box"><div style="display:flex;justify-content:space-between;font-size:13px;"><span>Заработано</span><span class="pos" style="font-weight:bold;">${curMonthInc.toLocaleString()} ₸</span></div><div style="display:flex;justify-content:space-between;font-size:13px;margin-top:4px;"><span>К концу месяца</span><span style="font-weight:bold;color:#a78bfa;">≈ ${forecast.toLocaleString()} ₸</span></div><div class="month-meta" style="margin-top:4px;">на основе темпа: ${dayOfMonth} из ${daysInCurMonth} дн.</div></div>` : '';
+    // Цель по доходу на месяц — хранится локально на устройстве
+    let incomeGoal=0; try{incomeGoal=parseInt(localStorage.getItem('incomeGoal')||'0')||0;}catch(e){}
+    const goalPct = incomeGoal>0 ? Math.min(100,Math.round(curMonthInc/incomeGoal*100)) : 0;
+    const goalHtml = `<div class="sec-title" style="display:flex;justify-content:space-between;align-items:center;"><span>🎯 Цель на ${fmtM(currentMonthKey)}</span><button onclick="editIncomeGoal()" style="background:none;border:1px solid #2a2a2a;border-radius:6px;color:#a78bfa;font-size:10px;padding:3px 7px;cursor:pointer;">✏️ ${incomeGoal>0?'Изменить':'Задать'}</button></div>${
+      incomeGoal>0
+        ? `<div class="goal-box"><div style="display:flex;justify-content:space-between;font-size:13px;"><span>${curMonthInc.toLocaleString()} ₸ из ${incomeGoal.toLocaleString()} ₸</span><span style="font-weight:bold;color:${goalPct>=100?'#65d48b':'#a78bfa'};">${goalPct}%</span></div><div class="goal-bar-bg"><div class="goal-bar-fill" style="width:${goalPct}%;"></div></div>${goalPct>=100?'<div class="month-meta" style="margin-top:4px;color:#65d48b;">🎉 цель достигнута!</div>':`<div class="month-meta" style="margin-top:4px;">осталось: ${(incomeGoal-curMonthInc).toLocaleString()} ₸</div>`}</div>`
+        : `<div class="muted" style="font-size:11px;">Цель не задана</div>`
+    }`;
     const DELIVERY_POINTS=["F1","F2","F3","ALLEY PUB","Ночь"];
     const wdByM={};
     allTx.forEach(t=>{if(t.type==='income'&&DELIVERY_POINTS.includes(t.subcategory)){const m=(t.date||'').slice(0,7);if(!wdByM[m])wdByM[m]=new Set();wdByM[m].add(t.date);}});
-    const sortedM=Object.entries(byMonth).sort((a,b)=>b[0]>a[0]?1:-1).slice(0,6);
+    // Лучший/худший день ВНУТРИ каждого месяца (по общему доходу за день)
+    const dayByMonth={};
+    Object.entries(byDay).forEach(([d,v])=>{
+      const m=d.slice(0,7);
+      if(!dayByMonth[m])dayByMonth[m]=[];
+      dayByMonth[m].push([d,v]);
+    });
+    const bestWorstOfMonth=(m)=>{
+      const days=dayByMonth[m]||[];
+      if(!days.length)return null;
+      return{ best:days.reduce((a,b)=>b[1]>a[1]?b:a), worst:days.reduce((a,b)=>b[1]<a[1]?b:a) };
+    };
+    const allSortedM=Object.entries(byMonth).sort((a,b)=>b[0]>a[0]?1:-1);
+    const sortedM=_analyticsMonthsLimit>0?allSortedM.slice(0,_analyticsMonthsLimit):allSortedM;
     const maxInc=Math.max(...sortedM.map(([,d])=>d.inc),1);
-    const monthHtml=sortedM.length>0?`<div class="sec-title">Сравнение по месяцам</div>${sortedM.map(([m,d])=>{const wd=wdByM[m]?wdByM[m].size:0,avg=wd>0?Math.round(d.inc/wd):0;return`<div class="month-row"><div class="month-top"><span>${fmtM(m)}</span><span class="pos">${d.inc.toLocaleString()} ₸</span></div><div class="month-bar-bg"><div class="month-bar-fill" style="width:${(d.inc/maxInc*100).toFixed(1)}%"></div></div><div class="month-meta">📅 ${wd} дн. · ≈ ${avg.toLocaleString()} ₸/день</div></div>`;}).join('')}`:'';
+    const monthsFilterHtml=allSortedM.length>3?`<div class="sec-title" style="display:flex;justify-content:space-between;align-items:center;">
+      <span>Сравнение по месяцам</span>
+      <span style="display:flex;gap:4px;">
+        ${[3,6,12,0].map(n=>`<button onclick="setAnalyticsMonthsLimit(${n})" style="padding:4px 8px;border-radius:6px;border:1px solid ${_analyticsMonthsLimit===n?'#a78bfa':'#2a2a2a'};background:${_analyticsMonthsLimit===n?'#2a2350':'#1c1c1e'};color:${_analyticsMonthsLimit===n?'#a78bfa':'#555'};font-size:10px;font-weight:600;cursor:pointer;">${n===0?'Все':n}</button>`).join('')}
+      </span>
+    </div>`:`<div class="sec-title">Сравнение по месяцам</div>`;
+    const incByMonthMap={}; allSortedM.forEach(([m,d])=>{incByMonthMap[m]=d.inc;});
+    const monthHtml=sortedM.length>0?`${monthsFilterHtml}${sortedM.map(([m,d])=>{
+      const wd=wdByM[m]?wdByM[m].size:0,avg=wd>0?Math.round(d.inc/wd):0;
+      const bw=bestWorstOfMonth(m);
+      const bwLine=bw?`<div class="month-meta" style="margin-top:2px;">🏆 ${fmtD(bw.best[0]).slice(0,5)} — ${bw.best[1].toLocaleString()} ₸ &nbsp;·&nbsp; 📉 ${fmtD(bw.worst[0]).slice(0,5)} — ${bw.worst[1].toLocaleString()} ₸</div>`:'';
+      const net=d.inc-d.exp;
+      const expLine=`<div class="month-meta" style="margin-top:2px;">💸 − ${d.exp.toLocaleString()} ₸ расход &nbsp;·&nbsp; чистыми: <span style="color:${net>=0?'#65d48b':'#e05a5a'};font-weight:600;">${net.toLocaleString()} ₸</span></div>`;
+      const prevInc=incByMonthMap[prevMonthKey(m)];
+      const momHtml=(prevInc!==undefined&&prevInc>0)?(()=>{const pct=Math.round((d.inc-prevInc)/prevInc*100),up=pct>=0;return` <span style="font-size:11px;color:${up?'#65d48b':'#e05a5a'};font-weight:normal;">${up?'↑':'↓'}${Math.abs(pct)}%</span>`;})():'';
+      const totalDaysInM=daysInMonthCalc(m), daysPassedInM=(m===currentMonthKey)?dayOfMonth:totalDaysInM;
+      const workedDaysInM=(dayByMonth[m]||[]).length, missedDays=Math.max(0,daysPassedInM-workedDaysInM);
+      const missedLine=`<div class="month-meta" style="margin-top:2px;">${missedDays>0?`🚫 ${missedDays} дн. без записей`:'✅ без пропусков'}</div>`;
+      return`<div class="month-row"><div class="month-top"><span>${fmtM(m)}</span><span class="pos">${d.inc.toLocaleString()} ₸${momHtml}</span></div><div class="month-bar-bg"><div class="month-bar-fill" style="width:${(d.inc/maxInc*100).toFixed(1)}%"></div></div><div class="month-meta">📅 ${wd} дн. · ≈ ${avg.toLocaleString()} ₸/день</div>${bwLine}${expLine}${missedLine}</div>`;
+    }).join('')}`:'';
     const delivByMonth={};
     allTx.forEach(t=>{if(t.type==='income'&&DELIVERY_POINTS.includes(t.subcategory)){const m=(t.date||'').slice(0,7);if(!delivByMonth[m])delivByMonth[m]={sum:0,days:new Set()};delivByMonth[m].sum+=t.amount;delivByMonth[m].days.add(t.date);}});
-    const sortedDeliv=Object.entries(delivByMonth).sort((a,b)=>b[0]>a[0]?1:-1).slice(0,6);
+    const allSortedDeliv=Object.entries(delivByMonth).sort((a,b)=>b[0]>a[0]?1:-1);
+    const sortedDeliv=_analyticsMonthsLimit>0?allSortedDeliv.slice(0,_analyticsMonthsLimit):allSortedDeliv;
     const maxDeliv=Math.max(...sortedDeliv.map(([,d])=>d.sum),1);
     const delivHtml=sortedDeliv.length>0?`<div class="sec-title" style="margin-top:18px;color:#ffd166;">🚴 По точкам (F1·F2·F3·ALLEY·Ночь)</div>${sortedDeliv.map(([m,d])=>{const days=d.days.size,avg=days>0?Math.round(d.sum/days):0;return`<div class="month-row"><div class="month-top"><span>${fmtM(m)}</span><span style="color:#ffd166;font-weight:bold;">${d.sum.toLocaleString()} ₸</span></div><div class="month-bar-bg"><div class="month-bar-fill" style="width:${(d.sum/maxDeliv*100).toFixed(1)}%;background:#ffd166;"></div></div><div class="month-meta">📅 ${days} дн. · ≈ ${avg.toLocaleString()} ₸/день</div></div>`;}).join('')}`:'';
-    el.innerHTML=chartHtml+bwHtml+monthHtml+delivHtml||'<div class="muted">Недостаточно данных</div>';
+    // По дням недели — за всё время, помогает увидеть в какие дни обычно больше дохода
+    const weekdayNames=['Вс','Пн','Вт','Ср','Чт','Пт','Сб'];
+    const byWeekday={};
+    Object.entries(byDay).forEach(([d,v])=>{
+      const wdIdx=new Date(d+'T00:00:00').getDay();
+      if(!byWeekday[wdIdx])byWeekday[wdIdx]={sum:0,count:0};
+      byWeekday[wdIdx].sum+=v; byWeekday[wdIdx].count+=1;
+    });
+    const weekdayOrder=[1,2,3,4,5,6,0];
+    const maxWdAvg=Math.max(...weekdayOrder.map(wdIdx=>byWeekday[wdIdx]?byWeekday[wdIdx].sum/byWeekday[wdIdx].count:0),1);
+    const weekdayHtml=Object.keys(byWeekday).length>0?`<div class="sec-title" style="margin-top:18px;color:#6ec6ff;">📆 По дням недели (за всё время)</div>${weekdayOrder.map(wdIdx=>{
+      const dat=byWeekday[wdIdx];
+      const avg=dat?Math.round(dat.sum/dat.count):0,cnt=dat?dat.count:0;
+      return`<div class="month-row"><div class="month-top"><span>${weekdayNames[wdIdx]}</span><span style="color:#6ec6ff;font-weight:bold;">≈ ${avg.toLocaleString()} ₸/день</span></div><div class="month-bar-bg"><div class="month-bar-fill" style="width:${(avg/maxWdAvg*100).toFixed(1)}%;background:#6ec6ff;"></div></div><div class="month-meta">📅 ${cnt} смен · Σ ${dat?dat.sum.toLocaleString():0} ₸</div></div>`;
+    }).join('')}`:'';
+
+    // Доля каждой точки в доходе + средний доход за смену на каждой точке (за всё время)
+    const pointColors={'F1':'#a78bfa','F2':'#6ec6ff','F3':'#ffd166','ALLEY PUB':'#65d48b','Ночь':'#e05a5a'};
+    const pointTotals={},pointDays={};
+    DELIVERY_POINTS.forEach(p=>{pointTotals[p]=0;pointDays[p]=new Set();});
+    allTx.forEach(t=>{if(t.type==='income'&&DELIVERY_POINTS.includes(t.subcategory)){pointTotals[t.subcategory]+=t.amount;pointDays[t.subcategory].add(t.date);}});
+    const pointTotalSum=Object.values(pointTotals).reduce((s,v)=>s+v,0);
+    const pointShareHtml=pointTotalSum>0?`<div class="sec-title" style="margin-top:18px;">🎯 Доля точек в доходе (всё время)</div>${
+      Object.entries(pointTotals).filter(([,sum])=>sum>0).sort((a,b)=>b[1]-a[1]).map(([p,sum])=>{
+        const pct=Math.round(sum/pointTotalSum*100);
+        return`<div class="point-share-row"><span>${p}</span><div class="point-share-bar-bg"><div class="point-share-bar-fill" style="width:${pct}%;background:${pointColors[p]||'#a78bfa'};"></div></div><span style="font-weight:bold;">${pct}%</span></div>`;
+      }).join('')
+    }`:'';
+    const avgPerShiftHtml=pointTotalSum>0?`<div class="sec-title" style="margin-top:18px;color:#ffd166;">🚴 Средний доход по точкам за смену (всё время)</div>${
+      Object.entries(pointTotals).filter(([,sum])=>sum>0).sort((a,b)=>{
+        const avgA=pointDays[a[0]].size?a[1]/pointDays[a[0]].size:0, avgB=pointDays[b[0]].size?b[1]/pointDays[b[0]].size:0;
+        return avgB-avgA;
+      }).map(([p,sum])=>{
+        const days=pointDays[p].size,avg=days>0?Math.round(sum/days):0;
+        return`<div class="month-row"><div class="month-top"><span>${p}</span><span style="color:#ffd166;font-weight:bold;">≈ ${avg.toLocaleString()} ₸/смену</span></div><div class="month-meta">📅 ${days} смен · Σ ${sum.toLocaleString()} ₸</div></div>`;
+      }).join('')
+    }`:'';
+
+    // % расходов от дохода + топ-3 категории расходов (за всё время)
+    const totalIncomeAllTime=Object.values(byDay).reduce((s,v)=>s+v,0);
+    let totalExpenseAllTime=0; const categoryExpenseTotals={};
+    allTx.forEach(t=>{if(t.type==='expense'&&!isDepTransfer(t)){totalExpenseAllTime+=t.amount;const cat=t.categoryName||'Другое';categoryExpenseTotals[cat]=(categoryExpenseTotals[cat]||0)+t.amount;}});
+    const topExpenseCats=Object.entries(categoryExpenseTotals).sort((a,b)=>b[1]-a[1]).slice(0,3);
+    const expenseRatio=totalIncomeAllTime>0?Math.round(totalExpenseAllTime/totalIncomeAllTime*100):0;
+    const expenseRatioHtml=totalIncomeAllTime>0?`<div class="sec-title" style="margin-top:18px;color:#e05a5a;">💸 Расходы от дохода (всё время)</div><div class="goal-box"><div style="display:flex;justify-content:space-between;font-size:13px;"><span>Расходы съедают</span><span style="font-weight:bold;color:#e05a5a;">${expenseRatio}%</span></div><div class="goal-bar-bg"><div class="goal-bar-fill" style="width:${Math.min(100,expenseRatio)}%;background:linear-gradient(90deg,#e05a5a,#ffd166);"></div></div>${topExpenseCats.length?`<div class="month-meta" style="margin-top:8px;">Топ-3 категории:<br>${topExpenseCats.map(([c,s],i)=>`${i+1}. ${esc(c)} — ${s.toLocaleString()} ₸`).join('<br>')}</div>`:''}</div>`:'';
+
+    // Тепловая карта дохода за последние ~24 недели
+    const heatDaysBack=168;
+    const todayDt=new Date(todayLocal+'T00:00:00');
+    let heatStart=new Date(todayDt); heatStart.setDate(heatStart.getDate()-heatDaysBack);
+    const startDow=heatStart.getDay(), backToMon=(startDow===0?6:startDow-1);
+    heatStart.setDate(heatStart.getDate()-backToMon);
+    const heatCells=[]; let maxHeat=0;
+    for(let dt=new Date(heatStart);dt<=todayDt;dt.setDate(dt.getDate()+1)){
+      const key=new Date(dt-dt.getTimezoneOffset()*60000).toISOString().split('T')[0];
+      const val=byDay[key]||0;
+      if(val>maxHeat)maxHeat=val;
+      heatCells.push({date:key,val});
+    }
+    const heatColor=(val)=>{if(!val)return'#161616';const r=val/(maxHeat||1);if(r>0.75)return'#a78bfa';if(r>0.5)return'#8b6fd1';if(r>0.25)return'#6b4fa8';return'#4a3570';};
+    const heatmapCellsHtml=heatCells.map(c=>`<div class="heatmap-cell" style="background:${heatColor(c.val)};" title="${fmtD(c.date)}: ${c.val.toLocaleString()} ₸"></div>`).join('');
+    const heatmapHtml=maxHeat>0?`<div class="sec-title" style="margin-top:18px;">🗓 Тепловая карта дохода (посл. 24 нед.)</div><div class="heatmap-wrap"><div class="heatmap-grid">${heatmapCellsHtml}</div></div><div class="heatmap-legend"><span>меньше</span><div class="heatmap-cell" style="background:#161616;"></div><div class="heatmap-cell" style="background:#4a3570;"></div><div class="heatmap-cell" style="background:#6b4fa8;"></div><div class="heatmap-cell" style="background:#8b6fd1;"></div><div class="heatmap-cell" style="background:#a78bfa;"></div><span>больше</span></div>`:'';
+
+    el.innerHTML=chartHtml+bwHtml+forecastHtml+goalHtml+monthHtml+delivHtml+avgPerShiftHtml+pointShareHtml+expenseRatioHtml+weekdayHtml+heatmapHtml||'<div class="muted">Недостаточно данных</div>';
+    // Сохраняем данные для экспорта/шаринга сводки
+    window._analyticsSummary={bestDay,worstDay,bestAllDay,worstAllDay,sortedM:allSortedM,weekdayNames,weekdayOrder,byWeekday,fmtD,fmtM,curMonthInc,forecast,incomeGoal,currentMonthKey,expenseRatio,topExpenseCats};
     if(chartData){
-      const{filteredDays,maxVal,W,H,pad}=chartData;
+      const{filteredDays,maxVal,W,H,pad,isWeekly}=chartData;
       const canvas=document.getElementById('incomeChart');if(!canvas)return;
       const ctx=canvas.getContext('2d');
       const getX=i=>pad+i*((W-pad*2)/(filteredDays.length-1));
@@ -2252,10 +2406,10 @@
           else{ctx.beginPath();ctx.arc(x,y,3,0,Math.PI*2);ctx.fillStyle='#a78bfa';ctx.fill();}
         });
         ctx.fillStyle='#333';ctx.font='9px sans-serif';ctx.textAlign='center';
-        filteredDays.forEach(([d,],i)=>ctx.fillText(d.slice(8),getX(i),H+14));
+        filteredDays.forEach(([d,],i)=>ctx.fillText(isWeekly?d.slice(8)+'.'+d.slice(5,7):d.slice(8),getX(i),H+14));
       }
       const getIdx=cx=>{const r=canvas.getBoundingClientRect(),mx=(cx-r.left)*(W/r.width);let cl=0,md=Infinity;filteredDays.forEach(([,],i)=>{const dist=Math.abs(getX(i)-mx);if(dist<md){md=dist;cl=i;}});return cl;};
-      const showTip=idx=>{const[d,v]=filteredDays[idx];document.getElementById('chartTipDate').textContent=d.slice(8)+'.'+d.slice(5,7);document.getElementById('chartTipVal').textContent=v.toLocaleString()+' ₸';draw(idx);};
+      const showTip=idx=>{const[d,v]=filteredDays[idx];document.getElementById('chartTipDate').textContent=(isWeekly?'нед. с ':'')+d.slice(8)+'.'+d.slice(5,7);document.getElementById('chartTipVal').textContent=v.toLocaleString()+' ₸';draw(idx);};
       const hideTip=()=>{document.getElementById('chartTipDate').textContent='';document.getElementById('chartTipVal').textContent='';draw(-1);};
       canvas.addEventListener('touchstart',e=>showTip(getIdx(e.touches[0].clientX)),{passive:true});
       canvas.addEventListener('touchend',()=>hideTip());
@@ -2264,6 +2418,90 @@
       draw(-1);
     }
   }
+
+  window.setAnalyticsMonthsLimit = (n) => {
+    _analyticsMonthsLimit = n;
+    renderAnalytics();
+  };
+
+  window.editIncomeGoal = () => {
+    const old = document.getElementById('_goalEditDialog');
+    if (old) old.remove();
+    let cur = 0; try { cur = parseInt(localStorage.getItem('incomeGoal') || '0') || 0; } catch (e) {}
+    const div = document.createElement('div');
+    div.id = '_goalEditDialog';
+    div.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;padding:20px;';
+    div.innerHTML = `<div style="background:#1c1c1e;border-radius:16px;padding:20px;width:100%;max-width:320px;border:1px solid #2a2a2a;">
+      <div style="font-size:14px;font-weight:600;margin-bottom:12px;">Цель по доходу на месяц (₸)</div>
+      <input id="_goalEditInput" type="number" inputmode="numeric" value="${cur||''}" placeholder="Например, 500000"
+        style="width:100%;padding:11px;border-radius:10px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:15px;outline:none;box-sizing:border-box;margin-bottom:12px;" />
+      <div style="display:flex;gap:8px;">
+        <button onclick="document.getElementById('_goalEditDialog').remove()" style="flex:1;padding:11px;border-radius:10px;border:1px solid #333;background:none;color:#888;font-size:14px;cursor:pointer;">Отмена</button>
+        <button onclick="saveIncomeGoal()" style="flex:1;padding:11px;border-radius:10px;border:none;background:#65d48b;color:#000;font-size:14px;font-weight:bold;cursor:pointer;">Сохранить</button>
+      </div>
+    </div>`;
+    document.body.appendChild(div);
+    setTimeout(() => { const inp = document.getElementById('_goalEditInput'); inp.focus(); inp.select(); }, 100);
+  };
+
+  window.saveIncomeGoal = () => {
+    const val = parseInt(document.getElementById('_goalEditInput').value) || 0;
+    const dialog = document.getElementById('_goalEditDialog');
+    if (dialog) dialog.remove();
+    try { localStorage.setItem('incomeGoal', String(val)); } catch (e) {}
+    renderAnalytics();
+    window.showToast('✅ Цель сохранена');
+  };
+
+  window.shareAnalytics = async () => {
+    const s = window._analyticsSummary;
+    if (!s || !s.sortedM || !s.sortedM.length) { window.showToast('Недостаточно данных для экспорта', 'warn'); return; }
+    const { bestDay, worstDay, bestAllDay, worstAllDay, sortedM, weekdayNames, weekdayOrder, byWeekday, fmtD, fmtM, curMonthInc, forecast, incomeGoal, currentMonthKey, expenseRatio, topExpenseCats } = s;
+    const lines = ['📊 Сводка по доходам', ''];
+    if (curMonthInc !== undefined) {
+      lines.push(`🔮 ${fmtM(currentMonthKey)}: заработано ${curMonthInc.toLocaleString()} ₸, прогноз к концу месяца ≈ ${forecast.toLocaleString()} ₸`);
+      if (incomeGoal > 0) lines.push(`🎯 Цель: ${incomeGoal.toLocaleString()} ₸ (${Math.min(100, Math.round(curMonthInc/incomeGoal*100))}%)`);
+      lines.push('');
+    }
+    if (bestDay) {
+      lines.push(`🏆 Лучший день: ${fmtD(bestDay[0])} — ${bestAllDay.toLocaleString()} ₸`);
+      lines.push(`📉 Худший день: ${worstDay?fmtD(worstDay[0]):'—'} — ${worstAllDay.toLocaleString()} ₸`);
+      lines.push('');
+    }
+    lines.push('По месяцам:');
+    sortedM.slice(0, 6).forEach(([m, d]) => {
+      const net = d.inc - d.exp;
+      lines.push(`  ${fmtM(m)}: ${d.inc.toLocaleString()} ₸ дохода, ${d.exp.toLocaleString()} ₸ расхода, чистыми ${net.toLocaleString()} ₸`);
+    });
+    const bestWd = weekdayOrder.reduce((best, wd) => {
+      const avg = byWeekday[wd] ? byWeekday[wd].sum / byWeekday[wd].count : 0;
+      return (!best || avg > best.avg) ? { wd, avg } : best;
+    }, null);
+    if (bestWd) {
+      lines.push('');
+      lines.push(`📆 Самый доходный день недели: ${weekdayNames[bestWd.wd]} (≈ ${Math.round(bestWd.avg).toLocaleString()} ₸/день)`);
+    }
+    if (expenseRatio !== undefined) {
+      lines.push('');
+      lines.push(`💸 Расходы съедают ${expenseRatio}% дохода (за всё время)`);
+      if (topExpenseCats && topExpenseCats.length) {
+        lines.push('Топ-3 категории расходов:');
+        topExpenseCats.forEach(([c, sum], i) => lines.push(`  ${i+1}. ${c} — ${sum.toLocaleString()} ₸`));
+      }
+    }
+    const text = lines.join('\n');
+    if (navigator.share) {
+      try { await navigator.share({ title: 'Сводка по доходам', text }); }
+      catch (e) { /* пользователь отменил шаринг — ничего не делаем */ }
+    } else {
+      try {
+        await navigator.clipboard.writeText(text);
+        window.showToast('📋 Сводка скопирована');
+      } catch (e) {
+        window.showToast('Не удалось скопировать', 'warn');
+      }
+    }
+  };
 
   window.deleteTx = (id) => {
     if (String(id).startsWith('tmp_')) { window.showToast('Запись ещё сохраняется — подожди секунду', 'warn'); return; }
