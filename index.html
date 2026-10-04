@@ -14,6 +14,9 @@
   <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin />
   <link rel="dns-prefetch" href="https://www.gstatic.com" />
   <link rel="dns-prefetch" href="https://firestore.googleapis.com" />
+  <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js" />
+  <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js" />
+  <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js" />
   <link rel="manifest" href="/manifest.json" />
   <!-- Безопасность -->
   <meta http-equiv="X-Content-Type-Options" content="nosniff" />
@@ -329,9 +332,11 @@
       window.fbUser = user;
       if (!window.appStarted) {
         window.appStarted = true;
-        // Показываем skeleton-заглушку вместо текста — воспринимается быстрее
+        // Показываем skeleton-заглушку только если в локальном кэше ещё нет данных
         const listEl = document.getElementById('list');
-        if (listEl) listEl.innerHTML = Array(5).fill('<div class="skeleton-row"></div>').join('');
+        if (listEl && (!window.allTx || window.allTx.length === 0)) {
+          listEl.innerHTML = Array(5).fill('<div class="skeleton-row"></div>').join('');
+        }
         // Сторожевой таймер: если через 14 сек список так и не наполнился реальными
         // данными (например, слушатель Firebase не смог подключиться даже после
         // автоматического отката с офлайн-кэша на обычный режим), показываем
@@ -345,11 +350,11 @@
             </div>`;
           }
         }, 14000);
-        setTimeout(() => {
+        requestAnimationFrame(() => {
           window.dispatchEvent(new Event("fbReady"));
           // Загружаем адреса из Firebase сразу после авторизации
           if (window.loadCustomAddressesFromFirebase) window.loadCustomAddressesFromFirebase();
-        }, 50);
+        });
       }
     }
 
@@ -1402,6 +1407,17 @@
   // здесь (а не внутри initApp), т.к. render() — отдельная функция вне initApp() и не
   // видит переменных, объявленных через let/const внутри initApp().
   let _analyticsMonthsLimit = 6; // сколько месяцев показывать в "Сравнение по месяцам" (0 = все)
+  let _weekdayShiftFilter = 'all'; // 'all' (вместе), 'day' (точки), 'night' (ночь)
+  let _openWeekdayDetails = null; // wdIdx раскрытого дня недели
+
+  window.setWeekdayShiftFilter = (mode) => {
+    _weekdayShiftFilter = mode;
+    if (window.renderAnalytics) window.renderAnalytics();
+  };
+  window.toggleWeekdayDetails = (wdIdx) => {
+    _openWeekdayDetails = (_openWeekdayDetails === wdIdx) ? null : wdIdx;
+    if (window.renderAnalytics) window.renderAnalytics();
+  };
 
   // ── Локальный кэш для мгновенной отрисовки при входе ───────────
   // Firestore уже кэширует данные офлайн (persistentLocalCache), но первая
@@ -1435,6 +1451,9 @@
     } catch(e) { console.warn('Кэш транзакций повреждён:', e.message); }
     return loaded;
   }
+
+  // Мгновенная инициализация данных из кэша для нулевой задержки старта
+  try { loadCachedDataInstant(); } catch(e) {}
 
   let appInitialized = false; window.appInitialized = false;
   function tryInitApp() {
@@ -2321,21 +2340,254 @@
     const sortedDeliv=_analyticsMonthsLimit>0?allSortedDeliv.slice(0,_analyticsMonthsLimit):allSortedDeliv;
     const maxDeliv=Math.max(...sortedDeliv.map(([,d])=>d.sum),1);
     const delivHtml=sortedDeliv.length>0?`<div class="sec-title" style="margin-top:18px;color:#ffd166;">🚴 По точкам (F1·F2·F3·ALLEY·Ночь)</div>${sortedDeliv.map(([m,d])=>{const days=d.days.size,avg=days>0?Math.round(d.sum/days):0;return`<div class="month-row"><div class="month-top"><span>${fmtM(m)}</span><span style="color:#ffd166;font-weight:bold;">${d.sum.toLocaleString()} ₸</span></div><div class="month-bar-bg"><div class="month-bar-fill" style="width:${(d.sum/maxDeliv*100).toFixed(1)}%;background:#ffd166;"></div></div><div class="month-meta">📅 ${days} дн. · ≈ ${avg.toLocaleString()} ₸/день</div></div>`;}).join('')}`:'';
-    // По дням недели — за всё время, помогает увидеть в какие дни обычно больше дохода
-    const weekdayNames=['Вс','Пн','Вт','Ср','Чт','Пт','Сб'];
-    const byWeekday={};
-    Object.entries(byDay).forEach(([d,v])=>{
-      const wdIdx=new Date(d+'T00:00:00').getDay();
-      if(!byWeekday[wdIdx])byWeekday[wdIdx]={sum:0,count:0};
-      byWeekday[wdIdx].sum+=v; byWeekday[wdIdx].count+=1;
+    // ── Детальный учёт дохода по сменам: разделение на обычные точки и ночь ──
+    const isNightTx = (t) => {
+      const sub = (t.subcategory || '').toLowerCase();
+      const cat = (t.categoryName || '').toLowerCase();
+      const com = (t.comment || '').toLowerCase();
+      return sub.includes('ночь') || cat.includes('ночь') || com.includes('ночь');
+    };
+
+    const dayShiftMap = {};
+    let totalNightIncomeAllTime = 0, totalDayIncomeAllTime = 0;
+    let totalNightTxCountAllTime = 0, totalDayTxCountAllTime = 0;
+    let totalNightShiftsAllTime = 0, totalDayShiftsAllTime = 0;
+
+    allTx.forEach(t => {
+      if (t.type !== 'income' || isDepTransfer(t)) return;
+      const d = t.date || '';
+      if (!d) return;
+      if (!dayShiftMap[d]) {
+        dayShiftMap[d] = { total: 0, daySum: 0, nightSum: 0, totalTxs: 0, dayTxs: 0, nightTxs: 0, points: {} };
+      }
+      const amt = Number(t.amount) || 0;
+      const isNight = isNightTx(t);
+      const pKey = t.subcategory || t.categoryName || 'Точка';
+
+      dayShiftMap[d].total += amt;
+      dayShiftMap[d].totalTxs++;
+      if (isNight) {
+        dayShiftMap[d].nightSum += amt;
+        dayShiftMap[d].nightTxs++;
+        totalNightIncomeAllTime += amt;
+        totalNightTxCountAllTime++;
+      } else {
+        dayShiftMap[d].daySum += amt;
+        dayShiftMap[d].dayTxs++;
+        totalDayIncomeAllTime += amt;
+        totalDayTxCountAllTime++;
+      }
+      dayShiftMap[d].points[pKey] = (dayShiftMap[d].points[pKey] || 0) + amt;
     });
+
+    Object.values(dayShiftMap).forEach(d => {
+      if (d.nightSum > 0) totalNightShiftsAllTime++;
+      if (d.daySum > 0) totalDayShiftsAllTime++;
+    });
+
+    // ── Блок: Ночь vs Дневные точки (за всё время) ──
+    const grandIncomeTotal = totalDayIncomeAllTime + totalNightIncomeAllTime;
+    let nightDayOverviewHtml = '';
+    if (grandIncomeTotal > 0 && totalNightIncomeAllTime > 0) {
+      const dayPct = Math.round((totalDayIncomeAllTime / grandIncomeTotal) * 100);
+      const nightPct = 100 - dayPct;
+      const avgDayShiftAll = totalDayShiftsAllTime > 0 ? Math.round(totalDayIncomeAllTime / totalDayShiftsAllTime) : 0;
+      const avgNightShiftAll = totalNightShiftsAllTime > 0 ? Math.round(totalNightIncomeAllTime / totalNightShiftsAllTime) : 0;
+      const avgDayCheckAll = totalDayTxCountAllTime > 0 ? Math.round(totalDayIncomeAllTime / totalDayTxCountAllTime) : 0;
+      const avgNightCheckAll = totalNightTxCountAllTime > 0 ? Math.round(totalNightIncomeAllTime / totalNightTxCountAllTime) : 0;
+
+      nightDayOverviewHtml = `
+        <div class="sec-title" style="margin-top:18px;color:#a78bfa;">🌓 Ночь vs Точки (всё время)</div>
+        <div class="bw-grid" style="margin-bottom:8px;">
+          <div class="bw-card" style="background:#0d1829;border:1px solid #1e3a5f;">
+            <div class="bw-label" style="color:#6ec6ff;">🚴 Дневные точки</div>
+            <div class="bw-val" style="color:#6ec6ff;">≈ ${avgDayShiftAll.toLocaleString()} ₸</div>
+            <div class="bw-date" style="color:#888;">ср. доход за смену</div>
+            <div style="margin-top:6px;padding-top:6px;border-top:1px solid #1a2a40;font-size:10px;color:#aaa;">
+              ${totalDayShiftsAllTime} смен · ср. чек ${avgDayCheckAll.toLocaleString()} ₸<br>
+              <b style="color:#6ec6ff;font-size:11px;">Σ ${totalDayIncomeAllTime.toLocaleString()} ₸ (${dayPct}%)</b>
+            </div>
+          </div>
+          <div class="bw-card" style="background:#1a102a;border:1px solid #3b2060;">
+            <div class="bw-label" style="color:#a78bfa;">🌙 Ночные смены</div>
+            <div class="bw-val" style="color:#a78bfa;">≈ ${avgNightShiftAll.toLocaleString()} ₸</div>
+            <div class="bw-date" style="color:#888;">ср. доход за ночь</div>
+            <div style="margin-top:6px;padding-top:6px;border-top:1px solid #2e1a4a;font-size:10px;color:#aaa;">
+              ${totalNightShiftsAllTime} ночей · ср. чек ${avgNightCheckAll.toLocaleString()} ₸<br>
+              <b style="color:#a78bfa;font-size:11px;">Σ ${totalNightIncomeAllTime.toLocaleString()} ₸ (${nightPct}%)</b>
+            </div>
+          </div>
+        </div>
+        <div style="margin-bottom:12px;">
+          <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;">
+            <span style="color:#6ec6ff;">🚴 Точки ${dayPct}%</span>
+            <span style="color:#a78bfa;">🌙 Ночь ${nightPct}%</span>
+          </div>
+          <div class="month-bar-bg" style="display:flex;height:6px;border-radius:3px;overflow:hidden;">
+            <div style="height:100%;width:${dayPct}%;background:#6ec6ff;" title="Точки/день: ${dayPct}%"></div>
+            <div style="height:100%;width:${nightPct}%;background:#a78bfa;" title="Ночь: ${nightPct}%"></div>
+          </div>
+        </div>
+      `;
+    }
+
+    // По дням недели — средняя вместе и отдельно (точки vs ночь) за всё время
+    const weekdayNames=['Вс','Пн','Вт','Ср','Чт','Пт','Сб'];
     const weekdayOrder=[1,2,3,4,5,6,0];
-    const maxWdAvg=Math.max(...weekdayOrder.map(wdIdx=>byWeekday[wdIdx]?byWeekday[wdIdx].sum/byWeekday[wdIdx].count:0),1);
-    const weekdayHtml=Object.keys(byWeekday).length>0?`<div class="sec-title" style="margin-top:18px;color:#6ec6ff;">📆 По дням недели (за всё время)</div>${weekdayOrder.map(wdIdx=>{
-      const dat=byWeekday[wdIdx];
-      const avg=dat?Math.round(dat.sum/dat.count):0,cnt=dat?dat.count:0;
-      return`<div class="month-row"><div class="month-top"><span>${weekdayNames[wdIdx]}</span><span style="color:#6ec6ff;font-weight:bold;">≈ ${avg.toLocaleString()} ₸/день</span></div><div class="month-bar-bg"><div class="month-bar-fill" style="width:${(avg/maxWdAvg*100).toFixed(1)}%;background:#6ec6ff;"></div></div><div class="month-meta">📅 ${cnt} смен · Σ ${dat?dat.sum.toLocaleString():0} ₸</div></div>`;
-    }).join('')}`:'';
+    const weekdayData={};
+    weekdayOrder.forEach(idx => {
+      weekdayData[idx] = {
+        totalSum: 0, totalDays: 0,
+        daySum: 0, dayDays: 0,
+        nightSum: 0, nightDays: 0,
+        dayOrders: 0, nightOrders: 0,
+        totalOrders: 0,
+        points: {}
+      };
+    });
+
+    Object.entries(dayShiftMap).forEach(([d, dat]) => {
+      const dt = new Date(d + 'T00:00:00');
+      const wdIdx = dt.getDay();
+      if (!weekdayData[wdIdx]) return;
+      const w = weekdayData[wdIdx];
+
+      if (dat.total > 0) {
+        w.totalSum += dat.total;
+        w.totalDays += 1;
+        w.totalOrders += dat.totalTxs;
+      }
+      if (dat.daySum > 0) {
+        w.daySum += dat.daySum;
+        w.dayDays += 1;
+        w.dayOrders += dat.dayTxs;
+      }
+      if (dat.nightSum > 0) {
+        w.nightSum += dat.nightSum;
+        w.nightDays += 1;
+        w.nightOrders += dat.nightTxs;
+      }
+      Object.entries(dat.points).forEach(([pt, val]) => {
+        w.points[pt] = (w.points[pt] || 0) + val;
+      });
+    });
+
+    const byWeekday = {};
+    weekdayOrder.forEach(idx => {
+      byWeekday[idx] = { sum: weekdayData[idx].totalSum, count: weekdayData[idx].totalDays };
+    });
+
+    const maxAverages = { all: 1, day: 1, night: 1 };
+    weekdayOrder.forEach(wdIdx => {
+      const w = weekdayData[wdIdx];
+      const aTot = w.totalDays > 0 ? (w.totalSum / w.totalDays) : 0;
+      const aDay = w.dayDays > 0 ? (w.daySum / w.dayDays) : 0;
+      const aNight = w.nightDays > 0 ? (w.nightSum / w.nightDays) : 0;
+      if (aTot > maxAverages.all) maxAverages.all = aTot;
+      if (aDay > maxAverages.day) maxAverages.day = aDay;
+      if (aNight > maxAverages.night) maxAverages.night = aNight;
+    });
+
+    const shiftMode = _weekdayShiftFilter || 'all';
+    const weekdayFilterBar = `
+      <div class="sec-title" style="margin-top:18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
+        <span style="color:#6ec6ff;">📆 По дням недели</span>
+        <span style="display:flex;gap:4px;">
+          <button onclick="setWeekdayShiftFilter('all')" style="padding:3px 7px;border-radius:6px;border:1px solid ${shiftMode==='all'?'#6ec6ff':'#2a2a2a'};background:${shiftMode==='all'?'#11263d':'#1c1c1e'};color:${shiftMode==='all'?'#6ec6ff':'#555'};font-size:10px;font-weight:600;cursor:pointer;">Вместе</button>
+          <button onclick="setWeekdayShiftFilter('day')" style="padding:3px 7px;border-radius:6px;border:1px solid ${shiftMode==='day'?'#ffd166':'#2a2a2a'};background:${shiftMode==='day'?'#3d3111':'#1c1c1e'};color:${shiftMode==='day'?'#ffd166':'#555'};font-size:10px;font-weight:600;cursor:pointer;">🚴 Точки</button>
+          <button onclick="setWeekdayShiftFilter('night')" style="padding:3px 7px;border-radius:6px;border:1px solid ${shiftMode==='night'?'#a78bfa':'#2a2a2a'};background:${shiftMode==='night'?'#28163f':'#1c1c1e'};color:${shiftMode==='night'?'#a78bfa':'#555'};font-size:10px;font-weight:600;cursor:pointer;">🌙 Ночь</button>
+        </span>
+      </div>
+    `;
+
+    const weekdayHtml = Object.keys(weekdayData).length > 0 ? `${weekdayFilterBar}${weekdayOrder.map(wdIdx => {
+      const dat = weekdayData[wdIdx];
+      const avgTotal = dat.totalDays > 0 ? Math.round(dat.totalSum / dat.totalDays) : 0;
+      const avgDay = dat.dayDays > 0 ? Math.round(dat.daySum / dat.dayDays) : 0;
+      const avgNight = dat.nightDays > 0 ? Math.round(dat.nightSum / dat.nightDays) : 0;
+      const avgDayOrder = dat.dayOrders > 0 ? Math.round(dat.daySum / dat.dayOrders) : 0;
+      const avgNightOrder = dat.nightOrders > 0 ? Math.round(dat.nightSum / dat.nightOrders) : 0;
+      const isOpen = _openWeekdayDetails === wdIdx;
+
+      let mainAvgText = '', barHtml = '', metaHtml = '', headerColor = '#6ec6ff';
+
+      if (shiftMode === 'night') {
+        headerColor = '#a78bfa';
+        mainAvgText = avgNight > 0 ? `≈ ${avgNight.toLocaleString()} ₸/ночь` : '—';
+        const wPct = (avgNight / maxAverages.night * 100).toFixed(1);
+        barHtml = `<div class="month-bar-bg"><div class="month-bar-fill" style="width:${wPct}%;background:#a78bfa;"></div></div>`;
+        metaHtml = `<div class="month-meta">🌙 ${dat.nightDays} ночей · Σ ${dat.nightSum.toLocaleString()} ₸ · всего за день: ≈ ${avgTotal.toLocaleString()} ₸</div>`;
+      } else if (shiftMode === 'day') {
+        headerColor = '#ffd166';
+        mainAvgText = avgDay > 0 ? `≈ ${avgDay.toLocaleString()} ₸/смену` : '—';
+        const wPct = (avgDay / maxAverages.day * 100).toFixed(1);
+        barHtml = `<div class="month-bar-bg"><div class="month-bar-fill" style="width:${wPct}%;background:#ffd166;"></div></div>`;
+        metaHtml = `<div class="month-meta">🚴 ${dat.dayDays} дневных смен · Σ ${dat.daySum.toLocaleString()} ₸ · всего за день: ≈ ${avgTotal.toLocaleString()} ₸</div>`;
+      } else {
+        // Режим 'all' (средняя вместе и отдельно)
+        headerColor = '#6ec6ff';
+        mainAvgText = avgTotal > 0 ? `≈ ${avgTotal.toLocaleString()} ₸/день` : '—';
+        const totalPct = Math.min(100, (avgTotal / maxAverages.all * 100));
+        const dayPortion = (dat.totalSum > 0 && dat.daySum > 0) ? (dat.daySum / dat.totalSum) : 1;
+        const nightPortion = 1 - dayPortion;
+        const dayBarWidth = (totalPct * dayPortion).toFixed(1);
+        const nightBarWidth = (totalPct * nightPortion).toFixed(1);
+
+        barHtml = `
+          <div class="month-bar-bg" style="display:flex;height:4px;border-radius:2px;overflow:hidden;">
+            <div style="height:100%;width:${dayBarWidth}%;background:#6ec6ff;" title="Точки/день"></div>
+            <div style="height:100%;width:${nightBarWidth}%;background:#a78bfa;" title="Ночь"></div>
+          </div>
+        `;
+        metaHtml = `
+          <div class="month-meta" style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px;margin-top:4px;">
+            <span>🚴 смены: <b style="color:#6ec6ff;">≈ ${avgDay.toLocaleString()} ₸</b> (${dat.dayDays} смен)</span>
+            <span>🌙 ночь: <b style="color:#a78bfa;">≈ ${avgNight.toLocaleString()} ₸</b> (${dat.nightDays} ночей)</span>
+          </div>
+        `;
+      }
+
+      let detailsHtml = '';
+      if (isOpen) {
+        const topPoints = Object.entries(dat.points).sort((a,b)=>b[1]-a[1]).slice(0, 4);
+        const topPointsStr = topPoints.map(([pt, s]) => `${esc(pt)}: ${s.toLocaleString()} ₸`).join(' · ');
+
+        detailsHtml = `
+          <div style="background:#141416;border-radius:10px;padding:10px 12px;margin-top:8px;border:1px solid #282828;">
+            <div style="font-size:11px;font-weight:bold;color:#fff;margin-bottom:6px;">
+              📊 Подробно за ${weekdayNames[wdIdx]}:
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px;">
+              <div style="background:#1a1c24;padding:8px;border-radius:8px;border:1px solid #233044;">
+                <div style="color:#6ec6ff;font-weight:600;">🚴 Дневные точки</div>
+                <div style="font-size:13px;font-weight:bold;margin:2px 0;">≈ ${avgDay.toLocaleString()} ₸</div>
+                <div style="color:#777;font-size:10px;">${dat.dayDays} смен · ср. чек ${avgDayOrder.toLocaleString()} ₸</div>
+                <div style="color:#999;font-size:10px;">Σ ${dat.daySum.toLocaleString()} ₸ (${dat.dayOrders} зак.)</div>
+              </div>
+              <div style="background:#20182a;padding:8px;border-radius:8px;border:1px solid #3d2650;">
+                <div style="color:#a78bfa;font-weight:600;">🌙 Ночные смены</div>
+                <div style="font-size:13px;font-weight:bold;margin:2px 0;">≈ ${avgNight.toLocaleString()} ₸</div>
+                <div style="color:#777;font-size:10px;">${dat.nightDays} ночей · ср. чек ${avgNightOrder.toLocaleString()} ₸</div>
+                <div style="color:#999;font-size:10px;">Σ ${dat.nightSum.toLocaleString()} ₸ (${dat.nightOrders} зак.)</div>
+              </div>
+            </div>
+            ${topPointsStr ? `<div style="font-size:10px;color:#777;margin-top:8px;">🏆 Точки: ${topPointsStr}</div>` : ''}
+          </div>
+        `;
+      }
+
+      return `
+        <div class="month-row" style="cursor:pointer;" onclick="toggleWeekdayDetails(${wdIdx})">
+          <div class="month-top">
+            <span style="font-weight:600;">${weekdayNames[wdIdx]} <small style="color:#555;font-weight:normal;font-size:11px;">${isOpen ? '▲' : '▼'}</small></span>
+            <span style="color:${headerColor};font-weight:bold;">${mainAvgText}</span>
+          </div>
+          ${barHtml}
+          ${metaHtml}
+          ${detailsHtml}
+        </div>
+      `;
+    }).join('')}` : '';
 
     // Доля каждой точки в доходе + средний доход за смену на каждой точке (за всё время)
     const pointColors={'F1':'#a78bfa','F2':'#6ec6ff','F3':'#ffd166','ALLEY PUB':'#65d48b','Ночь':'#e05a5a'};
@@ -2384,9 +2636,9 @@
     const heatmapCellsHtml=heatCells.map(c=>`<div class="heatmap-cell" style="background:${heatColor(c.val)};" title="${fmtD(c.date)}: ${c.val.toLocaleString()} ₸"></div>`).join('');
     const heatmapHtml=maxHeat>0?`<div class="sec-title" style="margin-top:18px;">🗓 Тепловая карта дохода (посл. 24 нед.)</div><div class="heatmap-wrap"><div class="heatmap-grid">${heatmapCellsHtml}</div></div><div class="heatmap-legend"><span>меньше</span><div class="heatmap-cell" style="background:#161616;"></div><div class="heatmap-cell" style="background:#4a3570;"></div><div class="heatmap-cell" style="background:#6b4fa8;"></div><div class="heatmap-cell" style="background:#8b6fd1;"></div><div class="heatmap-cell" style="background:#a78bfa;"></div><span>больше</span></div>`:'';
 
-    el.innerHTML=chartHtml+bwHtml+forecastHtml+goalHtml+monthHtml+delivHtml+avgPerShiftHtml+pointShareHtml+expenseRatioHtml+weekdayHtml+heatmapHtml||'<div class="muted">Недостаточно данных</div>';
+    el.innerHTML=chartHtml+bwHtml+forecastHtml+goalHtml+monthHtml+delivHtml+avgPerShiftHtml+pointShareHtml+expenseRatioHtml+nightDayOverviewHtml+weekdayHtml+heatmapHtml||'<div class="muted">Недостаточно данных</div>';
     // Сохраняем данные для экспорта/шаринга сводки
-    window._analyticsSummary={bestDay,worstDay,bestAllDay,worstAllDay,sortedM:allSortedM,weekdayNames,weekdayOrder,byWeekday,fmtD,fmtM,curMonthInc,forecast,incomeGoal,currentMonthKey,expenseRatio,topExpenseCats};
+    window._analyticsSummary={bestDay,worstDay,bestAllDay,worstAllDay,sortedM:allSortedM,weekdayNames,weekdayOrder,byWeekday,weekdayData,totalDayIncomeAllTime,totalNightIncomeAllTime,totalDayShiftsAllTime,totalNightShiftsAllTime,fmtD,fmtM,curMonthInc,forecast,incomeGoal,currentMonthKey,expenseRatio,topExpenseCats};
     if(chartData){
       const{filteredDays,maxVal,W,H,pad,isWeekly}=chartData;
       const canvas=document.getElementById('incomeChart');if(!canvas)return;
