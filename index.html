@@ -3810,10 +3810,9 @@
 
     const itemsHtml = cats.map(c => {
       const autoFlag = isAutoCategory(c);
-      // Для категории авто по умолчанию: только за сегодня или выбранную дату, без ночи, до 4000
       let effPeriod = (c.period && c.period !== 'global') ? c.period : currentPeriod;
       if (autoFlag && (!c.period || c.period === 'global')) {
-        // Если выбран диапазон/неделя/месяц, авто принудительно считается за сегодня или выбранную дату
+        // Категория авто считается только за сегодня или выбранную дату
         if (currentPeriod === 'date') {
           effPeriod = 'date';
         } else if (currentPeriod !== 'today' && currentPeriod !== 'custom') {
@@ -3836,22 +3835,52 @@
       const effSrcObj = availableSources.find(s => s.id === effSrc);
       const effSrcName = effSrc === 'all' ? 'Все доходы' : (effSrcObj ? effSrcObj.name : effSrc);
 
-      // Параметры фильтрации (для авто: без ночи, до 4000 ₸)
-      const filterOpts = {};
-      if (autoFlag || c.excludeNight) filterOpts.excludeNight = true;
-      if (autoFlag) {
-        filterOpts.minAmount = 0;
-        filterOpts.maxAmount = c.maxOrderAmount !== undefined ? Number(c.maxOrderAmount) : 4000;
-      } else if (c.maxOrderAmount !== undefined && c.maxOrderAmount !== null && c.maxOrderAmount !== '') {
-        filterOpts.maxAmount = Number(c.maxOrderAmount);
-      }
-
-      // Базовый доход для конкретной категории
       let catBaseAmt = 0;
-      if (effPeriod === 'custom' && currentPeriod === 'custom' && c.period === 'global') {
-        catBaseAmt = globalBaseAmt;
+      let badgeRule = '';
+
+      if (autoFlag) {
+        // 🚗 Категория Автомобиль:
+        // Считает дневные заказы от 0 до 4000 ₸ за сегодня/выбранную дату. Ночной доход исключается!
+        const autoOpts = {
+          excludeNight: true,
+          minAmount: 0,
+          maxAmount: c.maxOrderAmount !== undefined ? Number(c.maxOrderAmount) : 4000
+        };
+        catBaseAmt = calcIncomeForBudget(effSrc, cDates.from, cDates.to, autoOpts).sum;
+        badgeRule = '🚗 Заказы 0–4000 ₸ (без ночи)';
       } else {
-        catBaseAmt = calcIncomeForBudget(effSrc, cDates.from, cDates.to, filterOpts).sum;
+        // 📌 Остальные категории:
+        // НЕ считают то, что уже посчитал автомобиль (исключают дневные чеки 0-4000 ₸)
+        // и НЕ трогают ночной доход (ночь исключается, если пользователь сам явно не выбрал графу «Ночь»)
+        const isUserExplicitNight = effSrc && effSrc.toLowerCase().includes('ночь');
+        const isDepTransfer = t => t.subcategory && (t.subcategory.startsWith('← ') || t.subcategory.startsWith('→ '));
+
+        const nonAutoTxs = (window.allTx || []).filter(t => {
+          if (t.type !== 'income' || isDepTransfer(t)) return false;
+          if (cDates.from && t.date < cDates.from) return false;
+          if (cDates.to && t.date > cDates.to) return false;
+
+          // Источник дохода
+          if (effSrc && effSrc !== 'all') {
+            const sub = (t.subcategory || '').trim().toLowerCase();
+            const cat = (t.categoryName || '').trim().toLowerCase();
+            const target = effSrc.trim().toLowerCase();
+            if (sub !== target && cat !== target) return false;
+          }
+
+          const isNight = isNightIncomeTx(t);
+          if (!isUserExplicitNight) {
+            // Ночь никто не трогает (остаётся неприкосновенной)
+            if (isNight) return false;
+            // Исключаем то, что посчитал автомобиль (дневные чеки от 0 до 4000 ₸)
+            const amt = Number(t.amount) || 0;
+            if (amt <= 4000) return false;
+          }
+          return true;
+        });
+
+        catBaseAmt = nonAutoTxs.reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
+        badgeRule = isUserExplicitNight ? '🌙 Ночная смена' : '📦 Доход свыше 4000 ₸ (без авто и ночи)';
       }
 
       let allocated = 0;
@@ -3879,11 +3908,9 @@
             <span style="background:#221935;color:#c084fc;border:1px solid #3b2758;font-size:10px;font-weight:600;padding:2px 7px;border-radius:5px;">
               📅 ${esc(cDates.label)}
             </span>
-            ${autoFlag ? `
-              <span style="background:#2a2210;color:#ffd166;border:1px solid #4d3a14;font-size:10px;font-weight:600;padding:2px 7px;border-radius:5px;">
-                🚗 Заказы 0–4000 ₸ (без ночи)
-              </span>
-            ` : ''}
+            <span style="background:#2a2210;color:#ffd166;border:1px solid #4d3a14;font-size:10px;font-weight:600;padding:2px 7px;border-radius:5px;">
+              ${badgeRule}
+            </span>
             <span style="background:#132817;color:#65d48b;border:1px solid #1e4526;font-size:10px;font-weight:600;padding:2px 7px;border-radius:5px;">
               База: ${catBaseAmt.toLocaleString()} ₸
             </span>
