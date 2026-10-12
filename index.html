@@ -3620,18 +3620,39 @@
   }
 
   function getBudgetCategories() {
+    let list = null;
     try {
       const saved = localStorage.getItem(BUDGET_CATEGORIES_KEY);
-      if (saved) return JSON.parse(saved);
+      if (saved) list = JSON.parse(saved);
     } catch(e) {}
-    // Стандартные категории по умолчанию
-    return [
-      { id: 'b_1', name: 'Отложить / Накопления', mode: 'percent', value: 20, color: '#65d48b', incomeSource: 'all', period: 'global' },
-      { id: 'b_2', name: 'Авто / Бензин', mode: 'percent', value: 25, color: '#ffd166', incomeSource: 'all', period: 'global', isAuto: true, excludeNight: true, maxOrderAmount: 4000 },
-      { id: 'b_3', name: 'Еда и продукты', mode: 'percent', value: 20, color: '#6ec6ff', incomeSource: 'all', period: 'global' },
-      { id: 'b_4', name: 'Обязательные платежи', mode: 'amount', value: 3000, color: '#a78bfa', incomeSource: 'all', period: 'global' },
-      { id: 'b_5', name: 'Свободные траты', mode: 'percent', value: 15, color: '#ff6b6b', incomeSource: 'all', period: 'global' }
-    ];
+    if (!Array.isArray(list) || list.length === 0) {
+      list = [
+        { id: 'b_1', name: 'Отложить / Накопления', mode: 'percent', value: 20, color: '#65d48b', incomeSource: 'all', period: 'global' },
+        { id: 'b_2', name: 'Автомобиль', mode: 'percent', value: 25, color: '#ffd166', incomeSource: 'all', period: 'global', isAuto: true, excludeNight: true, maxOrderAmount: 4000 },
+        { id: 'b_3', name: 'Еда и продукты', mode: 'percent', value: 20, color: '#6ec6ff', incomeSource: 'all', period: 'global' },
+        { id: 'b_4', name: 'Обязательные платежи', mode: 'amount', value: 3000, color: '#a78bfa', incomeSource: 'all', period: 'global' },
+        { id: 'b_5', name: 'Свободные траты', mode: 'percent', value: 15, color: '#ff6b6b', incomeSource: 'all', period: 'global' }
+      ];
+    } else {
+      // Гарантируем, что категория «Автомобиль» всегда присутствует среди категорий
+      const hasAuto = list.some(c => isAutoCategory(c));
+      if (!hasAuto) {
+        list.splice(1, 0, {
+          id: 'b_auto_' + Date.now(),
+          name: 'Автомобиль',
+          mode: 'percent',
+          value: 25,
+          color: '#ffd166',
+          incomeSource: 'all',
+          period: 'global',
+          isAuto: true,
+          excludeNight: true,
+          maxOrderAmount: 4000
+        });
+        try { localStorage.setItem(BUDGET_CATEGORIES_KEY, JSON.stringify(list)); } catch(e) {}
+      }
+    }
+    return list;
   }
 
   function saveBudgetCategories(cats) {
