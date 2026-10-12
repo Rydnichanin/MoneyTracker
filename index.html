@@ -729,13 +729,15 @@
           <button class="btn-main" style="background:#222;color:#fff;padding:11px;margin:0;" onclick="addAccount()">Добавить</button>
         </div>
       </div>
-      <div class="card">
-        <div class="card-title">Начальный баланс счёта</div>
-        <div class="row2">
-          <select id="setBalanceAcc"></select>
-          <input id="setBalanceVal" type="number" inputmode="decimal" placeholder="Сумма сейчас">
+      <div class="card" style="border-color:#1e355b;">
+        <div class="card-title" style="color:#6ec6ff;">⛽ Цена за литр бензина</div>
+        <div style="font-size:12px;color:#8899a6;margin-bottom:10px;">
+          Используется при заправке: введи сумму в ₸ — литры рассчитаются автоматически
         </div>
-        <button class="btn-main" style="background:#222;color:#fff;padding:11px;" onclick="setInitialBalance()">Установить</button>
+        <div class="row2">
+          <input id="setFuelPrice" type="number" step="0.1" inputmode="decimal" placeholder="Напр. 225" />
+          <button class="btn-main" style="background:#0a1a2a;color:#6ec6ff;border:1px solid #1a3a5a;padding:11px;margin:0;" onclick="saveFuelPrice()">Сохранить цену</button>
+        </div>
       </div>
       <div id="settingsList"></div>
     </div>
@@ -804,13 +806,15 @@
           <input id="comment" type="text" placeholder="Примечание" style="margin-bottom:8px;" />
           <!-- БЛОК ДЛЯ БЕНЗИНА / ОДОМЕТРА -->
           <div id="fuelFieldsWrap" style="display:none;background:#151922;border:1px solid #233554;border-radius:10px;padding:10px;margin-bottom:8px;">
-            <div style="font-size:11px;font-weight:600;color:#6ec6ff;margin-bottom:6px;display:flex;align-items:center;gap:4px;">
-              ⛽ Данные заправки / одометра
+            <div style="font-size:11px;font-weight:600;color:#6ec6ff;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;">
+              <span>⛽ Данные заправки / одометра</span>
+              <span id="fuelPriceHint" style="font-size:10px;color:#8899a6;font-weight:normal;"></span>
             </div>
             <div class="row2" style="margin-bottom:6px;">
               <input id="fuelOdometer" type="number" inputmode="numeric" placeholder="Одометр (км)" style="padding:10px;font-size:14px;" />
-              <input id="fuelLiters" type="number" step="0.01" inputmode="decimal" placeholder="Литры (напр. 30)" style="padding:10px;font-size:14px;" />
+              <input id="fuelLiters" type="number" step="0.01" inputmode="decimal" placeholder="Литры (напр. 30)" style="padding:10px;font-size:14px;" oninput="window._fuelLitersManuallyEdited = true;" />
             </div>
+            <div style="font-size:10px;color:#778899;margin-bottom:6px;" id="fuelCalcNote"></div>
             <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#ddd;cursor:pointer;">
               <input id="fuelFullTank" type="checkbox" style="width:18px;height:18px;accent-color:#65d48b;cursor:pointer;" />
               <span>Заправка до полного бака</span>
@@ -1377,6 +1381,11 @@
           localStorage.setItem('expenseGoal', String(data.expenseGoal));
           if (window.renderExpenseFullAnalytics) window.renderExpenseFullAnalytics();
         }
+        if (data.fuelPrice !== undefined) {
+          localStorage.setItem('fuelPrice', String(data.fuelPrice));
+          const el = document.getElementById('setFuelPrice');
+          if (el) el.value = data.fuelPrice;
+        }
         if (data.clients) {
           try {
             const parsed = typeof data.clients === 'string' ? JSON.parse(data.clients) : data.clients;
@@ -1620,10 +1629,79 @@
   };
   window.openSettings = () => {
     closeDrawer();
+    const fp = localStorage.getItem('fuelPrice') || '';
+    const fpInp = document.getElementById('setFuelPrice');
+    if (fpInp) fpInp.value = fp;
     setTimeout(() => document.getElementById('settingsPage').classList.add('open'), 50);
   };
   window.closeSettings = () => {
     document.getElementById('settingsPage').classList.remove('open');
+  };
+
+  window.saveFuelPrice = async () => {
+    const val = Number(document.getElementById('setFuelPrice').value);
+    if (!Number.isFinite(val) || val <= 0) {
+      window.showToast('Введите корректную цену за литр', 'error');
+      return;
+    }
+    localStorage.setItem('fuelPrice', String(val));
+    if (window.autoCalcFuelLiters) window.autoCalcFuelLiters();
+    try {
+      const { fbDB, fbMethods, fbUser } = window;
+      if (fbUser && fbUser.uid && fbDB) {
+        await fbMethods.setDoc(fbMethods.doc(fbDB, 'users', fbUser.uid), {
+          fuelPrice: val,
+          fuelPriceUpdated: Date.now()
+        }, { merge: true });
+      }
+    } catch(e) { console.warn('saveFuelPrice Firebase error:', e.message); }
+    window.showToast(`✅ Цена за литр: ${val} ₸ сохранена в Firebase`);
+  };
+
+  window._fuelLitersManuallyEdited = false;
+  window.autoCalcFuelLiters = () => {
+    const elT = document.getElementById("type");
+    const elC = document.getElementById("category");
+    const elS = document.getElementById("subcategory");
+    const amtEl = document.getElementById("amount");
+    const litEl = document.getElementById("fuelLiters");
+    const noteEl = document.getElementById("fuelCalcNote");
+    const priceHint = document.getElementById("fuelPriceHint");
+    if (!elT || !elC || !amtEl || !litEl) return;
+
+    const currentCats = (window.DEFAULTS && window.DEFAULTS[elT.value]) || [];
+    const catObj = currentCats.find(c => c.id === elC.value);
+    const catName = (catObj ? catObj.name : '').toLowerCase();
+    const subName = (elS ? elS.value || '' : '').toLowerCase();
+    const isFuel = elT.value === 'expense' && (catName.includes('бенз') || subName.includes('бенз') || catName.includes('топлив') || subName.includes('топлив') || catName.includes('газ') || subName.includes('газ'));
+
+    const fp = Number(localStorage.getItem('fuelPrice')) || 0;
+    if (priceHint) {
+      priceHint.innerHTML = fp > 0 ? `Цена: <b style="color:#65d48b;">${fp} ₸/л</b>` : `<span style="color:#e0a050;">цена не задана</span>`;
+    }
+
+    if (!isFuel) {
+      if (noteEl) noteEl.innerHTML = '';
+      return;
+    }
+
+    const amt = Number(amtEl.value) || 0;
+    if (fp > 0 && amt > 0) {
+      const calcLit = (amt / fp).toFixed(2);
+      if (!window._fuelLitersManuallyEdited) {
+        litEl.value = calcLit;
+      }
+      if (noteEl) {
+        noteEl.innerHTML = `≈ <b>${calcLit} л</b> (${fp} ₸/л)` + (window._fuelLitersManuallyEdited ? ' <span style="color:#8899a6;">(введено вручную)</span>' : '');
+      }
+    } else {
+      if (!window._fuelLitersManuallyEdited && (!amt || amt <= 0)) {
+        litEl.value = '';
+      }
+      if (noteEl) {
+        noteEl.innerHTML = fp > 0 ? `Цена: <b>${fp} ₸/л</b> · введите сумму для авторасчёта` : '💡 Задайте цену за литр в Настройках для автоконвертации';
+      }
+    }
   };
 
   // TABS
@@ -1645,7 +1723,11 @@
       if (window.renderBudget) window.renderBudget();
     }
   };
-  window.setAmount = (v) => { document.getElementById('amount').value = v; };
+  window.setAmount = (v) => {
+    document.getElementById('amount').value = v;
+    window._fuelLitersManuallyEdited = false;
+    if (window.autoCalcFuelLiters) window.autoCalcFuelLiters();
+  };
 
 </script>
 
@@ -2074,7 +2156,17 @@
         const isFuel = elT.value === 'expense' && (catName.includes('бенз') || subName.includes('бенз') || catName.includes('топлив') || subName.includes('топлив') || catName.includes('газ') || subName.includes('газ'));
         const fw = document.getElementById("fuelFieldsWrap");
         if (fw) fw.style.display = isFuel ? 'block' : 'none';
+        if (window.autoCalcFuelLiters) window.autoCalcFuelLiters();
       };
+
+      const amtEl = document.getElementById("amount");
+      if (amtEl && !amtEl._fuelInputBound) {
+        amtEl._fuelInputBound = true;
+        amtEl.addEventListener("input", () => {
+          window._fuelLitersManuallyEdited = false;
+          if (window.autoCalcFuelLiters) window.autoCalcFuelLiters();
+        });
+      }
 
       // Запоминаем выбор только в памяти сессии — при обновлении сбросится на дефолт
       elT.onchange=()=>{ window._sType=elT.value; window._sCat=''; window._sSub=''; updateUI(false); checkFuelFormVisibility(); };
@@ -2162,6 +2254,8 @@
       document.getElementById("amount").value=""; document.getElementById("comment").value="";
       document.getElementById("fuelOdometer").value=""; document.getElementById("fuelLiters").value="";
       document.getElementById("fuelFullTank").checked = false;
+      window._fuelLitersManuallyEdited = false;
+      const fNote = document.getElementById("fuelCalcNote"); if (fNote) fNote.innerHTML = "";
       setToday();
       debouncedRender();
       window.showToast(`${type==='income'?'+':'−'}${amt.toLocaleString()} ₸ записано`);
@@ -3396,8 +3490,8 @@
 
     if (!fuelTxs.length) return null;
 
-    // Оцениваем литры для записей, где указана сумма, но нет литров (по средней цене бензина ~220 ₸)
-    const ASSUMED_PRICE_PER_LITER = 220;
+    // Оцениваем литры для записей, где указана сумма, но нет литров (по сохранённой цене бензина или ~220 ₸)
+    const ASSUMED_PRICE_PER_LITER = Number(localStorage.getItem('fuelPrice')) || 220;
     const enriched = fuelTxs.map(t => {
       const liters = (t.liters && t.liters > 0) ? t.liters : (t.amount > 0 ? (t.amount / ASSUMED_PRICE_PER_LITER) : 0);
       return { ...t, calcLiters: liters };
