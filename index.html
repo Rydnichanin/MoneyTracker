@@ -1116,12 +1116,19 @@
             </div>
             <div id="budgetPeriodButtons" style="display:flex;flex-wrap:wrap;gap:4px;">
               <button class="budget-period-btn" data-period="today" onclick="setBudgetPeriod('today')" style="padding:5px 9px;border-radius:6px;border:1px solid #65d48b;background:#0d2613;color:#65d48b;font-size:11px;font-weight:600;cursor:pointer;">Сегодня</button>
+              <button class="budget-period-btn" data-period="date" onclick="setBudgetPeriod('date')" style="padding:5px 9px;border-radius:6px;border:1px solid #2a2a2a;background:#1c1c1e;color:#888;font-size:11px;font-weight:600;cursor:pointer;">Выбрать дату</button>
               <button class="budget-period-btn" data-period="yesterday" onclick="setBudgetPeriod('yesterday')" style="padding:5px 9px;border-radius:6px;border:1px solid #2a2a2a;background:#1c1c1e;color:#888;font-size:11px;font-weight:600;cursor:pointer;">Вчера</button>
               <button class="budget-period-btn" data-period="week" onclick="setBudgetPeriod('week')" style="padding:5px 9px;border-radius:6px;border:1px solid #2a2a2a;background:#1c1c1e;color:#888;font-size:11px;font-weight:600;cursor:pointer;">Неделя</button>
               <button class="budget-period-btn" data-period="month" onclick="setBudgetPeriod('month')" style="padding:5px 9px;border-radius:6px;border:1px solid #2a2a2a;background:#1c1c1e;color:#888;font-size:11px;font-weight:600;cursor:pointer;">Месяц</button>
               <button class="budget-period-btn" data-period="range" onclick="setBudgetPeriod('range')" style="padding:5px 9px;border-radius:6px;border:1px solid #2a2a2a;background:#1c1c1e;color:#888;font-size:11px;font-weight:600;cursor:pointer;">Диапазон</button>
               <button class="budget-period-btn" data-period="custom" onclick="setBudgetPeriod('custom')" style="padding:5px 9px;border-radius:6px;border:1px solid #2a2a2a;background:#1c1c1e;color:#888;font-size:11px;font-weight:600;cursor:pointer;">Своя сумма</button>
             </div>
+          </div>
+
+          <!-- Одиночная выбранная дата (если выбран 'date') -->
+          <div id="budgetSingleDateRow" style="display:none;margin-bottom:10px;">
+            <div style="font-size:11px;color:#888;margin-bottom:4px;">Выбранная дата:</div>
+            <input id="budgetSingleDate" type="date" style="width:100%;padding:8px 10px;font-size:13px;border-radius:8px;border:1px solid #2a2a2a;background:#18181a;color:#fff;box-sizing:border-box;" onchange="onBudgetSingleDateChange()" />
           </div>
 
           <!-- Произвольный диапазон дат (если выбран 'range') -->
@@ -3470,7 +3477,22 @@
   const BUDGET_CUSTOM_AMOUNT_KEY = 'budget_custom_amount_v1';
   const BUDGET_RANGE_FROM_KEY = 'budget_range_from_v1';
   const BUDGET_RANGE_TO_KEY = 'budget_range_to_v1';
+  const BUDGET_SINGLE_DATE_KEY = 'budget_single_date_v1';
   const BUDGET_GLOBAL_SOURCE_KEY = 'budget_global_source_v1';
+
+  function isNightIncomeTx(t) {
+    const sub = (t.subcategory || '').toLowerCase();
+    const cat = (t.categoryName || '').toLowerCase();
+    const com = (t.comment || '').toLowerCase();
+    return sub.includes('ночь') || cat.includes('ночь') || com.includes('ночь');
+  }
+
+  function isAutoCategory(cat) {
+    if (!cat) return false;
+    const name = (cat.name || '').toLowerCase();
+    const sub = (cat.incomeSource || '').toLowerCase();
+    return cat.isAuto === true || name.includes('авто') || name.includes('машин') || name.includes('бензин') || name.includes('топлив') || sub.includes('авто');
+  }
 
   function getAvailableIncomeSources() {
     const sources = new Map();
@@ -3520,6 +3542,9 @@
 
     if (period === 'today') {
       from = todayStr; to = todayStr; label = 'Сегодня';
+    } else if (period === 'date') {
+      const savedDate = localStorage.getItem(BUDGET_SINGLE_DATE_KEY) || todayStr;
+      from = savedDate; to = savedDate; label = savedDate;
     } else if (period === 'yesterday') {
       const y = new Date(n);
       y.setDate(y.getDate() - 1);
@@ -3546,12 +3571,26 @@
     return { from, to, label };
   }
 
-  function calcIncomeForBudget(incomeSource, from, to) {
+  function calcIncomeForBudget(incomeSource, from, to, options = {}) {
     const isDepTransfer = t => t.subcategory && (t.subcategory.startsWith('← ') || t.subcategory.startsWith('→ '));
     const txs = (window.allTx || []).filter(t => {
       if (t.type !== 'income' || isDepTransfer(t)) return false;
       if (from && t.date < from) return false;
       if (to && t.date > to) return false;
+
+      // Если требуется исключить ночные доходы (например, для авто)
+      if (options.excludeNight && isNightIncomeTx(t)) {
+        return false;
+      }
+
+      // Если задан диапазон суммы заказа (например, от 0 до 4000 включительно)
+      const amt = Number(t.amount) || 0;
+      if (options.minAmount !== undefined && options.minAmount !== null && amt < options.minAmount) {
+        return false;
+      }
+      if (options.maxAmount !== undefined && options.maxAmount !== null && amt > options.maxAmount) {
+        return false;
+      }
 
       if (incomeSource && incomeSource !== 'all') {
         const sub = (t.subcategory || '').trim().toLowerCase();
@@ -3563,7 +3602,7 @@
     });
 
     return {
-      sum: txs.reduce((acc, t) => acc + t.amount, 0),
+      sum: txs.reduce((acc, t) => acc + (Number(t.amount) || 0), 0),
       count: txs.length
     };
   }
@@ -3576,7 +3615,7 @@
     // Стандартные категории по умолчанию
     return [
       { id: 'b_1', name: 'Отложить / Накопления', mode: 'percent', value: 20, color: '#65d48b', incomeSource: 'all', period: 'global' },
-      { id: 'b_2', name: 'Авто / Бензин', mode: 'percent', value: 25, color: '#ffd166', incomeSource: 'all', period: 'global' },
+      { id: 'b_2', name: 'Авто / Бензин', mode: 'percent', value: 25, color: '#ffd166', incomeSource: 'all', period: 'global', isAuto: true, excludeNight: true, maxOrderAmount: 4000 },
       { id: 'b_3', name: 'Еда и продукты', mode: 'percent', value: 20, color: '#6ec6ff', incomeSource: 'all', period: 'global' },
       { id: 'b_4', name: 'Обязательные платежи', mode: 'amount', value: 3000, color: '#a78bfa', incomeSource: 'all', period: 'global' },
       { id: 'b_5', name: 'Свободные траты', mode: 'percent', value: 15, color: '#ff6b6b', incomeSource: 'all', period: 'global' }
@@ -3613,6 +3652,12 @@
 
   // Для обратной совместимости
   window.setBudgetSource = window.setBudgetPeriod;
+
+  window.onBudgetSingleDateChange = () => {
+    const d = document.getElementById('budgetSingleDate')?.value || '';
+    if (d) localStorage.setItem(BUDGET_SINGLE_DATE_KEY, d);
+    renderBudget();
+  };
 
   window.onBudgetRangeChange = () => {
     const f = document.getElementById('budgetFromDate')?.value || '';
@@ -3679,11 +3724,19 @@
       }
     });
 
-    // 3. Блоки произвольного диапазона и своей суммы
+    // 3. Блоки одиночной даты, диапазона и своей суммы
+    const singleDateRow = document.getElementById('budgetSingleDateRow');
+    const singleDateInp = document.getElementById('budgetSingleDate');
     const dateRangeRow = document.getElementById('budgetDateRangeRow');
     const customInp = document.getElementById('budgetCustomAmountInput');
     const fromInp = document.getElementById('budgetFromDate');
     const toInp = document.getElementById('budgetToDate');
+
+    if (singleDateRow) singleDateRow.style.display = currentPeriod === 'date' ? 'block' : 'none';
+    if (singleDateInp) {
+      const savedSingleDate = localStorage.getItem(BUDGET_SINGLE_DATE_KEY) || today;
+      if (!singleDateInp.value) singleDateInp.value = savedSingleDate;
+    }
 
     if (dateRangeRow) dateRangeRow.style.display = currentPeriod === 'range' ? 'block' : 'none';
     if (customInp) {
@@ -3721,10 +3774,23 @@
     let totalAllocated = 0;
 
     const itemsHtml = cats.map(c => {
-      // Период категории
-      const effPeriod = (c.period && c.period !== 'global') ? c.period : currentPeriod;
+      const autoFlag = isAutoCategory(c);
+      // Для категории авто по умолчанию: только за сегодня или выбранную дату, без ночи, до 4000
+      let effPeriod = (c.period && c.period !== 'global') ? c.period : currentPeriod;
+      if (autoFlag && (!c.period || c.period === 'global')) {
+        // Если выбран диапазон/неделя/месяц, авто принудительно считается за сегодня или выбранную дату
+        if (currentPeriod === 'date') {
+          effPeriod = 'date';
+        } else if (currentPeriod !== 'today' && currentPeriod !== 'custom') {
+          effPeriod = 'today';
+        }
+      }
+
       let cDates;
-      if (effPeriod === 'custom') {
+      if (effPeriod === 'date') {
+        const savedDate = (c.period === 'date' && c.dateFrom) ? c.dateFrom : (localStorage.getItem(BUDGET_SINGLE_DATE_KEY) || today);
+        cDates = { from: savedDate, to: savedDate, label: `Дата: ${savedDate}` };
+      } else if (effPeriod === 'custom') {
         cDates = { from: c.dateFrom || today, to: c.dateTo || today, label: `${c.dateFrom || today} — ${c.dateTo || today}` };
       } else {
         cDates = getBudgetDates(effPeriod, globalFrom, globalTo);
@@ -3735,12 +3801,22 @@
       const effSrcObj = availableSources.find(s => s.id === effSrc);
       const effSrcName = effSrc === 'all' ? 'Все доходы' : (effSrcObj ? effSrcObj.name : effSrc);
 
+      // Параметры фильтрации (для авто: без ночи, до 4000 ₸)
+      const filterOpts = {};
+      if (autoFlag || c.excludeNight) filterOpts.excludeNight = true;
+      if (autoFlag) {
+        filterOpts.minAmount = 0;
+        filterOpts.maxAmount = c.maxOrderAmount !== undefined ? Number(c.maxOrderAmount) : 4000;
+      } else if (c.maxOrderAmount !== undefined && c.maxOrderAmount !== null && c.maxOrderAmount !== '') {
+        filterOpts.maxAmount = Number(c.maxOrderAmount);
+      }
+
       // Базовый доход для конкретной категории
       let catBaseAmt = 0;
       if (effPeriod === 'custom' && currentPeriod === 'custom' && c.period === 'global') {
         catBaseAmt = globalBaseAmt;
       } else {
-        catBaseAmt = calcIncomeForBudget(effSrc, cDates.from, cDates.to).sum;
+        catBaseAmt = calcIncomeForBudget(effSrc, cDates.from, cDates.to, filterOpts).sum;
       }
 
       let allocated = 0;
@@ -3757,7 +3833,7 @@
       return `
         <div class="budget-item">
           <div class="budget-item-top">
-            <span class="budget-item-name">${esc(c.name)}</span>
+            <span class="budget-item-name">${autoFlag ? '🚗 ' : ''}${esc(c.name)}</span>
             <span class="budget-item-val" style="color:${color};">${allocated.toLocaleString()} ₸</span>
           </div>
 
@@ -3768,6 +3844,11 @@
             <span style="background:#221935;color:#c084fc;border:1px solid #3b2758;font-size:10px;font-weight:600;padding:2px 7px;border-radius:5px;">
               📅 ${esc(cDates.label)}
             </span>
+            ${autoFlag ? `
+              <span style="background:#2a2210;color:#ffd166;border:1px solid #4d3a14;font-size:10px;font-weight:600;padding:2px 7px;border-radius:5px;">
+                🚗 Заказы 0–4000 ₸ (без ночи)
+              </span>
+            ` : ''}
             <span style="background:#132817;color:#65d48b;border:1px solid #1e4526;font-size:10px;font-weight:600;padding:2px 7px;border-radius:5px;">
               База: ${catBaseAmt.toLocaleString()} ₸
             </span>
@@ -3811,6 +3892,7 @@
     const cats = getBudgetCategories();
     const item = id ? cats.find(c => c.id === id) : null;
     const isNew = !item;
+    const isAutoItem = item ? isAutoCategory(item) : false;
 
     const availableSources = getAvailableIncomeSources();
     let srcOptions = `
@@ -3833,7 +3915,7 @@
 
         <div style="margin-bottom:10px;">
           <label style="font-size:11px;color:#888;display:block;margin-bottom:4px;">Название:</label>
-          <input id="_bName" type="text" value="${item ? esc(item.name) : ''}" placeholder="Напр. Накопления, Авто, Еда"
+          <input id="_bName" type="text" value="${item ? esc(item.name) : ''}" placeholder="Напр. Накопления, Авто / Бензин, Еда"
             style="width:100%;padding:10px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:14px;outline:none;box-sizing:border-box;">
         </div>
 
@@ -3850,7 +3932,7 @@
           <label id="_bValLabel" style="font-size:11px;color:#888;display:block;margin-bottom:4px;">
             ${item && item.mode==='amount' ? 'Сумма (₸):' : 'Процент (%):'}
           </label>
-          <input id="_bValue" type="number" inputmode="decimal" value="${item ? item.value : ''}" placeholder="Напр. 20 или 5000"
+          <input id="_bValue" type="number" inputmode="decimal" value="${item ? item.value : ''}" placeholder="Напр. 25 или 5000"
             style="width:100%;padding:10px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:14px;outline:none;box-sizing:border-box;">
         </div>
 
@@ -3864,10 +3946,14 @@
 
         <div style="margin-bottom:10px;">
           <label style="font-size:11px;color:#888;display:block;margin-bottom:4px;">Диапазон дат (период):</label>
-          <select id="_bPeriod" onchange="document.getElementById('_bCustomDatesWrap').style.display = (this.value==='custom'?'block':'none')"
+          <select id="_bPeriod" onchange="
+            document.getElementById('_bSingleDateWrap').style.display = (this.value==='date'?'block':'none');
+            document.getElementById('_bCustomDatesWrap').style.display = (this.value==='custom'?'block':'none');
+          "
             style="width:100%;padding:10px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:13px;outline:none;box-sizing:border-box;">
             <option value="global" ${!item || item.period==='global'?'selected':''}>🔄 Как в фильтре бюджета</option>
             <option value="today" ${item && item.period==='today'?'selected':''}>📅 Сегодня</option>
+            <option value="date" ${item && item.period==='date'?'selected':''}>📅 Выбранная дата</option>
             <option value="yesterday" ${item && item.period==='yesterday'?'selected':''}>📅 Вчера</option>
             <option value="week" ${item && item.period==='week'?'selected':''}>📅 Текущая неделя</option>
             <option value="month" ${item && item.period==='month'?'selected':''}>📅 Текущий месяц</option>
@@ -3875,11 +3961,28 @@
           </select>
         </div>
 
+        <div id="_bSingleDateWrap" style="display:${item && item.period==='date'?'block':'none'};margin-bottom:10px;background:#141416;padding:10px;border-radius:8px;border:1px solid #2a2a2a;">
+          <label style="font-size:11px;color:#888;display:block;margin-bottom:4px;">Дата:</label>
+          <input id="_bSingleDateVal" type="date" value="${item ? (item.dateFrom || '') : ''}" style="width:100%;padding:8px;border-radius:6px;border:1px solid #333;background:#2c2c2e;color:#fff;font-size:12px;box-sizing:border-box;" />
+        </div>
+
         <div id="_bCustomDatesWrap" style="display:${item && item.period==='custom'?'block':'none'};margin-bottom:12px;background:#141416;padding:10px;border-radius:8px;border:1px solid #2a2a2a;">
           <label style="font-size:11px;color:#888;display:block;margin-bottom:4px;">Период дат:</label>
           <div class="row2" style="gap:6px;">
             <input id="_bDateFrom" type="date" value="${item ? (item.dateFrom || '') : ''}" style="width:100%;padding:8px;border-radius:6px;border:1px solid #333;background:#2c2c2e;color:#fff;font-size:12px;" />
             <input id="_bDateTo" type="date" value="${item ? (item.dateTo || '') : ''}" style="width:100%;padding:8px;border-radius:6px;border:1px solid #333;background:#2c2c2e;color:#fff;font-size:12px;" />
+          </div>
+        </div>
+
+        <!-- Спец-опции для авто / бензина -->
+        <div style="background:#131b26;border:1px solid #1e3552;border-radius:10px;padding:10px;margin-bottom:12px;">
+          <div style="font-size:12px;font-weight:700;color:#6ec6ff;margin-bottom:6px;">🚗 Правило автомобиля / бензина</div>
+          <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#ddd;cursor:pointer;margin-bottom:6px;">
+            <input id="_bIsAuto" type="checkbox" ${isAutoItem ? 'checked' : ''} style="width:16px;height:16px;accent-color:#ffd166;">
+            <span>Считать как бюджет на авто (0–4000 ₸, без ночи)</span>
+          </label>
+          <div style="font-size:10px;color:#8899a6;line-height:1.4;">
+            Учитывает только дневные заказы до 4000 ₸ за сегодня или выбранную дату. Ночной доход исключается.
           </div>
         </div>
 
@@ -3901,8 +4004,18 @@
     const val = Number(document.getElementById('_bValue').value);
     const incomeSource = document.getElementById('_bIncomeSource').value;
     const period = document.getElementById('_bPeriod').value;
-    const dateFrom = document.getElementById('_bDateFrom') ? document.getElementById('_bDateFrom').value : '';
-    const dateTo = document.getElementById('_bDateTo') ? document.getElementById('_bDateTo').value : '';
+    const isAuto = document.getElementById('_bIsAuto')?.checked || false;
+
+    let dateFrom = '';
+    let dateTo = '';
+    if (period === 'date') {
+      const singleD = document.getElementById('_bSingleDateVal')?.value || '';
+      dateFrom = singleD;
+      dateTo = singleD;
+    } else if (period === 'custom') {
+      dateFrom = document.getElementById('_bDateFrom') ? document.getElementById('_bDateFrom').value : '';
+      dateTo = document.getElementById('_bDateTo') ? document.getElementById('_bDateTo').value : '';
+    }
 
     if (!name) return window.showToast('Введите название', 'error');
     if (!Number.isFinite(val) || val <= 0) return window.showToast('Введите корректное значение', 'error');
@@ -3920,7 +4033,10 @@
           incomeSource,
           period,
           dateFrom,
-          dateTo
+          dateTo,
+          isAuto,
+          excludeNight: isAuto ? true : cats[idx].excludeNight,
+          maxOrderAmount: isAuto ? 4000 : cats[idx].maxOrderAmount
         };
       }
     } else {
@@ -3935,7 +4051,10 @@
         incomeSource,
         period,
         dateFrom,
-        dateTo
+        dateTo,
+        isAuto,
+        excludeNight: isAuto,
+        maxOrderAmount: isAuto ? 4000 : undefined
       });
     }
     saveBudgetCategories(cats);
