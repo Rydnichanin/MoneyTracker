@@ -1128,7 +1128,7 @@
           <!-- Одиночная выбранная дата (если выбран 'date') -->
           <div id="budgetSingleDateRow" style="display:none;margin-bottom:10px;">
             <div style="font-size:11px;color:#888;margin-bottom:4px;">Выбранная дата:</div>
-            <input id="budgetSingleDate" type="date" style="width:100%;padding:8px 10px;font-size:13px;border-radius:8px;border:1px solid #2a2a2a;background:#18181a;color:#fff;box-sizing:border-box;" onchange="onBudgetSingleDateChange()" />
+            <input id="budgetSingleDate" type="date" style="width:100%;padding:8px 10px;font-size:13px;border-radius:8px;border:1px solid #2a2a2a;background:#18181a;color:#fff;box-sizing:border-box;" onchange="onBudgetSingleDateChange()" oninput="onBudgetSingleDateChange()" />
           </div>
 
           <!-- Произвольный диапазон дат (если выбран 'range') -->
@@ -3695,6 +3695,12 @@
 
   window.setBudgetPeriod = (period) => {
     try { localStorage.setItem(BUDGET_SOURCE_KEY, period); } catch(e) {}
+    if (period === 'date') {
+      const existing = document.getElementById('budgetSingleDate')?.value;
+      if (existing && !localStorage.getItem(BUDGET_SINGLE_DATE_KEY)) {
+        try { localStorage.setItem(BUDGET_SINGLE_DATE_KEY, existing); } catch(e) {}
+      }
+    }
     try {
       const { fbDB, fbMethods, fbUser } = window;
       if (fbUser && fbUser.uid && fbDB) {
@@ -3814,7 +3820,7 @@
     if (singleDateRow) singleDateRow.style.display = currentPeriod === 'date' ? 'block' : 'none';
     if (singleDateInp) {
       const savedSingleDate = localStorage.getItem(BUDGET_SINGLE_DATE_KEY) || today;
-      if (!singleDateInp.value) singleDateInp.value = savedSingleDate;
+      singleDateInp.value = savedSingleDate;
     }
 
     if (dateRangeRow) dateRangeRow.style.display = currentPeriod === 'range' ? 'block' : 'none';
@@ -3855,14 +3861,6 @@
     const itemsHtml = cats.map(c => {
       const autoFlag = isAutoCategory(c);
       let effPeriod = (c.period && c.period !== 'global') ? c.period : currentPeriod;
-      if (autoFlag && (!c.period || c.period === 'global')) {
-        // Категория авто считается только за сегодня или выбранную дату
-        if (currentPeriod === 'date') {
-          effPeriod = 'date';
-        } else if (currentPeriod !== 'today' && currentPeriod !== 'custom') {
-          effPeriod = 'today';
-        }
-      }
 
       let cDates;
       if (effPeriod === 'date') {
