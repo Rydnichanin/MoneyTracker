@@ -1591,8 +1591,29 @@
         const data = snap.data();
         if (data.budgetCategories) {
           try {
-            const parsed = JSON.parse(data.budgetCategories);
+            let parsed = JSON.parse(data.budgetCategories);
             if (Array.isArray(parsed) && parsed.length) {
+              const hasAuto = parsed.some(c => (c.isAuto || (c.name && /авто|машин|бензин/i.test(c.name))));
+              if (!hasAuto) {
+                parsed.push({
+                  id: 'b_auto_' + Date.now(),
+                  name: 'Автомобиль',
+                  mode: 'percent',
+                  value: 25,
+                  color: '#ffd166',
+                  incomeSource: 'all',
+                  period: 'global',
+                  isAuto: true,
+                  excludeNight: true,
+                  maxOrderAmount: 4000
+                });
+                try {
+                  fbMethods.setDoc(fbMethods.doc(fbDB, 'users', fbUser.uid), {
+                    budgetCategories: JSON.stringify(parsed),
+                    budgetCategoriesUpdated: Date.now()
+                  }, { merge: true });
+                } catch(e) {}
+              }
               localStorage.setItem('budget_categories_v1', JSON.stringify(parsed));
               if (window.renderBudget) window.renderBudget();
             }
@@ -3649,11 +3670,12 @@
           excludeNight: true,
           maxOrderAmount: 4000
         });
-        try { localStorage.setItem(BUDGET_CATEGORIES_KEY, JSON.stringify(list)); } catch(e) {}
+        saveBudgetCategories(list);
       }
     }
     return list;
   }
+  window.getBudgetCategories = getBudgetCategories;
 
   function saveBudgetCategories(cats) {
     try {
@@ -3669,6 +3691,7 @@
       }
     } catch(err) { console.warn('budgetCategories Firebase sync error:', err.message); }
   }
+  window.saveBudgetCategories = saveBudgetCategories;
 
   window.setBudgetPeriod = (period) => {
     try { localStorage.setItem(BUDGET_SOURCE_KEY, period); } catch(e) {}
@@ -3992,8 +4015,18 @@
     modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto;';
     modal.innerHTML = `
       <div style="background:#1c1c1e;border-radius:16px;padding:20px;width:100%;max-width:360px;border:1px solid #2a2a2a;box-sizing:border-box;max-height:90vh;overflow-y:auto;">
-        <div style="font-size:16px;font-weight:700;color:#65d48b;margin-bottom:14px;">
-          ${isNew ? '➕ Новая категория бюджета' : '✏️ Настройка категории'}
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:8px;">
+          <div style="font-size:15px;font-weight:700;color:#65d48b;">
+            ${isNew ? '➕ Новая категория' : '✏️ Настройка категории'}
+          </div>
+          ${isNew ? `<button type="button" onclick="
+            document.getElementById('_bName').value='Автомобиль';
+            document.getElementById('_bMode').value='percent';
+            document.getElementById('_bValLabel').textContent='Процент (%):';
+            document.getElementById('_bValue').value='25';
+            const chk = document.getElementById('_bIsAuto');
+            if (chk) chk.checked = true;
+          " style="background:#1e3552;color:#6ec6ff;border:1px solid #2a5a8a;border-radius:6px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;">🚗 Шаблон Авто</button>` : ''}
         </div>
 
         <div style="margin-bottom:10px;">
