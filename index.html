@@ -454,8 +454,9 @@
         }, 14000);
         requestAnimationFrame(() => {
           window.dispatchEvent(new Event("fbReady"));
-          // Загружаем адреса из Firebase сразу после авторизации
+          // Загружаем адреса и настройки (бюджет, цели) из Firebase сразу после авторизации
           if (window.loadCustomAddressesFromFirebase) window.loadCustomAddressesFromFirebase();
+          if (window.loadUserDataFromFirebase) window.loadUserDataFromFirebase();
         });
       }
     }
@@ -1328,6 +1329,44 @@
     if (document.getElementById('pricesScreen')?.classList.contains('open')) renderAddrList();
   }
   window.loadCustomAddressesFromFirebase = loadCustomAddressesFromFirebase;
+
+  // Загрузка настроек пользователя (бюджет, цели по доходам/расходам) из документа Firebase
+  async function loadUserDataFromFirebase() {
+    try {
+      const { fbDB, fbMethods, fbUser } = window;
+      if (!fbUser || !fbUser.uid || !fbDB) return;
+      const snap = await fbMethods.getDoc(fbMethods.doc(fbDB, 'users', fbUser.uid));
+      if (snap.exists()) {
+        const data = snap.data();
+        if (data.budgetCategories) {
+          try {
+            const parsed = JSON.parse(data.budgetCategories);
+            if (Array.isArray(parsed) && parsed.length) {
+              localStorage.setItem('budget_categories_v1', JSON.stringify(parsed));
+              if (window.renderBudget) window.renderBudget();
+            }
+          } catch(e) {}
+        }
+        if (data.budgetSource) {
+          localStorage.setItem('budget_source_v1', data.budgetSource);
+        }
+        if (data.budgetCustomAmount !== undefined) {
+          localStorage.setItem('budget_custom_amount_v1', String(data.budgetCustomAmount));
+        }
+        if (data.incomeGoal !== undefined) {
+          localStorage.setItem('incomeGoal', String(data.incomeGoal));
+          if (window.renderAnalytics) window.renderAnalytics();
+        }
+        if (data.expenseGoal !== undefined) {
+          localStorage.setItem('expenseGoal', String(data.expenseGoal));
+          if (window.renderExpenseFullAnalytics) window.renderExpenseFullAnalytics();
+        }
+      }
+    } catch(err) {
+      console.warn('loadUserDataFromFirebase error:', err.message);
+    }
+  }
+  window.loadUserDataFromFirebase = loadUserDataFromFirebase;
 
   let _selectedAddrType = 'flat';
 
@@ -3009,11 +3048,20 @@
     setTimeout(() => { const inp = document.getElementById('_goalEditInput'); inp.focus(); inp.select(); }, 100);
   };
 
-  window.saveIncomeGoal = () => {
+  window.saveIncomeGoal = async () => {
     const val = parseInt(document.getElementById('_goalEditInput').value) || 0;
     const dialog = document.getElementById('_goalEditDialog');
     if (dialog) dialog.remove();
     try { localStorage.setItem('incomeGoal', String(val)); } catch (e) {}
+    try {
+      const { fbDB, fbMethods, fbUser } = window;
+      if (fbUser && fbUser.uid && fbDB) {
+        await fbMethods.setDoc(fbMethods.doc(fbDB, 'users', fbUser.uid), {
+          incomeGoal: val,
+          incomeGoalUpdated: Date.now()
+        }, { merge: true });
+      }
+    } catch(err) { console.warn('incomeGoal Firebase sync error:', err.message); }
     renderAnalytics();
     window.showToast('✅ Цель сохранена');
   };
@@ -3094,16 +3142,41 @@
     try {
       localStorage.setItem(BUDGET_CATEGORIES_KEY, JSON.stringify(cats));
     } catch(e) {}
+    try {
+      const { fbDB, fbMethods, fbUser } = window;
+      if (fbUser && fbUser.uid && fbDB) {
+        fbMethods.setDoc(fbMethods.doc(fbDB, 'users', fbUser.uid), {
+          budgetCategories: JSON.stringify(cats),
+          budgetCategoriesUpdated: Date.now()
+        }, { merge: true });
+      }
+    } catch(err) { console.warn('budgetCategories Firebase sync error:', err.message); }
   }
 
   window.setBudgetSource = (src) => {
     try { localStorage.setItem(BUDGET_SOURCE_KEY, src); } catch(e) {}
+    try {
+      const { fbDB, fbMethods, fbUser } = window;
+      if (fbUser && fbUser.uid && fbDB) {
+        fbMethods.setDoc(fbMethods.doc(fbDB, 'users', fbUser.uid), {
+          budgetSource: src
+        }, { merge: true });
+      }
+    } catch(err) {}
     renderBudget();
   };
 
   window.onBudgetCustomAmountChange = () => {
     const val = Number(document.getElementById('budgetCustomAmountInput').value) || 0;
     try { localStorage.setItem(BUDGET_CUSTOM_AMOUNT_KEY, String(val)); } catch(e) {}
+    try {
+      const { fbDB, fbMethods, fbUser } = window;
+      if (fbUser && fbUser.uid && fbDB) {
+        fbMethods.setDoc(fbMethods.doc(fbDB, 'users', fbUser.uid), {
+          budgetCustomAmount: val
+        }, { merge: true });
+      }
+    } catch(err) {}
     renderBudget();
   };
 
@@ -3483,11 +3556,20 @@
     setTimeout(() => { const inp = document.getElementById('_expGoalInput'); inp.focus(); inp.select(); }, 100);
   };
 
-  window.saveExpenseGoal = () => {
+  window.saveExpenseGoal = async () => {
     const val = parseInt(document.getElementById('_expGoalInput').value) || 0;
     const dialog = document.getElementById('_expGoalDialog');
     if (dialog) dialog.remove();
     try { localStorage.setItem('expenseGoal', String(val)); } catch (e) {}
+    try {
+      const { fbDB, fbMethods, fbUser } = window;
+      if (fbUser && fbUser.uid && fbDB) {
+        await fbMethods.setDoc(fbMethods.doc(fbDB, 'users', fbUser.uid), {
+          expenseGoal: val,
+          expenseGoalUpdated: Date.now()
+        }, { merge: true });
+      }
+    } catch(err) { console.warn('expenseGoal Firebase sync error:', err.message); }
     renderExpenseFullAnalytics();
     window.showToast('✅ Лимит расходов сохранен');
   };
