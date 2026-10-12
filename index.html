@@ -278,6 +278,108 @@
     .price-input { width: 90px; padding: 8px 10px; border-radius: 8px; border: 1px solid #2a2a2a; background: #2c2c2e; color: #fff; font-size: 14px; text-align: center; }
     .price-label-small { font-size: 10px; color: #444; text-align: center; margin-top: 2px; }
     .price-save-btn { width: calc(100% - 24px); margin: 8px 12px 0; padding: 14px; border: none; border-radius: 12px; background: var(--pos); color: #000; font-weight: bold; font-size: 16px; cursor: pointer; }
+
+    /* ═══ DESKTOP / TABLET ADAPTATION ═══ */
+    @media (min-width: 768px) {
+      .page-wrap { max-width: 900px; padding: 20px 24px calc(var(--nav-h) + 16px); }
+      .nav-bar { max-width: 900px; border-radius: 16px 16px 0 0; }
+      .topbar { max-width: 900px; margin: 0 auto; left: 0; right: 0; border-radius: 0 0 16px 16px; }
+      .balance-block { padding: 20px; }
+      .bal-main { font-size: 32px; }
+      .card { padding: 18px; }
+      .history-sheet, .prices-screen {
+        inset: 5vh 0; width: auto; height: auto;
+        max-width: 640px; max-height: 85vh; margin: auto;
+        border-radius: 16px; border: 1px solid #222;
+      }
+      .history-sheet { transform: translateY(40px); opacity: 0; transition: transform 0.3s ease, opacity 0.3s ease; }
+      .history-sheet.open { transform: translateY(0); opacity: 1; }
+      .prices-screen { transform: translateY(40px); opacity: 0; transition: transform 0.3s ease, opacity 0.3s ease; }
+      .prices-screen.open { transform: translateY(0); opacity: 1; }
+      .settings-page {
+        inset: 0 0 0 auto; width: 420px;
+        border-left: 1px solid #222;
+      }
+      .drawer { width: 320px; }
+    }
+
+    @media (min-width: 1024px) {
+      .page-wrap { max-width: 1100px; padding: 20px 30px calc(var(--nav-h) + 16px); }
+      .nav-bar { max-width: 1100px; }
+      .topbar { max-width: 1100px; }
+      #tab-record { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+      #tab-record .balance-block { grid-column: 1 / -1; }
+      #tab-income { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+      #tab-income > .card:last-child { grid-column: 1 / -1; }
+      #tab-expense { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+      #tab-expense > .card:first-child { grid-column: 1 / -1; }
+      #tab-budget { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+      #tab-budget > .card:first-child { grid-column: 1 / -1; }
+      #tab-wa { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+      .history-sheet, .prices-screen { max-width: 720px; }
+    }
+
+    /* ═══ EXPENSE ANALYTICS — COLLAPSIBLE CATEGORIES ═══ */
+    .exp-cat-row {
+      border-bottom: 1px solid #1a1a1a; cursor: pointer;
+      transition: background 0.15s;
+    }
+    .exp-cat-row:hover { background: rgba(255,255,255,0.02); }
+    .exp-cat-header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 12px 0; font-size: 15px; font-weight: bold;
+    }
+    .exp-cat-header .exp-arrow {
+      font-size: 10px; color: #555; margin-left: 6px;
+      transition: transform 0.2s;
+    }
+    .exp-cat-header .exp-arrow.open { transform: rotate(180deg); }
+    .exp-cat-bar-bg {
+      height: 4px; background: #1a1a1a; border-radius: 2px;
+      margin-bottom: 2px; overflow: hidden;
+    }
+    .exp-cat-bar-fill {
+      height: 100%; border-radius: 2px;
+      background: linear-gradient(90deg, #ff6b6b, #e05a5a);
+      transition: width 0.4s;
+    }
+    .exp-cat-details {
+      max-height: 0; overflow: hidden;
+      transition: max-height 0.3s ease, padding 0.3s ease;
+      padding: 0 0;
+    }
+    .exp-cat-details.open {
+      max-height: 500px;
+      padding: 8px 0 12px;
+    }
+    .exp-sub-row {
+      display: flex; justify-content: space-between;
+      padding: 5px 0 5px 12px; font-size: 12px; color: #888;
+      border-left: 2px solid #2a2a2a;
+    }
+    .exp-stat-card {
+      background: #1c1c1e; border-radius: 12px; padding: 14px;
+      border: 1px solid #1a1a1a;
+    }
+    .exp-stat-card .card-title { margin-bottom: 10px; }
+
+    /* ═══ БЮДЖЕТ / РАСПРЕДЕЛЕНИЕ ═══ */
+    .budget-card { background: var(--card); border-radius: 16px; padding: 16px; margin-bottom: 12px; border: 1px solid #222; }
+    .budget-item { background: #141416; border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; border: 1px solid #242426; }
+    .budget-item-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    .budget-item-name { font-size: 15px; font-weight: 600; color: #fff; }
+    .budget-item-val { font-size: 16px; font-weight: bold; color: var(--pos); }
+    .budget-item-meta { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: #777; }
+    .budget-progress-bg { height: 6px; background: #222; border-radius: 3px; overflow: hidden; margin-top: 6px; }
+    .budget-progress-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+    .budget-actions { display: flex; gap: 8px; margin-top: 6px; justify-content: flex-end; }
+    .budget-btn-sm { background: none; border: 1px solid #333; color: #aaa; border-radius: 6px; padding: 3px 8px; font-size: 11px; cursor: pointer; }
+    .budget-btn-sm:hover { color: #fff; border-color: #555; }
+
+    /* ═══ ТОПЛИВО / ОДОМЕТР ═══ */
+    .fuel-box { background: #131722; border: 1px solid #1d2b45; border-radius: 12px; padding: 12px; margin-bottom: 10px; }
+    .fuel-metric { font-size: 20px; font-weight: bold; color: var(--accent); }
+    .fuel-label { font-size: 10px; color: #8899a6; text-transform: uppercase; margin-bottom: 2px; }
   </style>
 
   <script type="module">
@@ -699,6 +801,20 @@
             <input id="date" type="date" required />
           </div>
           <input id="comment" type="text" placeholder="Примечание" style="margin-bottom:8px;" />
+          <!-- БЛОК ДЛЯ БЕНЗИНА / ОДОМЕТРА -->
+          <div id="fuelFieldsWrap" style="display:none;background:#151922;border:1px solid #233554;border-radius:10px;padding:10px;margin-bottom:8px;">
+            <div style="font-size:11px;font-weight:600;color:#6ec6ff;margin-bottom:6px;display:flex;align-items:center;gap:4px;">
+              ⛽ Данные заправки / одометра
+            </div>
+            <div class="row2" style="margin-bottom:6px;">
+              <input id="fuelOdometer" type="number" inputmode="numeric" placeholder="Одометр (км)" style="padding:10px;font-size:14px;" />
+              <input id="fuelLiters" type="number" step="0.01" inputmode="decimal" placeholder="Литры (напр. 30)" style="padding:10px;font-size:14px;" />
+            </div>
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#ddd;cursor:pointer;">
+              <input id="fuelFullTank" type="checkbox" style="width:18px;height:18px;accent-color:#65d48b;cursor:pointer;" />
+              <span>Заправка до полного бака</span>
+            </label>
+          </div>
           <div class="chips">
             <button type="button" class="chip" onclick="setAmount(150)">150</button>
             <button type="button" class="chip" onclick="setAmount(300)">300</button>
@@ -763,13 +879,70 @@
 
     <!-- 4. РАСХОДЫ -->
     <div class="tab" id="tab-expense">
+      <!-- Блок топлива и одометра -->
+      <div class="card" id="fuelTrackerCard" style="border-color:#1e355b;display:none;">
+        <div class="card-title" style="color:#6ec6ff;display:flex;justify-content:space-between;align-items:center;">
+          <span>⛽ Авто · Расход топлива</span>
+          <span id="fuelLastOdoBadge" style="font-size:10px;color:#8899a6;font-weight:normal;"></span>
+        </div>
+        <div id="fuelTrackerContent"></div>
+      </div>
+
       <div class="card">
         <div class="card-title">📉 Расходы по категориям</div>
         <div id="expenseDetails"><div class="muted">Нет расходов</div></div>
       </div>
+      
+      <!-- Расширенная аналитика расходов (как у доходов) -->
+      <div class="card" style="border-color:#2a1a1a;">
+        <div class="card-title" style="color:#ff6b6b;display:flex;justify-content:space-between;align-items:center;">
+          <span>📊 Аналитика расходов</span>
+          <button onclick="shareExpenseAnalytics()" style="background:none;border:1px solid #2a2a2a;border-radius:8px;color:#ff6b6b;font-size:11px;padding:5px 9px;cursor:pointer;">📤 Поделиться</button>
+        </div>
+        <div id="expenseAnalytics"></div>
+      </div>
     </div>
 
-    <!-- 5. ЧАТ / ВСТАВКА ИЗ WHATSAPP -->
+    <!-- 5. БЮДЖЕТ И РАСПРЕДЕЛЕНИЕ -->
+    <div class="tab" id="tab-budget">
+      <!-- Настройки базы дохода -->
+      <div class="card" style="border-color:#1a2a1a;">
+        <div class="card-title" style="color:var(--pos);display:flex;justify-content:space-between;align-items:center;">
+          <span>🎯 Распределение дохода</span>
+          <button onclick="openAddBudgetModal()" style="background:#1a3a1a;border:1px solid #2a4a2a;border-radius:8px;color:#65d48b;font-size:11px;font-weight:bold;padding:5px 9px;cursor:pointer;">+ Категория</button>
+        </div>
+        
+        <div style="background:#111;border-radius:12px;padding:12px;margin-bottom:12px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <span style="font-size:12px;color:#888;">Доход для распределения:</span>
+            <div style="display:flex;gap:4px;">
+              <button id="budgetSourceTodayBtn" onclick="setBudgetSource('today')" style="padding:4px 8px;border-radius:6px;border:1px solid #65d48b;background:#0d2613;color:#65d48b;font-size:11px;font-weight:600;cursor:pointer;">Сегодня</button>
+              <button id="budgetSourceCustomBtn" onclick="setBudgetSource('custom')" style="padding:4px 8px;border-radius:6px;border:1px solid #2a2a2a;background:#1c1c1e;color:#888;font-size:11px;font-weight:600;cursor:pointer;">Своя сумма</button>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div style="font-size:22px;font-weight:bold;color:#fff;" id="budgetBaseAmountDisplay">0 ₸</div>
+            <input id="budgetCustomAmountInput" type="number" inputmode="decimal" placeholder="Сумма" style="display:none;width:130px;padding:8px 10px;font-size:15px;text-align:right;" oninput="onBudgetCustomAmountChange()" />
+          </div>
+        </div>
+
+        <div id="budgetSummaryStats" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+          <div style="background:#141416;padding:10px;border-radius:10px;border:1px solid #222;">
+            <div style="font-size:10px;color:#666;text-transform:uppercase;">Распределено</div>
+            <div style="font-size:15px;font-weight:bold;color:#6ec6ff;" id="budgetTotalAllocated">0 ₸</div>
+          </div>
+          <div style="background:#141416;padding:10px;border-radius:10px;border:1px solid #222;">
+            <div style="font-size:10px;color:#666;text-transform:uppercase;">Остаток</div>
+            <div style="font-size:15px;font-weight:bold;color:#ffd166;" id="budgetTotalRemaining">0 ₸</div>
+          </div>
+        </div>
+
+        <!-- Список категорий распределения -->
+        <div id="budgetCategoryList"></div>
+      </div>
+    </div>
+
+    <!-- 6. ЧАТ / ВСТАВКА ИЗ WHATSAPP -->
     <div class="tab" id="tab-wa">
       <div class="card" style="border-color:#1a2a1a;">
         <div class="card-title" style="color:#65d48b;">📋 Вставить из WhatsApp</div>
@@ -828,6 +1001,9 @@
     </button>
     <button class="nav-item" onclick="switchTab('expense')" id="nav-expense">
       <span class="nav-icon">📉</span><span class="nav-label">Расходы</span>
+    </button>
+    <button class="nav-item" onclick="switchTab('budget')" id="nav-budget">
+      <span class="nav-icon">🎯</span><span class="nav-label">Бюджет</span>
     </button>
     <button class="nav-item" onclick="switchTab('wa')" id="nav-wa">
       <span class="nav-icon">📋</span><span class="nav-label">Чат</span>
@@ -1394,6 +1570,13 @@
       window._analyticsStale = false;
       if (window.renderAnalytics) window.renderAnalytics();
     }
+    if (name === 'expense' && window._expAnalyticsStale) {
+      window._expAnalyticsStale = false;
+      if (window.renderExpenseFullAnalytics) window.renderExpenseFullAnalytics();
+    }
+    if (name === 'budget') {
+      if (window.renderBudget) window.renderBudget();
+    }
   };
   window.setAmount = (v) => { document.getElementById('amount').value = v; };
 
@@ -1417,6 +1600,13 @@
   window.toggleWeekdayDetails = (wdIdx) => {
     _openWeekdayDetails = (_openWeekdayDetails === wdIdx) ? null : wdIdx;
     if (window.renderAnalytics) window.renderAnalytics();
+  };
+  window.toggleExpCat = function(catId) {
+    const det = document.getElementById('expDet_' + catId);
+    const arrow = document.getElementById('expArrow_' + catId);
+    if (!det) return;
+    det.classList.toggle('open');
+    if (arrow) arrow.classList.toggle('open');
   };
 
   // ── Локальный кэш для мгновенной отрисовки при входе ───────────
@@ -1485,6 +1675,14 @@
     if (!data.date || !/^\d{4}-\d{2}-\d{2}$/.test(data.date)) errors.push('Некорректная дата');
     if (data.comment && data.comment.length > 500) errors.push('Комментарий слишком длинный');
     if (data.categoryName && data.categoryName.length > 100) errors.push('Категория слишком длинная');
+    if (data.odometer !== undefined && data.odometer !== null && data.odometer !== '') {
+      const odo = Number(data.odometer);
+      if (!Number.isFinite(odo) || odo < 0) errors.push('Некорректный одометр');
+    }
+    if (data.liters !== undefined && data.liters !== null && data.liters !== '') {
+      const lit = Number(data.liters);
+      if (!Number.isFinite(lit) || lit < 0) errors.push('Некорректный объем топлива');
+    }
     return errors;
   };
 
@@ -1799,14 +1997,25 @@
           document.getElementById("subcatWrap").classList.add("hidden");
           elS.innerHTML="";
         }
+        checkFuelFormVisibility();
+      };
+
+      const checkFuelFormVisibility = () => {
+        const catObj = currentCats.find(c=>c.id===elC.value);
+        const catName = (catObj ? catObj.name : '').toLowerCase();
+        const subName = (elS.value || '').toLowerCase();
+        const isFuel = elT.value === 'expense' && (catName.includes('бенз') || subName.includes('бенз') || catName.includes('топлив') || subName.includes('топлив') || catName.includes('газ') || subName.includes('газ'));
+        const fw = document.getElementById("fuelFieldsWrap");
+        if (fw) fw.style.display = isFuel ? 'block' : 'none';
       };
 
       // Запоминаем выбор только в памяти сессии — при обновлении сбросится на дефолт
-      elT.onchange=()=>{ window._sType=elT.value; window._sCat=''; window._sSub=''; updateUI(false); };
-      elC.onchange=()=>{ window._sCat=elC.value; window._sSub=''; fillSubs(false); };
-      elS.onchange=()=>{ window._sSub=elS.value; };
+      elT.onchange=()=>{ window._sType=elT.value; window._sCat=''; window._sSub=''; updateUI(false); checkFuelFormVisibility(); };
+      elC.onchange=()=>{ window._sCat=elC.value; window._sSub=''; fillSubs(false); checkFuelFormVisibility(); };
+      elS.onchange=()=>{ window._sSub=elS.value; checkFuelFormVisibility(); };
 
       fillSubs(restoreLast);
+      checkFuelFormVisibility();
     }
 
     let _renderTimer = null;
@@ -1855,6 +2064,10 @@
       const catId=document.getElementById("category").value;
       const catObj=[...DEFAULTS.income,...DEFAULTS.expense].find(c=>c.id===catId);
       const type = document.getElementById("type").value;
+      const odoVal = document.getElementById("fuelOdometer").value;
+      const litVal = document.getElementById("fuelLiters").value;
+      const fullTankVal = document.getElementById("fuelFullTank").checked;
+
       const txData = {
         type, amount: amt,
         categoryName: catObj ? catObj.name : "Без категории",
@@ -1865,6 +2078,10 @@
         createdAt: Date.now(),
         comment: document.getElementById("comment").value
       };
+      if (odoVal !== '') txData.odometer = Number(odoVal);
+      if (litVal !== '') txData.liters = Number(litVal);
+      if (fullTankVal) txData.fullTank = true;
+
       // Валидация перед сохранением
       const errors = window.validateTx(txData);
       if (errors.length) { window.showToast('⚠️ ' + errors[0], 'error'); return; }
@@ -1875,7 +2092,10 @@
       const tempEntry = { ...txData, id: 'tmp_' + txData.createdAt, _pending: true };
       pendingTx.push(tempEntry);
       allTx = [tempEntry, ...allTx]; window.allTx = allTx;
-      document.getElementById("amount").value=""; document.getElementById("comment").value=""; setToday();
+      document.getElementById("amount").value=""; document.getElementById("comment").value="";
+      document.getElementById("fuelOdometer").value=""; document.getElementById("fuelLiters").value="";
+      document.getElementById("fuelFullTank").checked = false;
+      setToday();
       debouncedRender();
       window.showToast(`${type==='income'?'+':'−'}${amt.toLocaleString()} ₸ записано`);
 
@@ -1974,8 +2194,12 @@
       const ts=t.time?`${t.date} ${t.time}`:t.date;
       const pendingStyle=t._pending?' style="opacity:0.55;"':'';
       const pendingTag=t._pending?' <span style="color:#888;font-size:10px;">⏳ сохраняется…</span>':'';
+      let fuelTag = '';
+      if (t.odometer !== undefined && t.odometer !== null && t.odometer !== '') {
+        fuelTag = ` <span style="color:#6ec6ff;font-size:10px;background:#102238;padding:1px 5px;border-radius:4px;border:1px solid #1a3a60;">🚗 ${Number(t.odometer).toLocaleString()} км${t.liters ? ` · ${t.liters} л` : ''}${t.fullTank ? ' · Полный' : ''}</span>`;
+      }
       if(t.type==='transfer')return`<div class="hist-item"${pendingStyle}><div><b style="color:#ffd166;">↔ ${t.amount.toLocaleString()} ₸</b>${pendingTag}<br><small class="muted">${ts} | ${esc(t.fromAccount)} → ${esc(t.toAccount)}</small></div><div style="display:flex;gap:4px;"><button class="hist-del" onclick="deleteTx('${t.id}')">✕</button></div></div>`;
-      return`<div class="hist-item"${pendingStyle}><div><b class="${t.type==='income'?'pos':'neg'}">${t.amount.toLocaleString()} ₸</b>${pendingTag}<br><small class="muted">${ts} | ${esc(t.subcategory||t.categoryName)}${acc}</small>${t.comment?`<div style="color:#65d48b;font-size:11px;margin-top:2px;">📝 ${esc(t.comment)}</div>`:''}</div><div style="display:flex;gap:4px;"><button onclick="editTx('${t.id}')" style="background:none;border:none;color:#ffd166;padding:8px;cursor:pointer;font-size:15px;opacity:0.8;">✏️</button><button class="hist-del" onclick="deleteTx('${t.id}')">✕</button></div></div>`;
+      return`<div class="hist-item"${pendingStyle}><div><b class="${t.type==='income'?'pos':'neg'}">${t.amount.toLocaleString()} ₸</b>${pendingTag}${fuelTag}<br><small class="muted">${ts} | ${esc(t.subcategory||t.categoryName)}${acc}</small>${t.comment?`<div style="color:#65d48b;font-size:11px;margin-top:2px;">📝 ${esc(t.comment)}</div>`:''}</div><div style="display:flex;gap:4px;"><button onclick="editTx('${t.id}')" style="background:none;border:none;color:#ffd166;padding:8px;cursor:pointer;font-size:15px;opacity:0.8;">✏️</button><button class="hist-del" onclick="deleteTx('${t.id}')">✕</button></div></div>`;
     }).join("")||'<div class="muted">Нет записей</div>';
 
     if (hasMore) {
@@ -2057,12 +2281,86 @@
       if (!statsExp[parent] && statsExpRaw[parent]) statsExp[parent] = {...statsExpRaw[parent]};
     });
 
-    document.getElementById("expenseDetails").innerHTML=Object.entries(statsExp)
-      .sort((a,b)=>b[1].sum-a[1].sum)
-      .map(([c,d])=>`
-        <div class="stat-row"><div class="stat-main"><span>${c}</span><b class="neg">${d.sum.toLocaleString()} ₸</b></div>
-        <div class="stat-sub">${Object.entries(d.subs).map(([s,v])=>`${s}: ${v.toLocaleString()}`).join(" | ")}</div></div>`)
-      .join("")||'<div class="muted">Нет расходов</div>';
+    // ═══ РАСШИРЕННАЯ АНАЛИТИКА РАСХОДОВ ═══
+    const sortedExpCats = Object.entries(statsExp).sort((a,b)=>b[1].sum-a[1].sum);
+    const totalExpForBar = sortedExpCats.reduce((s,[,d])=>s+d.sum, 0);
+    
+    document.getElementById("expenseDetails").innerHTML = sortedExpCats.map(([c,d]) => {
+      const pct = totalExpForBar > 0 ? Math.round(d.sum / totalExpForBar * 100) : 0;
+      const subsHtml = Object.entries(d.subs).sort((a,b)=>b[1]-a[1]).map(([s,v]) => {
+        const subPct = d.sum > 0 ? Math.round(v / d.sum * 100) : 0;
+        return `<div class="exp-sub-row"><span>${s}</span><span>${v.toLocaleString()} ₸ <small style="color:#555">${subPct}%</small></span></div>`;
+      }).join('');
+      const catId = c.replace(/[^a-zA-Zа-яА-Я0-9]/g, '_');
+      return `<div class="exp-cat-row" onclick="toggleExpCat('${catId}')">
+        <div class="exp-cat-header">
+          <span>${c} <small style="color:#555;font-weight:normal;">(${pct}%)</small> <span class="exp-arrow" id="expArrow_${catId}">▼</span></span>
+          <b class="neg">${d.sum.toLocaleString()} ₸</b>
+        </div>
+        <div class="exp-cat-bar-bg"><div class="exp-cat-bar-fill" style="width:${pct}%;"></div></div>
+        <div class="exp-cat-details" id="expDet_${catId}">
+          ${subsHtml || '<div style="padding:5px 12px;font-size:12px;color:#555;">Без подкатегорий</div>'}
+        </div>
+      </div>`;
+    }).join('') || '<div class="muted">Нет расходов</div>';
+
+    // Аналитика расходов: динамика по месяцам + средние + топ-5 + доли
+    const expByMonth = {};
+    filtered.forEach(t => {
+      if (t.type !== 'expense' || !t.date) return;
+      const m = t.date.slice(0, 7);
+      expByMonth[m] = (expByMonth[m] || 0) + t.amount;
+    });
+    const expMonths = Object.keys(expByMonth).sort();
+    const maxExpMonth = Math.max(...Object.values(expByMonth), 1);
+    const expFmtM = m => { const [y, mo] = m.split('-'); const names = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек']; return names[+mo - 1] + ' ' + y.slice(2); };
+
+    let expAnalHtml = '';
+    if (expMonths.length > 0) {
+      expAnalHtml += `<div class="exp-stat-card"><div class="card-title">📅 Динамика расходов по месяцам</div>`;
+      expAnalHtml += expMonths.map(m => {
+        const val = expByMonth[m];
+        const barW = Math.round(val / maxExpMonth * 100);
+        return `<div class="month-row" style="cursor:default;"><div class="month-top"><span>${expFmtM(m)}</span><span class="neg" style="font-weight:bold;">${val.toLocaleString()} ₸</span></div><div class="month-bar-bg"><div class="month-bar-fill" style="width:${barW}%;background:linear-gradient(90deg,#ff6b6b,#e05a5a);"></div></div></div>`;
+      }).join('');
+      expAnalHtml += '</div>';
+    }
+
+    const expDays = new Set();
+    filtered.forEach(t => { if (t.type === 'expense' && t.date) expDays.add(t.date); });
+    const avgExpPerDay = expDays.size > 0 ? Math.round(exp / expDays.size) : 0;
+    const avgExpPerMonth = expMonths.length > 0 ? Math.round(exp / expMonths.length) : 0;
+    if (exp > 0) {
+      expAnalHtml += `<div class="exp-stat-card"><div class="card-title">📊 Средние расходы</div>
+        <div class="bw-grid">
+          <div class="bw-card worst"><div class="bw-label">В ДЕНЬ</div><div class="bw-val" style="font-size:17px;">${avgExpPerDay.toLocaleString()} ₸</div><div class="bw-date">${expDays.size} дней с расходами</div></div>
+          <div class="bw-card worst"><div class="bw-label">В МЕСЯЦ</div><div class="bw-val" style="font-size:17px;">${avgExpPerMonth.toLocaleString()} ₸</div><div class="bw-date">${expMonths.length} мес.</div></div>
+        </div>
+      </div>`;
+    }
+
+    const topExpenses = filtered.filter(t => t.type === 'expense').sort((a,b) => b.amount - a.amount).slice(0, 5);
+    if (topExpenses.length > 0) {
+      expAnalHtml += `<div class="exp-stat-card"><div class="card-title">🔥 Топ-5 крупных расходов</div>`;
+      expAnalHtml += topExpenses.map((t, i) => {
+        const catName = t.subcategory || t.categoryName || 'Прочее';
+        return `<div class="stat-row"><div class="stat-main"><span>${i+1}. ${catName}</span><b class="neg">${t.amount.toLocaleString()} ₸</b></div><div class="stat-sub">${t.date}${t.comment ? ' · ' + t.comment : ''}</div></div>`;
+      }).join('');
+      expAnalHtml += '</div>';
+    }
+
+    if (sortedExpCats.length > 0 && totalExpForBar > 0) {
+      const expColors = ['#ff6b6b','#e05a5a','#ffd166','#a78bfa','#6ec6ff','#65d48b','#ff9f43','#d4a5f5'];
+      expAnalHtml += `<div class="exp-stat-card"><div class="card-title">🎯 Доля категорий в расходах</div>`;
+      expAnalHtml += sortedExpCats.map(([c, d], i) => {
+        const pct = Math.round(d.sum / totalExpForBar * 100);
+        const color = expColors[i % expColors.length];
+        return `<div class="point-share-row"><span>${c}</span><div class="point-share-bar-bg"><div class="point-share-bar-fill" style="width:${pct}%;background:${color};"></div></div><span style="font-weight:bold;color:${color};">${pct}%</span></div>`;
+      }).join('');
+      expAnalHtml += '</div>';
+    }
+
+    document.getElementById('expenseDetails').innerHTML += expAnalHtml;
 
     } catch(errStats) {
       console.error('Ошибка отрисовки статистики/счетов (список операций не затронут):', errStats);
@@ -2073,6 +2371,17 @@
       renderAnalytics();
     } else {
       window._analyticsStale = true;
+    }
+
+    if (document.getElementById('tab-expense')?.classList.contains('active')) {
+      if (window.renderFuelTracker) renderFuelTracker();
+      if (window.renderExpenseFullAnalytics) renderExpenseFullAnalytics();
+    } else {
+      window._expAnalyticsStale = true;
+    }
+
+    if (document.getElementById('tab-budget')?.classList.contains('active')) {
+      if (window.renderBudget) renderBudget();
     }
   }
 
@@ -2195,8 +2504,12 @@
     document.getElementById('histList').innerHTML = list.map(t => {
       const acc = t.account&&t.account!=='undefined'&&t.account!==''&&t.account!=='Счет не выбран'?` [${t.account}]`:'';
       const ts = t.time ? `${t.date} ${t.time}` : t.date;
+      let fuelTag = '';
+      if (t.odometer !== undefined && t.odometer !== null && t.odometer !== '') {
+        fuelTag = ` <span style="color:#6ec6ff;font-size:10px;background:#102238;padding:1px 5px;border-radius:4px;border:1px solid #1a3a60;">🚗 ${Number(t.odometer).toLocaleString()} км${t.liters ? ` · ${t.liters} л` : ''}${t.fullTank ? ' · Полный' : ''}</span>`;
+      }
       if (t.type==='transfer') return `<div class="hist-item"><div><b style="color:#ffd166;">↔ ${t.amount.toLocaleString()} ₸</b><br><small class="muted">${ts} | ${esc(t.fromAccount)} → ${esc(t.toAccount)}</small></div><div style="display:flex;gap:4px;"><button class="hist-del" onclick="deleteTx('${t.id}')">✕</button></div></div>`;
-      return `<div class="hist-item"><div><b class="${t.type==='income'?'pos':'neg'}">${t.amount.toLocaleString()} ₸</b><br><small class="muted">${ts} | ${esc(t.subcategory||t.categoryName)}${acc}</small>${t.comment?`<div style="color:#65d48b;font-size:11px;margin-top:2px;">📝 ${esc(t.comment)}</div>`:''}</div><div style="display:flex;gap:4px;"><button onclick="editTx('${t.id}')" style="background:none;border:none;color:#ffd166;padding:8px;cursor:pointer;font-size:15px;opacity:0.8;">✏️</button><button class="hist-del" onclick="deleteTx('${t.id}')">✕</button></div></div>`;
+      return `<div class="hist-item"><div><b class="${t.type==='income'?'pos':'neg'}">${t.amount.toLocaleString()} ₸</b>${fuelTag}<br><small class="muted">${ts} | ${esc(t.subcategory||t.categoryName)}${acc}</small>${t.comment?`<div style="color:#65d48b;font-size:11px;margin-top:2px;">📝 ${esc(t.comment)}</div>`:''}</div><div style="display:flex;gap:4px;"><button onclick="editTx('${t.id}')" style="background:none;border:none;color:#ffd166;padding:8px;cursor:pointer;font-size:15px;opacity:0.8;">✏️</button><button class="hist-del" onclick="deleteTx('${t.id}')">✕</button></div></div>`;
     }).join('') || '<div class="muted" style="padding:20px 0;text-align:center;">Ничего не найдено</div>';
   };
 
@@ -2755,6 +3068,690 @@
     }
   };
 
+  // ════════════════════════════════════════════════════════════════
+  // ══ 1. БЮДЖЕТ И РАСПРЕДЕЛЕНИЕ ЗАРАБОТКА ПО КАТЕГОРИЯМ ═════════
+  // ════════════════════════════════════════════════════════════════
+  const BUDGET_CATEGORIES_KEY = 'budget_categories_v1';
+  const BUDGET_SOURCE_KEY = 'budget_source_v1';
+  const BUDGET_CUSTOM_AMOUNT_KEY = 'budget_custom_amount_v1';
+
+  function getBudgetCategories() {
+    try {
+      const saved = localStorage.getItem(BUDGET_CATEGORIES_KEY);
+      if (saved) return JSON.parse(saved);
+    } catch(e) {}
+    // Стандартные категории по умолчанию
+    return [
+      { id: 'b_1', name: 'Отложить / Накопления', mode: 'percent', value: 20, color: '#65d48b' },
+      { id: 'b_2', name: 'Авто / Бензин', mode: 'percent', value: 25, color: '#ffd166' },
+      { id: 'b_3', name: 'Еда и продукты', mode: 'percent', value: 20, color: '#6ec6ff' },
+      { id: 'b_4', name: 'Обязательные платежи', mode: 'amount', value: 3000, color: '#a78bfa' },
+      { id: 'b_5', name: 'Свободные траты', mode: 'percent', value: 15, color: '#ff6b6b' }
+    ];
+  }
+
+  function saveBudgetCategories(cats) {
+    try {
+      localStorage.setItem(BUDGET_CATEGORIES_KEY, JSON.stringify(cats));
+    } catch(e) {}
+  }
+
+  window.setBudgetSource = (src) => {
+    try { localStorage.setItem(BUDGET_SOURCE_KEY, src); } catch(e) {}
+    renderBudget();
+  };
+
+  window.onBudgetCustomAmountChange = () => {
+    const val = Number(document.getElementById('budgetCustomAmountInput').value) || 0;
+    try { localStorage.setItem(BUDGET_CUSTOM_AMOUNT_KEY, String(val)); } catch(e) {}
+    renderBudget();
+  };
+
+  window.renderBudget = () => {
+    const listEl = document.getElementById('budgetCategoryList');
+    if (!listEl) return;
+
+    // Вычисляем сегодняшний доход (с учетом правила до 3 часов ночи)
+    const n = new Date(); if (n.getHours() < 3) n.setDate(n.getDate() - 1);
+    const today = new Date(n - n.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+    const isDepTransfer = t => t.subcategory && (t.subcategory.startsWith('← ') || t.subcategory.startsWith('→ '));
+    const todayIncome = (window.allTx || []).filter(t => t.type === 'income' && t.date === today && !isDepTransfer(t)).reduce((s,t) => s + t.amount, 0);
+
+    const source = localStorage.getItem(BUDGET_SOURCE_KEY) || 'today';
+    const customAmt = Number(localStorage.getItem(BUDGET_CUSTOM_AMOUNT_KEY)) || 0;
+    const baseAmt = source === 'custom' ? customAmt : todayIncome;
+
+    const sourceTodayBtn = document.getElementById('budgetSourceTodayBtn');
+    const sourceCustomBtn = document.getElementById('budgetSourceCustomBtn');
+    const customInp = document.getElementById('budgetCustomAmountInput');
+    const baseDisp = document.getElementById('budgetBaseAmountDisplay');
+
+    if (sourceTodayBtn && sourceCustomBtn && customInp && baseDisp) {
+      if (source === 'custom') {
+        sourceTodayBtn.style.background = '#1c1c1e'; sourceTodayBtn.style.borderColor = '#2a2a2a'; sourceTodayBtn.style.color = '#888';
+        sourceCustomBtn.style.background = '#0d2613'; sourceCustomBtn.style.borderColor = '#65d48b'; sourceCustomBtn.style.color = '#65d48b';
+        customInp.style.display = 'block';
+        customInp.value = customAmt || '';
+        baseDisp.textContent = baseAmt.toLocaleString() + ' ₸';
+      } else {
+        sourceTodayBtn.style.background = '#0d2613'; sourceTodayBtn.style.borderColor = '#65d48b'; sourceTodayBtn.style.color = '#65d48b';
+        sourceCustomBtn.style.background = '#1c1c1e'; sourceCustomBtn.style.borderColor = '#2a2a2a'; sourceCustomBtn.style.color = '#888';
+        customInp.style.display = 'none';
+        baseDisp.textContent = todayIncome.toLocaleString() + ' ₸ (сегодня)';
+      }
+    }
+
+    const cats = getBudgetCategories();
+    let totalAllocated = 0;
+
+    const itemsHtml = cats.map(c => {
+      let allocated = 0;
+      if (c.mode === 'percent') {
+        allocated = Math.round((baseAmt * c.value) / 100);
+      } else {
+        allocated = Number(c.value) || 0;
+      }
+      totalAllocated += allocated;
+      const pctOfBase = baseAmt > 0 ? Math.min(100, Math.round((allocated / baseAmt) * 100)) : 0;
+      const color = c.color || '#65d48b';
+
+      return `
+        <div class="budget-item">
+          <div class="budget-item-top">
+            <span class="budget-item-name">${esc(c.name)}</span>
+            <span class="budget-item-val" style="color:${color};">${allocated.toLocaleString()} ₸</span>
+          </div>
+          <div class="budget-item-meta">
+            <span>${c.mode === 'percent' ? `${c.value}% от дохода` : `Фикс: ${Number(c.value).toLocaleString()} ₸`}</span>
+            <span>${pctOfBase}% от базы</span>
+          </div>
+          <div class="budget-progress-bg">
+            <div class="budget-progress-fill" style="width:${pctOfBase}%;background:${color};"></div>
+          </div>
+          <div class="budget-actions">
+            <button class="budget-btn-sm" onclick="openEditBudgetModal('${c.id}')">✏️ Редактировать</button>
+            <button class="budget-btn-sm" style="color:#ff6b6b;" onclick="deleteBudgetCategory('${c.id}')">✕ Удалить</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    listEl.innerHTML = itemsHtml || '<div class="muted" style="padding:16px 0;text-align:center;">Нет категорий распределения</div>';
+
+    const remaining = baseAmt - totalAllocated;
+    const totAllocEl = document.getElementById('budgetTotalAllocated');
+    const totRemEl = document.getElementById('budgetTotalRemaining');
+    if (totAllocEl) totAllocEl.textContent = totalAllocated.toLocaleString() + ' ₸';
+    if (totRemEl) {
+      totRemEl.textContent = remaining.toLocaleString() + ' ₸';
+      totRemEl.style.color = remaining >= 0 ? '#65d48b' : '#ff6b6b';
+    }
+  };
+
+  window.openAddBudgetModal = () => {
+    window.openEditBudgetModal(null);
+  };
+
+  window.openEditBudgetModal = (id) => {
+    const old = document.getElementById('_budgetModal');
+    if (old) old.remove();
+
+    const cats = getBudgetCategories();
+    const item = id ? cats.find(c => c.id === id) : null;
+    const isNew = !item;
+
+    const modal = document.createElement('div');
+    modal.id = '_budgetModal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;padding:20px;';
+    modal.innerHTML = `
+      <div style="background:#1c1c1e;border-radius:16px;padding:20px;width:100%;max-width:340px;border:1px solid #2a2a2a;">
+        <div style="font-size:15px;font-weight:700;color:#65d48b;margin-bottom:14px;">
+          ${isNew ? '➕ Новая категория распределения' : '✏️ Редактировать категорию'}
+        </div>
+        <div style="margin-bottom:10px;">
+          <label style="font-size:11px;color:#888;display:block;margin-bottom:4px;">Название:</label>
+          <input id="_bName" type="text" value="${item ? esc(item.name) : ''}" placeholder="Напр. Накопления или Бензин"
+            style="width:100%;padding:10px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:14px;outline:none;box-sizing:border-box;">
+        </div>
+        <div style="margin-bottom:10px;">
+          <label style="font-size:11px;color:#888;display:block;margin-bottom:4px;">Тип распределения:</label>
+          <select id="_bMode" onchange="document.getElementById('_bValLabel').textContent = this.value==='percent'?'Процент (%):':'Сумма (₸):'"
+            style="width:100%;padding:10px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:14px;outline:none;">
+            <option value="percent" ${item && item.mode==='percent'?'selected':''}>Процент от заработка (%)</option>
+            <option value="amount" ${item && item.mode==='amount'?'selected':''}>Определённая сумма (₸)</option>
+          </select>
+        </div>
+        <div style="margin-bottom:14px;">
+          <label id="_bValLabel" style="font-size:11px;color:#888;display:block;margin-bottom:4px;">
+            ${item && item.mode==='amount' ? 'Сумма (₸):' : 'Процент (%):'}
+          </label>
+          <input id="_bValue" type="number" inputmode="decimal" value="${item ? item.value : ''}" placeholder="Напр. 20 или 5000"
+            style="width:100%;padding:10px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:14px;outline:none;box-sizing:border-box;">
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button onclick="document.getElementById('_budgetModal').remove()"
+            style="flex:1;padding:12px;border-radius:10px;border:1px solid #333;background:none;color:#888;font-size:14px;cursor:pointer;">Отмена</button>
+          <button onclick="saveBudgetCategoryModal('${id || ''}')"
+            style="flex:1;padding:12px;border-radius:10px;border:none;background:#65d48b;color:#000;font-size:14px;font-weight:bold;cursor:pointer;">Сохранить</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+    setTimeout(() => { const inp = document.getElementById('_bName'); if (inp) inp.focus(); }, 100);
+  };
+
+  window.saveBudgetCategoryModal = (id) => {
+    const name = document.getElementById('_bName').value.trim();
+    const mode = document.getElementById('_bMode').value;
+    const val = Number(document.getElementById('_bValue').value);
+    if (!name) return window.showToast('Введите название', 'error');
+    if (!Number.isFinite(val) || val <= 0) return window.showToast('Введите корректное значение', 'error');
+
+    const cats = getBudgetCategories();
+    const colors = ['#65d48b', '#ffd166', '#6ec6ff', '#a78bfa', '#ff6b6b', '#ff9f43', '#00d2d3'];
+    if (id) {
+      const idx = cats.findIndex(c => c.id === id);
+      if (idx >= 0) {
+        cats[idx].name = name;
+        cats[idx].mode = mode;
+        cats[idx].value = val;
+      }
+    } else {
+      const newId = 'b_' + Date.now();
+      const color = colors[cats.length % colors.length];
+      cats.push({ id: newId, name, mode, value: val, color });
+    }
+    saveBudgetCategories(cats);
+    document.getElementById('_budgetModal').remove();
+    renderBudget();
+    window.showToast('✅ Категория бюджета сохранена');
+  };
+
+  window.deleteBudgetCategory = (id) => {
+    showConfirm('Удалить категорию?', () => {
+      let cats = getBudgetCategories();
+      cats = cats.filter(c => c.id !== id);
+      saveBudgetCategories(cats);
+      renderBudget();
+      window.showToast('Категория удалена');
+    });
+  };
+
+  // ════════════════════════════════════════════════════════════════
+  // ══ 2. УЧЁТ БЕНЗИНА, ОДОМЕТРА И РАСХОДА НА 100 КМ ══════════════
+  // ════════════════════════════════════════════════════════════════
+  window.calculateFuelStats = () => {
+    // Собираем все транзакции расходов на бензин/топливо
+    const fuelTxs = (window.allTx || []).filter(t => {
+      if (t.type !== 'expense') return false;
+      const sub = (t.subcategory || '').toLowerCase();
+      const cat = (t.categoryName || '').toLowerCase();
+      return sub.includes('бенз') || cat.includes('бенз') || sub.includes('топлив') || cat.includes('топлив') || sub.includes('газ') || cat.includes('газ');
+    }).sort((a,b) => {
+      // Сортируем хронологически от старых к новым для отслеживания одометра
+      if (a.date !== b.date) return a.date > b.date ? 1 : -1;
+      return (a.createdAt || 0) - (b.createdAt || 0);
+    });
+
+    if (!fuelTxs.length) return null;
+
+    // Оцениваем литры для записей, где указана сумма, но нет литров (по средней цене бензина ~220 ₸)
+    const ASSUMED_PRICE_PER_LITER = 220;
+    const enriched = fuelTxs.map(t => {
+      const liters = (t.liters && t.liters > 0) ? t.liters : (t.amount > 0 ? (t.amount / ASSUMED_PRICE_PER_LITER) : 0);
+      return { ...t, calcLiters: liters };
+    });
+
+    // Расчёт интервалов между заправками от полного до полного бака
+    // Алгоритм:
+    // Идём по хронологии. Находим первую точку с fullTank и одометром.
+    // Накапливаем литры промежуточных заправок до следующего fullTank.
+    // При встрече следующего fullTank: расход = (накопленные литры) / (дельта одометра) * 100.
+    const intervals = [];
+    let prevFull = null;
+    let accumulatedLiters = 0;
+    let accumulatedCost = 0;
+    let partialCount = 0;
+
+    enriched.forEach(t => {
+      const hasOdo = t.odometer !== undefined && t.odometer !== null && Number(t.odometer) > 0;
+      if (prevFull) {
+        accumulatedLiters += t.calcLiters;
+        accumulatedCost += t.amount;
+        if (!t.fullTank) partialCount++;
+      }
+      if (t.fullTank && hasOdo) {
+        if (prevFull && Number(t.odometer) > Number(prevFull.odometer)) {
+          const distance = Number(t.odometer) - Number(prevFull.odometer);
+          const consumption = (accumulatedLiters / distance) * 100;
+          const costPerKm = accumulatedCost / distance;
+          intervals.push({
+            fromOdo: Number(prevFull.odometer),
+            toOdo: Number(t.odometer),
+            distance,
+            liters: accumulatedLiters,
+            cost: accumulatedCost,
+            consumption: Math.round(consumption * 10) / 10,
+            costPerKm: Math.round(costPerKm * 10) / 10,
+            partialCount,
+            date: t.date,
+            isExact: true
+          });
+        }
+        prevFull = t;
+        accumulatedLiters = 0;
+        accumulatedCost = 0;
+        partialCount = 0;
+      }
+    });
+
+    // Общий пробег по одометру за всё время (если есть хотя бы 2 записи с одометром)
+    const withOdo = enriched.filter(t => t.odometer !== undefined && t.odometer !== null && Number(t.odometer) > 0);
+    let totalDistanceAllTime = 0;
+    if (withOdo.length >= 2) {
+      totalDistanceAllTime = Number(withOdo[withOdo.length - 1].odometer) - Number(withOdo[0].odometer);
+    }
+
+    const totalFuelCost = enriched.reduce((s,t) => s + t.amount, 0);
+    const totalFuelLiters = enriched.reduce((s,t) => s + t.calcLiters, 0);
+
+    // Средний расход
+    let avgConsumption = 0;
+    if (intervals.length > 0) {
+      const sumDist = intervals.reduce((s,i) => s + i.distance, 0);
+      const sumLit = intervals.reduce((s,i) => s + i.liters, 0);
+      if (sumDist > 0) avgConsumption = Math.round((sumLit / sumDist) * 100 * 10) / 10;
+    } else if (totalDistanceAllTime > 0) {
+      avgConsumption = Math.round((totalFuelLiters / totalDistanceAllTime) * 100 * 10) / 10;
+    }
+
+    // Последний интервал
+    const lastInterval = intervals.length ? intervals[intervals.length - 1] : null;
+    const lastOdometer = withOdo.length ? withOdo[withOdo.length - 1].odometer : null;
+
+    return {
+      totalTxs: fuelTxs.length,
+      totalFuelCost,
+      totalFuelLiters: Math.round(totalFuelLiters * 10) / 10,
+      totalDistanceAllTime,
+      avgConsumption,
+      lastInterval,
+      intervals,
+      lastOdometer
+    };
+  };
+
+  window.renderFuelTracker = () => {
+    const card = document.getElementById('fuelTrackerCard');
+    const content = document.getElementById('fuelTrackerContent');
+    const badge = document.getElementById('fuelLastOdoBadge');
+    if (!card || !content) return;
+
+    const stats = calculateFuelStats();
+    if (!stats) {
+      card.style.display = 'none';
+      return;
+    }
+
+    card.style.display = 'block';
+    if (badge && stats.lastOdometer) {
+      badge.textContent = `Текущий одометр: ${Number(stats.lastOdometer).toLocaleString()} км`;
+    }
+
+    const { avgConsumption, totalDistanceAllTime, totalFuelCost, lastInterval, intervals } = stats;
+    const consText = avgConsumption > 0 ? `${avgConsumption} л / 100 км` : 'Мало данных';
+    const lastConsText = lastInterval ? `${lastInterval.consumption} л / 100 км (${lastInterval.distance} км)` : '—';
+
+    let historyHtml = '';
+    if (intervals.length > 0) {
+      historyHtml = `
+        <div style="margin-top:10px;border-top:1px solid #1a2a40;padding-top:8px;">
+          <div style="font-size:11px;font-weight:600;color:#6ec6ff;margin-bottom:6px;">Последние расчеты от полного бака:</div>
+          ${intervals.slice(-3).reverse().map(inv => `
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #142032;font-size:12px;">
+              <div>
+                <span style="font-weight:600;color:#ffd166;">${inv.consumption} л/100км</span>
+                <span style="color:#777;font-size:10px;margin-left:6px;">(${inv.distance} км · ${inv.liters.toFixed(1)} л)</span>
+              </div>
+              <span style="color:#65d48b;font-weight:bold;">${inv.cost.toLocaleString()} ₸</span>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    } else {
+      historyHtml = `
+        <div style="font-size:11px;color:#8899a6;margin-top:8px;background:#0d1522;padding:8px 10px;border-radius:8px;border:1px solid #1b283d;">
+          💡 Для точного расчёта расхода на 100 км заправляйте <b>полный бак</b> с указанием показания <b>одометра</b>. Промежуточные заправки будут учтены автоматически при следующем полном баке.
+        </div>
+      `;
+    }
+
+    content.innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px;">
+        <div class="fuel-box">
+          <div class="fuel-label">Средний расход</div>
+          <div class="fuel-metric">${consText}</div>
+          <div style="font-size:10px;color:#778899;margin-top:3px;">за всё время</div>
+        </div>
+        <div class="fuel-box">
+          <div class="fuel-label">Последний замер</div>
+          <div class="fuel-metric" style="color:#6ec6ff;">${lastConsText}</div>
+          <div style="font-size:10px;color:#778899;margin-top:3px;">${lastInterval ? (lastInterval.partialCount > 0 ? `+${lastInterval.partialCount} неполн. заправок` : 'от полного до полного') : 'нет замеров'}</div>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:6px 2px;color:#aaa;">
+        <span>Пробег: <b style="color:#fff;">${totalDistanceAllTime > 0 ? totalDistanceAllTime.toLocaleString() + ' км' : '—'}</b></span>
+        <span>Потрачено: <b style="color:#ff6b6b;">${totalFuelCost.toLocaleString()} ₸</b></span>
+      </div>
+      ${historyHtml}
+    `;
+  };
+
+  // ════════════════════════════════════════════════════════════════
+  // ══ 3. ПОЛНАЯ АНАЛИТИКА РАСХОДОВ (ПО АНАЛОГИИ С ДОХОДАМИ) ═══════
+  // ════════════════════════════════════════════════════════════════
+  let _expAnalyticsMonthsLimit = 6;
+  let _openExpWeekdayDetails = null;
+
+  window.setExpAnalyticsMonthsLimit = (n) => {
+    _expAnalyticsMonthsLimit = n;
+    renderExpenseFullAnalytics();
+  };
+
+  window.toggleExpWeekdayDetails = (wdIdx) => {
+    _openExpWeekdayDetails = (_openExpWeekdayDetails === wdIdx) ? null : wdIdx;
+    renderExpenseFullAnalytics();
+  };
+
+  window.editExpenseGoal = () => {
+    const old = document.getElementById('_expGoalDialog');
+    if (old) old.remove();
+    let cur = 0; try { cur = parseInt(localStorage.getItem('expenseGoal') || '0') || 0; } catch (e) {}
+    const div = document.createElement('div');
+    div.id = '_expGoalDialog';
+    div.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;padding:20px;';
+    div.innerHTML = `<div style="background:#1c1c1e;border-radius:16px;padding:20px;width:100%;max-width:320px;border:1px solid #2a2a2a;">
+      <div style="font-size:14px;font-weight:600;margin-bottom:12px;">Лимит расходов на месяц (₸)</div>
+      <input id="_expGoalInput" type="number" inputmode="numeric" value="${cur||''}" placeholder="Например, 150000"
+        style="width:100%;padding:11px;border-radius:10px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:15px;outline:none;box-sizing:border-box;margin-bottom:12px;" />
+      <div style="display:flex;gap:8px;">
+        <button onclick="document.getElementById('_expGoalDialog').remove()" style="flex:1;padding:11px;border-radius:10px;border:1px solid #333;background:none;color:#888;font-size:14px;cursor:pointer;">Отмена</button>
+        <button onclick="saveExpenseGoal()" style="flex:1;padding:11px;border-radius:10px;border:none;background:#ff6b6b;color:#000;font-size:14px;font-weight:bold;cursor:pointer;">Сохранить</button>
+      </div>
+    </div>`;
+    document.body.appendChild(div);
+    setTimeout(() => { const inp = document.getElementById('_expGoalInput'); inp.focus(); inp.select(); }, 100);
+  };
+
+  window.saveExpenseGoal = () => {
+    const val = parseInt(document.getElementById('_expGoalInput').value) || 0;
+    const dialog = document.getElementById('_expGoalDialog');
+    if (dialog) dialog.remove();
+    try { localStorage.setItem('expenseGoal', String(val)); } catch (e) {}
+    renderExpenseFullAnalytics();
+    window.showToast('✅ Лимит расходов сохранен');
+  };
+
+  function renderExpenseFullAnalytics() {
+    const el = document.getElementById("expenseAnalytics");
+    if (!el) return;
+
+    const isDepTransfer = t => t.subcategory && (t.subcategory.startsWith('← ') || t.subcategory.startsWith('→ '));
+    const expByDay = {}, expByMonth = {};
+
+    allTx.forEach(t => {
+      if (t.type !== 'expense' || isDepTransfer(t)) return;
+      const d = t.date || '', m = d.slice(0,7);
+      if (!expByDay[d]) expByDay[d] = 0;
+      expByDay[d] += t.amount;
+      if (!expByMonth[m]) expByMonth[m] = { exp: 0, count: 0 };
+      expByMonth[m].exp += t.amount;
+      expByMonth[m].count++;
+    });
+
+    const expDaysList = Object.entries(expByDay).filter(([d]) => d);
+    let bestExpDay = null, worstExpDay = null; // лучший день (меньше трат), худший (рекорд расходов)
+    if (expDaysList.length > 0) {
+      worstExpDay = expDaysList.reduce((a,b) => b[1] > a[1] ? b : a);
+      bestExpDay = expDaysList.reduce((a,b) => b[1] < a[1] ? b : a);
+    }
+
+    const fmtD = d => { if (!d) return '—'; const[y,mo,day]=d.split('-'); return `${day}.${mo}.${y}`; };
+    const fmtM = m => { if (!m) return '—'; const mn=['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек']; const[y,mo]=m.split('-'); return `${mn[parseInt(mo)-1]} ${y}`; };
+    const getTodayLocal = () => { const now=new Date(); if(now.getHours()<3)now.setDate(now.getDate()-1); return new Date(now-now.getTimezoneOffset()*60000).toISOString().split('T')[0]; };
+    const daysInMonthCalc = (m) => { const[y,mo]=m.split('-').map(Number); return new Date(y,mo,0).getDate(); };
+
+    const todayLocal = getTodayLocal();
+    const currentMonthKey = todayLocal.slice(0,7);
+    const dayOfMonth = parseInt(todayLocal.slice(8,10), 10);
+    const from = document.getElementById("fromDate").value, to = document.getElementById("toDate").value;
+
+    const filteredDaysRaw = Object.entries(expByDay).filter(([d]) => d && (!from || d >= from) && (!to || d <= to)).sort((a,b) => a[0] > b[0] ? 1 : -1);
+
+    // График расходов
+    const AGG_THRESHOLD = 60;
+    let filteredDays = filteredDaysRaw, isWeekly = false;
+    if (filteredDaysRaw.length > AGG_THRESHOLD) {
+      isWeekly = true;
+      const weekly = {};
+      filteredDaysRaw.forEach(([d,v]) => {
+        const dt = new Date(d + 'T00:00:00');
+        const day = dt.getDay();
+        const diffToMon = (day === 0 ? -6 : 1 - day);
+        const monday = new Date(dt); monday.setDate(dt.getDate() + diffToMon);
+        const key = new Date(monday - monday.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+        if (!weekly[key]) weekly[key] = 0;
+        weekly[key] += v;
+      });
+      filteredDays = Object.entries(weekly).sort((a,b) => a[0] > b[0] ? 1 : -1);
+    }
+
+    let chartHtml = '', chartData = null;
+    if (filteredDays.length > 1) {
+      const maxVal = Math.max(...filteredDays.map(([,v]) => v)), W = Math.max(filteredDays.length * (isWeekly ? 60 : 50), 300), H = 80, pad = 10;
+      chartData = { filteredDays, maxVal, W, H, pad, isWeekly };
+      const chartTitle = isWeekly ? 'График расходов по неделям' : 'График расходов по дням';
+      chartHtml = `<div class="sec-title">${chartTitle}</div><div style="text-align:center;height:24px;display:flex;align-items:center;justify-content:center;gap:8px;"><span id="expChartTipDate" style="font-size:11px;color:#444;"></span><span id="expChartTipVal" style="font-size:15px;font-weight:bold;color:#ff6b6b;"></span></div><div class="chart-wrap"><canvas id="expenseChart" width="${W}" height="${H+20}" style="display:block;"></canvas></div>`;
+    }
+
+    // Пиковый и минимальный расход за день
+    const bwHtml = worstExpDay ? `
+      <div class="sec-title">Пиковый расход за день (за всё время)</div>
+      <div class="bw-grid">
+        <div class="bw-card worst">
+          <div class="bw-label">🔥 Максимум за день</div>
+          <div class="bw-val neg">${worstExpDay[1].toLocaleString()} ₸</div>
+          <div class="bw-date">${fmtD(worstExpDay[0])}</div>
+        </div>
+        <div class="bw-card best">
+          <div class="bw-label">🌿 Минимум расходов</div>
+          <div class="bw-val pos">${bestExpDay[1].toLocaleString()} ₸</div>
+          <div class="bw-date">${bestExpDay ? fmtD(bestExpDay[0]) : '—'}</div>
+        </div>
+      </div>
+    ` : '';
+
+    // Прогноз расходов на текущий месяц
+    const curMonthExp = (expByMonth[currentMonthKey] && expByMonth[currentMonthKey].exp) || 0;
+    const daysInCurMonth = daysInMonthCalc(currentMonthKey);
+    const forecastExp = dayOfMonth > 0 ? Math.round(curMonthExp / dayOfMonth * daysInCurMonth) : 0;
+    const forecastHtml = curMonthExp > 0 ? `
+      <div class="sec-title">🔮 Прогноз расходов на ${fmtM(currentMonthKey)}</div>
+      <div class="goal-box" style="border-color:#3a1a1a;">
+        <div style="display:flex;justify-content:space-between;font-size:13px;"><span>Потрачено</span><span class="neg" style="font-weight:bold;">${curMonthExp.toLocaleString()} ₸</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;margin-top:4px;"><span>К концу месяца</span><span style="font-weight:bold;color:#ff6b6b;">≈ ${forecastExp.toLocaleString()} ₸</span></div>
+        <div class="month-meta" style="margin-top:4px;">на основе темпа: ${dayOfMonth} из ${daysInCurMonth} дн.</div>
+      </div>
+    ` : '';
+
+    // Лимит расходов на месяц
+    let expenseGoal = 0; try { expenseGoal = parseInt(localStorage.getItem('expenseGoal') || '0') || 0; } catch(e) {}
+    const goalPct = expenseGoal > 0 ? Math.min(100, Math.round(curMonthExp / expenseGoal * 100)) : 0;
+    const expGoalHtml = `
+      <div class="sec-title" style="display:flex;justify-content:space-between;align-items:center;">
+        <span>🎯 Лимит расходов на ${fmtM(currentMonthKey)}</span>
+        <button onclick="editExpenseGoal()" style="background:none;border:1px solid #2a2a2a;border-radius:6px;color:#ff6b6b;font-size:10px;padding:3px 7px;cursor:pointer;">✏️ ${expenseGoal > 0 ? 'Изменить' : 'Задать'}</button>
+      </div>
+      ${expenseGoal > 0 ? `
+        <div class="goal-box" style="border-color:#3a1a1a;">
+          <div style="display:flex;justify-content:space-between;font-size:13px;">
+            <span>${curMonthExp.toLocaleString()} ₸ из ${expenseGoal.toLocaleString()} ₸</span>
+            <span style="font-weight:bold;color:${goalPct >= 100 ? '#ff6b6b' : '#65d48b'};">${goalPct}%</span>
+          </div>
+          <div class="goal-bar-bg"><div class="goal-bar-fill" style="width:${goalPct}%;background:${goalPct>=100?'#ff6b6b':'linear-gradient(90deg,#65d48b,#ffd166)'};"></div></div>
+          ${goalPct >= 100 ? '<div class="month-meta" style="margin-top:4px;color:#ff6b6b;">⚠️ Лимит расходов превышен!</div>' : `<div class="month-meta" style="margin-top:4px;">осталось до лимита: ${(expenseGoal - curMonthExp).toLocaleString()} ₸</div>`}
+        </div>
+      ` : `<div class="muted" style="font-size:11px;">Лимит не задан</div>`}
+    `;
+
+    // Расходы по дням недели
+    const weekdayNames = ['Вс','Пн','Вт','Ср','Чт','Пт','Сб'];
+    const weekdayOrder = [1,2,3,4,5,6,0];
+    const expWeekdayData = {};
+    weekdayOrder.forEach(idx => { expWeekdayData[idx] = { total: 0, count: 0, txs: 0 }; });
+
+    allTx.forEach(t => {
+      if (t.type !== 'expense' || isDepTransfer(t) || !t.date) return;
+      const dt = new Date(t.date + 'T00:00:00');
+      const wd = dt.getDay();
+      if (!expWeekdayData[wd]) return;
+      expWeekdayData[wd].total += t.amount;
+      expWeekdayData[wd].txs++;
+    });
+
+    const expDaysByWd = {};
+    Object.keys(expByDay).forEach(d => {
+      const dt = new Date(d + 'T00:00:00');
+      const wd = dt.getDay();
+      if (!expDaysByWd[wd]) expDaysByWd[wd] = 0;
+      expDaysByWd[wd]++;
+    });
+    weekdayOrder.forEach(idx => { expWeekdayData[idx].count = expDaysByWd[idx] || 0; });
+
+    const maxExpAvgWd = Math.max(...weekdayOrder.map(idx => expWeekdayData[idx].count > 0 ? expWeekdayData[idx].total / expWeekdayData[idx].count : 0), 1);
+
+    const weekdayExpHtml = `
+      <div class="sec-title" style="margin-top:18px;color:#ff6b6b;">📆 Расходы по дням недели</div>
+      ${weekdayOrder.map(wdIdx => {
+        const dat = expWeekdayData[wdIdx];
+        const avg = dat.count > 0 ? Math.round(dat.total / dat.count) : 0;
+        const barW = (avg / maxExpAvgWd * 100).toFixed(1);
+        const isOpen = _openExpWeekdayDetails === wdIdx;
+        return `
+          <div class="month-row" style="cursor:pointer;" onclick="toggleExpWeekdayDetails(${wdIdx})">
+            <div class="month-top">
+              <span style="font-weight:600;">${weekdayNames[wdIdx]} <small style="color:#555;font-size:11px;">${isOpen ? '▲' : '▼'}</small></span>
+              <span class="neg" style="font-weight:bold;">${avg > 0 ? `≈ ${avg.toLocaleString()} ₸/день` : '—'}</span>
+            </div>
+            <div class="month-bar-bg"><div class="month-bar-fill" style="width:${barW}%;background:linear-gradient(90deg,#ff6b6b,#e05a5a);"></div></div>
+            <div class="month-meta">📅 ${dat.count} дн. с расходами · Всего: ${dat.total.toLocaleString()} ₸ (${dat.txs} записей)</div>
+          </div>
+        `;
+      }).join('')}
+    `;
+
+    // Тепловая карта расходов за 24 недели
+    const heatDaysBack = 168;
+    const todayDt = new Date(todayLocal + 'T00:00:00');
+    let heatStart = new Date(todayDt); heatStart.setDate(heatStart.getDate() - heatDaysBack);
+    const startDow = heatStart.getDay(), backToMon = (startDow === 0 ? 6 : startDow - 1);
+    heatStart.setDate(heatStart.getDate() - backToMon);
+    const heatCells = []; let maxHeat = 0;
+    for (let dt = new Date(heatStart); dt <= todayDt; dt.setDate(dt.getDate() + 1)) {
+      const key = new Date(dt - dt.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+      const val = expByDay[key] || 0;
+      if (val > maxHeat) maxHeat = val;
+      heatCells.push({ date: key, val });
+    }
+    const heatColor = (val) => {
+      if (!val) return '#161616';
+      const r = val / (maxHeat || 1);
+      if (r > 0.75) return '#ff4757';
+      if (r > 0.5) return '#ff6b6b';
+      if (r > 0.25) return '#c0392b';
+      return '#631d1d';
+    };
+    const heatmapCellsHtml = heatCells.map(c => `<div class="heatmap-cell" style="background:${heatColor(c.val)};" title="${fmtD(c.date)}: ${c.val.toLocaleString()} ₸ расходов"></div>`).join('');
+    const heatmapHtml = maxHeat > 0 ? `
+      <div class="sec-title" style="margin-top:18px;">🗓 Тепловая карта расходов (посл. 24 нед.)</div>
+      <div class="heatmap-wrap"><div class="heatmap-grid">${heatmapCellsHtml}</div></div>
+      <div class="heatmap-legend"><span>меньше</span><div class="heatmap-cell" style="background:#161616;"></div><div class="heatmap-cell" style="background:#631d1d;"></div><div class="heatmap-cell" style="background:#c0392b;"></div><div class="heatmap-cell" style="background:#ff6b6b;"></div><div class="heatmap-cell" style="background:#ff4757;"></div><span>больше</span></div>
+    ` : '';
+
+    el.innerHTML = chartHtml + bwHtml + forecastHtml + expGoalHtml + weekdayExpHtml + heatmapHtml || '<div class="muted">Недостаточно данных для аналитики</div>';
+
+    // Сохраняем сводку для кнопки "Поделиться"
+    window._expAnalyticsSummary = {
+      worstExpDay, bestExpDay, curMonthExp, forecastExp, expenseGoal, currentMonthKey, expWeekdayData, weekdayNames, weekdayOrder, fmtD, fmtM
+    };
+
+    if (chartData) {
+      const { filteredDays, maxVal, W, H, pad, isWeekly } = chartData;
+      const canvas = document.getElementById('expenseChart'); if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const getX = i => pad + i * ((W - pad * 2) / (filteredDays.length - 1));
+      const getY = v => H - pad - ((v / maxVal) * (H - pad * 2));
+      function draw(ai) {
+        ctx.clearRect(0, 0, W, H + 20);
+        const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, 'rgba(255,107,107,0.25)'); g.addColorStop(1, 'rgba(255,107,107,0)');
+        ctx.beginPath(); ctx.moveTo(getX(0), getY(filteredDays[0][1])); filteredDays.forEach(([,v],i) => ctx.lineTo(getX(i), getY(v)));
+        ctx.lineTo(getX(filteredDays.length - 1), H); ctx.lineTo(getX(0), H); ctx.closePath(); ctx.fillStyle = g; ctx.fill();
+        ctx.beginPath(); ctx.strokeStyle = '#ff6b6b'; ctx.lineWidth = 2.5; ctx.lineJoin = 'round';
+        ctx.moveTo(getX(0), getY(filteredDays[0][1])); filteredDays.forEach(([,v],i) => ctx.lineTo(getX(i), getY(v))); ctx.stroke();
+        filteredDays.forEach(([,v],i) => {
+          const x = getX(i), y = getY(v);
+          if (i === ai) {
+            ctx.beginPath(); ctx.strokeStyle = 'rgba(255,107,107,0.3)'; ctx.lineWidth = 1; ctx.setLineDash([4,3]); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); ctx.setLineDash([]);
+            ctx.beginPath(); ctx.arc(x, y, 7, 0, Math.PI*2); ctx.fillStyle = 'rgba(255,107,107,0.2)'; ctx.fill();
+            ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI*2); ctx.fillStyle = '#fff'; ctx.fill();
+            ctx.beginPath(); ctx.arc(x, y, 2.5, 0, Math.PI*2); ctx.fillStyle = '#ff6b6b'; ctx.fill();
+          } else {
+            ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI*2); ctx.fillStyle = '#ff6b6b'; ctx.fill();
+          }
+        });
+        ctx.fillStyle = '#333'; ctx.font = '9px sans-serif'; ctx.textAlign = 'center';
+        filteredDays.forEach(([d,],i) => ctx.fillText(isWeekly ? d.slice(8) + '.' + d.slice(5,7) : d.slice(8), getX(i), H + 14));
+      }
+      const getIdx = cx => { const r = canvas.getBoundingClientRect(), mx = (cx - r.left) * (W / r.width); let cl = 0, md = Infinity; filteredDays.forEach(([,],i) => { const dist = Math.abs(getX(i) - mx); if (dist < md) { md = dist; cl = i; } }); return cl; };
+      const showTip = idx => { const[d,v] = filteredDays[idx]; document.getElementById('expChartTipDate').textContent = (isWeekly ? 'нед. с ' : '') + d.slice(8) + '.' + d.slice(5,7); document.getElementById('expChartTipVal').textContent = v.toLocaleString() + ' ₸'; draw(idx); };
+      const hideTip = () => { document.getElementById('expChartTipDate').textContent = ''; document.getElementById('expChartTipVal').textContent = ''; draw(-1); };
+      canvas.addEventListener('touchstart', e => showTip(getIdx(e.touches[0].clientX)), { passive: true });
+      canvas.addEventListener('touchend', () => hideTip());
+      canvas.addEventListener('mousemove', e => showTip(getIdx(e.clientX)));
+      canvas.addEventListener('mouseleave', () => hideTip());
+      draw(-1);
+    }
+  }
+
+  window.renderExpenseFullAnalytics = renderExpenseFullAnalytics;
+
+  window.shareExpenseAnalytics = async () => {
+    const s = window._expAnalyticsSummary;
+    if (!s) { window.showToast('Недостаточно данных для экспорта', 'warn'); return; }
+    const { worstExpDay, bestExpDay, curMonthExp, forecastExp, expenseGoal, currentMonthKey, fmtD, fmtM } = s;
+    const lines = ['📉 Сводка по расходам', ''];
+    if (curMonthExp !== undefined) {
+      lines.push(`🔮 ${fmtM(currentMonthKey)}: потрачено ${curMonthExp.toLocaleString()} ₸, прогноз к концу месяца ≈ ${forecastExp.toLocaleString()} ₸`);
+      if (expenseGoal > 0) lines.push(`🎯 Лимит: ${expenseGoal.toLocaleString()} ₸ (${Math.min(100, Math.round(curMonthExp / expenseGoal * 100))}%)`);
+      lines.push('');
+    }
+    if (worstExpDay) {
+      lines.push(`🔥 Максимум за день: ${fmtD(worstExpDay[0])} — ${worstExpDay[1].toLocaleString()} ₸`);
+      lines.push(`🌿 Минимум за день: ${bestExpDay ? fmtD(bestExpDay[0]) : '—'} — ${bestExpDay ? bestExpDay[1].toLocaleString() : 0} ₸`);
+    }
+    const fuel = calculateFuelStats();
+    if (fuel && fuel.avgConsumption > 0) {
+      lines.push('');
+      lines.push(`⛽ Авто: средний расход топлива ${fuel.avgConsumption} л/100 км`);
+    }
+    const text = lines.join('\n');
+    if (navigator.share) {
+      try { await navigator.share({ title: 'Сводка по расходам', text }); } catch(e) {}
+    } else {
+      try { await navigator.clipboard.writeText(text); window.showToast('📋 Сводка скопирована'); } catch(e) { window.showToast('Не удалось скопировать', 'warn'); }
+    }
+  };
+
   window.deleteTx = (id) => {
     if (String(id).startsWith('tmp_')) { window.showToast('Запись ещё сохраняется — подожди секунду', 'warn'); return; }
     showConfirm('Удалить запись?', async () => {
@@ -2816,7 +3813,20 @@
             style="flex:1;padding:11px;border-radius:10px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:15px;outline:none;">
         </div>
         <input id="_editComment" type="text" value="${t.comment||''}" placeholder="Примечание"
-          style="width:100%;padding:11px;border-radius:10px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:15px;outline:none;box-sizing:border-box;margin-bottom:14px;">
+          style="width:100%;padding:11px;border-radius:10px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:15px;outline:none;box-sizing:border-box;margin-bottom:10px;">
+        <div style="background:#151922;border:1px solid #233554;border-radius:10px;padding:10px;margin-bottom:14px;">
+          <div style="font-size:11px;font-weight:600;color:#6ec6ff;margin-bottom:6px;">⛽ Данные заправки / одометра</div>
+          <div style="display:flex;gap:8px;margin-bottom:6px;">
+            <input id="_editOdo" type="number" inputmode="numeric" value="${t.odometer!==undefined?t.odometer:''}" placeholder="Одометр (км)"
+              style="flex:1;padding:9px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:14px;outline:none;">
+            <input id="_editLiters" type="number" step="0.01" inputmode="decimal" value="${t.liters!==undefined?t.liters:''}" placeholder="Литры"
+              style="flex:1;padding:9px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:14px;outline:none;">
+          </div>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#ddd;cursor:pointer;">
+            <input id="_editFullTank" type="checkbox" ${t.fullTank?'checked':''} style="width:18px;height:18px;accent-color:#65d48b;cursor:pointer;">
+            <span>Полный бак</span>
+          </label>
+        </div>
         <div style="display:flex;gap:10px;">
           <button onclick="document.getElementById('_editDialog').remove()"
             style="flex:1;padding:13px;border-radius:10px;border:1px solid #333;background:none;color:#888;font-size:14px;cursor:pointer;">Отмена</button>
@@ -2832,6 +3842,10 @@
     if (!amt) { document.getElementById('_editAmt').style.borderColor='#ff6b6b'; return; }
     const catName = document.getElementById('_editCat').value;
     const sub = document.getElementById('_editSub').value;
+    const odoVal = document.getElementById('_editOdo').value;
+    const litVal = document.getElementById('_editLiters').value;
+    const fullTankVal = document.getElementById('_editFullTank').checked;
+
     const upd = {
       type: document.getElementById('_editType').value,
       amount: amt,
@@ -2841,6 +3855,9 @@
       date: document.getElementById('_editDate').value,
       time: document.getElementById('_editTime').value,
       comment: document.getElementById('_editComment').value,
+      odometer: odoVal !== '' ? Number(odoVal) : null,
+      liters: litVal !== '' ? Number(litVal) : null,
+      fullTank: fullTankVal
     };
     document.getElementById('_editDialog').remove();
     try {
