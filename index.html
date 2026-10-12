@@ -1164,14 +1164,30 @@
   <div class="prices-topbar">
     <button class="back-btn" onclick="closeClientsScreen()">‹</button>
     <span style="font-size:16px;font-weight:600;">👥 База клиентов</span>
-    <div style="margin-left:auto;display:flex;gap:8px;">
-      <button onclick="copyAllPhones()" style="background:none;border:1px solid #2a2a2a;border-radius:8px;color:#ffd166;font-size:12px;font-weight:600;padding:6px 10px;cursor:pointer;">📋 Копировать номера</button>
+    <div style="margin-left:auto;display:flex;gap:6px;">
+      <button onclick="copyAllPhones()" style="background:none;border:1px solid #2a2a2a;border-radius:8px;color:#ffd166;font-size:11px;font-weight:600;padding:6px 8px;cursor:pointer;">📋 Номера</button>
     </div>
   </div>
   <div style="padding:12px;max-width:500px;margin:0 auto;">
-    <div style="background:#111;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:#444;line-height:1.5;">
-      Клиенты автоматически добавляются при разборе WhatsApp.<br>
-      <span style="color:#333;">Нажми «Копировать номера» для рассылки.</span>
+    <!-- Действия с базой клиентов -->
+    <div style="background:#141416;border-radius:12px;padding:12px;margin-bottom:12px;border:1px solid #222;">
+      <div style="font-size:11px;color:#aaa;margin-bottom:8px;">
+        Клиенты и история заказов сохраняются в <b>Firebase</b>. Можно экспортировать контакты для телефона (VCF) или таблицы (CSV).
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
+        <button onclick="exportClientsVCF()" style="padding:8px 10px;border-radius:8px;border:1px solid #2a4a2a;background:#0d2613;color:#65d48b;font-size:12px;font-weight:600;cursor:pointer;">
+          📱 Экспорт в контакты (VCF)
+        </button>
+        <button onclick="exportClientsCSV()" style="padding:8px 10px;border-radius:8px;border:1px solid #1a3a5a;background:#0a1a2a;color:#6ec6ff;font-size:12px;font-weight:600;cursor:pointer;">
+          📤 Экспорт в Excel (CSV)
+        </button>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <button onclick="document.getElementById('clientsCsvInput').click()" style="flex:1;padding:8px 10px;border-radius:8px;border:1px solid #333;background:#1c1c1e;color:#ddd;font-size:12px;cursor:pointer;">
+          📥 Импорт клиентов (CSV)
+        </button>
+        <input id="clientsCsvInput" type="file" accept=".csv,text/csv" style="display:none;" onchange="importClientsCSV(this)">
+      </div>
     </div>
 
     <!-- Поиск -->
@@ -1360,6 +1376,18 @@
         if (data.expenseGoal !== undefined) {
           localStorage.setItem('expenseGoal', String(data.expenseGoal));
           if (window.renderExpenseFullAnalytics) window.renderExpenseFullAnalytics();
+        }
+        if (data.clients) {
+          try {
+            const parsed = typeof data.clients === 'string' ? JSON.parse(data.clients) : data.clients;
+            if (Array.isArray(parsed)) {
+              window._clientsCache = parsed;
+              localStorage.setItem('clients_cache_v1', JSON.stringify(parsed));
+              if (document.getElementById('clientsScreen')?.classList.contains('open')) {
+                renderClientsList();
+              }
+            }
+          } catch(e) {}
         }
       }
     } catch(err) {
@@ -4227,16 +4255,25 @@
       // Связываем телефон с адресом если нашли
       if (foundPhone && address) {
         const pi = clientPhones.findIndex(p => p.phone === foundPhone);
-        if (pi >= 0) clientPhones[pi].address = address;
+        if (pi >= 0) {
+          clientPhones[pi].address = address;
+          clientPhones[pi].point = point;
+          clientPhones[pi].amount = detected.amount;
+          clientPhones[pi].msgTime = msgTime;
+        }
       }
     }
 
     waEntries = entries;
-    // Сохраняем клиентов в фоне
+    // Сохраняем клиентов и историю заказов в Firebase
     if (clientPhones.length) {
       const today = (() => { const n=new Date(); if(n.getHours()<3)n.setDate(n.getDate()-1); return new Date(n-n.getTimezoneOffset()*60000).toISOString().split('T')[0]; })();
-      Promise.all(clientPhones.map(p => upsertClient(p.phone, p.address, today)))
-        .then(() => window.showToast(`👥 Клиентов обновлено: ${clientPhones.length}`, 'success'))
+      Promise.all(clientPhones.map(p => upsertClient(p.phone, p.address, today, {
+        point: p.point || '',
+        amount: p.amount || 0,
+        time: p.msgTime || ''
+      })))
+        .then(() => window.showToast(`👥 Клиентов обновлено в Firebase: ${clientPhones.length}`, 'success'))
         .catch(e => console.warn('Clients upsert error:', e.message));
     }
     renderWAResult();
@@ -4425,7 +4462,7 @@
   };
 
   // ── БАЗА КЛИЕНТОВ ──────────────────────────────────────────────
-  // Клиент: { phone, name, addresses:[], orders:[], firstSeen, lastSeen }
+  // Клиент: { phone, name, addresses:[], orders: 1, history: [{ date, address, point, amount }], firstSeen, lastSeen }
   window._clientsCache = null;
 
   function normalizePhone(p) {
@@ -4440,17 +4477,33 @@
     if (window._clientsCache !== null) return window._clientsCache;
     try {
       const { fbDB, fbMethods, fbUser } = window;
-      if (!fbUser || !fbUser.uid || !fbDB || !fbMethods.getDoc) return [];
+      if (!fbUser || !fbUser.uid || !fbDB || !fbMethods.getDoc) {
+        const local = localStorage.getItem('clients_cache_v1');
+        return local ? JSON.parse(local) : [];
+      }
       const snap = await fbMethods.getDoc(fbMethods.doc(fbDB, 'users', fbUser.uid));
       const data = snap.data ? snap.data() : {};
-      const clients = data && data.clients ? JSON.parse(data.clients) : [];
+      let clients = [];
+      if (data && data.clients) {
+        clients = typeof data.clients === 'string' ? JSON.parse(data.clients) : data.clients;
+      } else {
+        const local = localStorage.getItem('clients_cache_v1');
+        if (local) clients = JSON.parse(local);
+      }
       window._clientsCache = clients;
+      try { localStorage.setItem('clients_cache_v1', JSON.stringify(clients)); } catch(e) {}
       return clients;
-    } catch(e) { return []; }
+    } catch(e) {
+      try {
+        const local = localStorage.getItem('clients_cache_v1');
+        return local ? JSON.parse(local) : [];
+      } catch(e2) { return []; }
+    }
   }
 
   async function saveClients(clients) {
     window._clientsCache = clients;
+    try { localStorage.setItem('clients_cache_v1', JSON.stringify(clients)); } catch(e) {}
     try {
       const { fbDB, fbMethods, fbUser } = window;
       if (fbUser && fbUser.uid && fbDB) {
@@ -4459,19 +4512,36 @@
           clientsUpdated: Date.now()
         }, { merge: true });
       }
-    } catch(e) { console.warn('Clients save error:', e.message); }
+    } catch(e) { console.warn('Clients Firebase save error:', e.message); }
   }
 
-  // Добавить/обновить клиента из парсинга WhatsApp
-  async function upsertClient(phone, address, today) {
+  // Добавить/обновить клиента из парсинга WhatsApp с историей
+  async function upsertClient(phone, address, today, orderDetails = null) {
+    if (!phone) return;
     const norm = normalizePhone(phone);
     const clients = await loadClients();
     const idx = clients.findIndex(c => c.phone === norm);
+
+    const historyEntry = {
+      date: today,
+      address: address || '',
+      point: (orderDetails && orderDetails.point) || '',
+      amount: (orderDetails && orderDetails.amount) || 0,
+      time: (orderDetails && orderDetails.time) || ''
+    };
+
     if (idx >= 0) {
       const c = clients[idx];
       c.lastSeen = today;
-      if (address && !c.addresses.includes(address)) c.addresses.push(address);
+      if (address) {
+        if (!c.addresses) c.addresses = [];
+        if (!c.addresses.includes(address)) c.addresses.push(address);
+      }
       c.orders = (c.orders || 0) + 1;
+      if (!c.history) c.history = [];
+      c.history.unshift(historyEntry);
+      // Ограничиваем историю последними 50 записями на клиента
+      if (c.history.length > 50) c.history = c.history.slice(0, 50);
       clients[idx] = c;
     } else {
       clients.push({
@@ -4479,12 +4549,15 @@
         name: '',
         addresses: address ? [address] : [],
         orders: 1,
+        history: [historyEntry],
         firstSeen: today,
         lastSeen: today
       });
     }
     await saveClients(clients);
   }
+
+  window.upsertClient = upsertClient;
 
   window.openClientsScreen = async () => {
     document.getElementById('clientsScreen').classList.add('open');
@@ -4494,6 +4567,13 @@
 
   window.closeClientsScreen = () => {
     document.getElementById('clientsScreen').classList.remove('open');
+  };
+
+  let _expandedClientIdx = null;
+
+  window.toggleClientHistory = (idx) => {
+    _expandedClientIdx = (_expandedClientIdx === idx) ? null : idx;
+    renderClientsList();
   };
 
   window.renderClientsList = async () => {
@@ -4508,33 +4588,64 @@
     list.sort((a,b) => (b.lastSeen||'') > (a.lastSeen||'') ? 1 : -1);
 
     document.getElementById('clientsCount').textContent =
-      `${list.length} из ${clients.length} клиентов`;
+      `${list.length} из ${clients.length} клиентов (синхронизировано с Firebase ☁️)`;
 
     if (!list.length) {
       document.getElementById('clientsList').innerHTML =
-        '<div style="color:#444;font-size:13px;padding:20px 0;text-align:center;">Нет клиентов.<br>Они появятся после разбора WhatsApp.</div>';
+        '<div style="color:#444;font-size:13px;padding:20px 0;text-align:center;">Нет клиентов.<br>Они появятся после разбора WhatsApp или импорта.</div>';
       return;
     }
 
     document.getElementById('clientsList').innerHTML = list.map((c, i) => {
       const realIdx = clients.indexOf(c);
-      const addrs = (c.addresses||[]).slice(0,3).join(', ');
+      const isExpanded = _expandedClientIdx === realIdx;
+      const addrs = (c.addresses||[]);
+      const history = c.history || [];
+
+      let histHtml = '';
+      if (isExpanded) {
+        histHtml = `
+          <div style="margin-top:10px;padding-top:10px;border-top:1px solid #292929;font-size:12px;">
+            <div style="font-weight:600;color:#6ec6ff;margin-bottom:6px;">📍 Сохранённые адреса (${addrs.length}):</div>
+            <div style="margin-bottom:8px;">
+              ${addrs.length ? addrs.map(a => `<div style="color:#ddd;padding:2px 0;">• ${esc(a)}</div>`).join('') : '<div style="color:#666;">Нет адресов</div>'}
+            </div>
+            <div style="font-weight:600;color:#ffd166;margin-bottom:6px;">🕒 История заказов (${history.length}):</div>
+            <div style="max-height:160px;overflow-y:auto;">
+              ${history.length ? history.map(h => `
+                <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #1f1f1f;font-size:11px;">
+                  <span style="color:#aaa;">${h.date}${h.time ? ' ' + h.time : ''} · ${esc(h.point||'')}</span>
+                  <span style="color:#fff;font-weight:500;">${esc(h.address||'—')}</span>
+                  ${h.amount ? `<span style="color:#65d48b;font-weight:bold;">${h.amount} ₸</span>` : ''}
+                </div>
+              `).join('') : '<div style="color:#666;">Пока нет истории заказов</div>'}
+            </div>
+          </div>
+        `;
+      }
+
       return `<div style="background:#1c1c1e;border-radius:14px;padding:14px;margin-bottom:10px;border:1px solid #222;">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;">
           <div style="flex:1;">
-            <div style="font-size:15px;font-weight:700;color:#fff;">${c.phone}</div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div style="font-size:15px;font-weight:700;color:#fff;">${c.phone}</div>
+              <button onclick="toggleClientHistory(${realIdx})" style="background:none;border:1px solid #333;border-radius:6px;color:#6ec6ff;font-size:10px;padding:2px 6px;cursor:pointer;">
+                ${isExpanded ? '▲ Скрыть' : '▼ История'}
+              </button>
+            </div>
             ${c.name ? `<div style="font-size:12px;color:#65d48b;margin-top:2px;">${esc(c.name)}</div>` : ''}
-            ${addrs ? `<div style="font-size:11px;color:#444;margin-top:4px;">📍 ${esc(addrs)}${c.addresses.length>3?` +${c.addresses.length-3} ещё`:''}</div>` : ''}
-            <div style="font-size:10px;color:#333;margin-top:4px;">
-              Заказов: ${c.orders||0} · Посл: ${(c.lastSeen||'').slice(5).replace('-','.')}
+            ${addrs.length ? `<div style="font-size:11px;color:#bbb;margin-top:4px;">📍 ${esc(addrs.slice(0,2).join(', '))}${addrs.length>2?` +${addrs.length-2}`:''}</div>` : ''}
+            <div style="font-size:10px;color:#777;margin-top:4px;">
+              Заказов: <b style="color:#ffd166;">${c.orders||0}</b> · Посл: ${(c.lastSeen||'').slice(5).replace('-','.')}
             </div>
           </div>
           <div style="display:flex;gap:6px;flex-direction:column;align-items:flex-end;">
-            <button onclick="copyPhone('${c.phone}')" style="background:none;border:1px solid #2a2a2a;border-radius:6px;color:#ffd166;font-size:11px;padding:4px 8px;cursor:pointer;">📋</button>
-            <button onclick="editClientName(${realIdx})" style="background:none;border:1px solid #2a2a2a;border-radius:6px;color:#65d48b;font-size:11px;padding:4px 8px;cursor:pointer;">✏️</button>
-            <button onclick="deleteClient(${realIdx})" style="background:none;border:none;color:#ff6b6b;font-size:16px;padding:4px;cursor:pointer;">✕</button>
+            <button onclick="copyPhone('${c.phone}')" title="Скопировать номер" style="background:none;border:1px solid #2a2a2a;border-radius:6px;color:#ffd166;font-size:11px;padding:4px 8px;cursor:pointer;">📋</button>
+            <button onclick="editClientName(${realIdx})" title="Изменить имя" style="background:none;border:1px solid #2a2a2a;border-radius:6px;color:#65d48b;font-size:11px;padding:4px 8px;cursor:pointer;">✏️</button>
+            <button onclick="deleteClient(${realIdx})" title="Удалить" style="background:none;border:none;color:#ff6b6b;font-size:16px;padding:4px;cursor:pointer;">✕</button>
           </div>
         </div>
+        ${histHtml}
       </div>`;
     }).join('');
   };
@@ -4555,6 +4666,110 @@
     navigator.clipboard.writeText(phones).then(() =>
       window.showToast(`📋 Скопировано ${list.length} номеров`)
     );
+  };
+
+  // Экспорт в телефонную книгу (VCF vCard) — можно в 1 клик импортировать в контакты Android / iPhone
+  window.exportClientsVCF = async () => {
+    const clients = await loadClients();
+    if (!clients.length) return window.showToast('База клиентов пуста', 'warn');
+
+    let vcf = '';
+    clients.forEach(c => {
+      const name = c.name || `Клиент ${c.phone.slice(-4)}`;
+      const note = (c.addresses && c.addresses.length) ? `Адреса: ${c.addresses.join('; ')}` : '';
+      vcf += 'BEGIN:VCARD\r\n';
+      vcf += 'VERSION:3.0\r\n';
+      vcf += `FN:${name}\r\n`;
+      vcf += `TEL;TYPE=CELL:${c.phone}\r\n`;
+      if (note) vcf += `NOTE:${note}\r\n`;
+      vcf += 'END:VCARD\r\n';
+    });
+
+    const blob = new Blob([vcf], { type: 'text/vcard;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `clients_contacts_${new Date().toISOString().split('T')[0]}.vcf`;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+    window.showToast(`📱 Экспортировано ${clients.length} контактов (VCF)`);
+  };
+
+  // Экспорт в Excel / Google Таблицы (CSV)
+  window.exportClientsCSV = async () => {
+    const clients = await loadClients();
+    if (!clients.length) return window.showToast('База клиентов пуста', 'warn');
+
+    const escCsv = s => `"${String(s||'').replace(/"/g, '""')}"`;
+    const rows = ['phone,name,addresses,orders,lastSeen', ...clients.map(c => [
+      escCsv(c.phone),
+      escCsv(c.name||''),
+      escCsv((c.addresses||[]).join('; ')),
+      c.orders || 1,
+      escCsv(c.lastSeen||'')
+    ].join(','))];
+
+    const csv = '\uFEFF' + rows.join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `clients_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+    window.showToast(`📤 Экспортировано ${clients.length} клиентов (CSV)`);
+  };
+
+  // Импорт клиентов из CSV файла
+  window.importClientsCSV = async (input) => {
+    const file = input.files && input.files[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+      if (lines.length < 2) return window.showToast('Файл пуст или некорректен', 'error');
+
+      const clients = await loadClients();
+      let imported = 0;
+
+      for (let i = 1; i < lines.length; i++) {
+        const parts = parseCSVLine(lines[i]);
+        const phone = normalizePhone(parts[0] || '');
+        if (!phone || phone.length < 6) continue;
+        const name = parts[1] || '';
+        const rawAddrs = parts[2] ? parts[2].split(';').map(s => s.trim()).filter(Boolean) : [];
+        const orders = Number(parts[3]) || 1;
+        const lastSeen = parts[4] || new Date().toISOString().split('T')[0];
+
+        const existingIdx = clients.findIndex(c => c.phone === phone);
+        if (existingIdx >= 0) {
+          const c = clients[existingIdx];
+          if (name && !c.name) c.name = name;
+          rawAddrs.forEach(a => { if (!c.addresses.includes(a)) c.addresses.push(a); });
+          c.orders = Math.max(c.orders || 1, orders);
+          clients[existingIdx] = c;
+        } else {
+          clients.push({
+            phone,
+            name,
+            addresses: rawAddrs,
+            orders,
+            history: [],
+            firstSeen: lastSeen,
+            lastSeen
+          });
+        }
+        imported++;
+      }
+
+      await saveClients(clients);
+      renderClientsList();
+      window.showToast(`✅ Импортировано ${imported} клиентов`);
+    } catch(err) {
+      window.showToast('Ошибка импорта CSV: ' + err.message, 'error');
+    } finally {
+      input.value = '';
+    }
   };
 
   window.editClientName = async (idx) => {
