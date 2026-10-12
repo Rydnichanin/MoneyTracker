@@ -385,7 +385,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc, setDoc, arrayUnion, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-    import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithCredential, signOut, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signInWithCredential, signOut, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
     const app = initializeApp({
       apiKey: "AIzaSyBYvSsrzjgkrBwhaBAt0KlCGrAtzgOPYx8",
@@ -473,82 +473,222 @@
       }
     });
 
-    // ── receiveAuthToken — вызывается APK после входа ──────────────
-    // APK вызывает: window.receiveAuthToken({idToken, name, email})
+    // ── Перевод сообщений об ошибках Firebase ──────────────────────
+    const getAuthErrorMessage = (e) => {
+      if (!e) return '';
+      const code = e.code || '';
+      const msgs = {
+        'auth/invalid-login-credentials': 'Неверный email или пароль',
+        'auth/invalid-credential': 'Неверный email или пароль',
+        'auth/user-not-found': 'Пользователь не найден. Перейдите на вкладку «Регистрация» или войдите через Google',
+        'auth/wrong-password': 'Неверный пароль',
+        'auth/email-already-in-use': 'Этот email уже зарегистрирован. Перейдите на вкладку «Вход» или восстановите пароль',
+        'auth/invalid-email': 'Некорректный формат email адреса',
+        'auth/weak-password': 'Пароль слишком простой (нужно минимум 6 символов)',
+        'auth/user-disabled': 'Учётная запись отключена',
+        'auth/too-many-requests': 'Слишком много попыток. Подождите 1–2 минуты или восстановите пароль',
+        'auth/network-request-failed': 'Ошибка сети. Проверьте подключение к интернету',
+        'auth/popup-blocked': 'Всплывающее окно заблокировано браузером',
+        'auth/popup-closed-by-user': 'Окно авторизации было закрыто',
+        'auth/cancelled-popup-request': 'Запрос авторизации отменён',
+        'auth/operation-not-allowed': 'Данный способ входа отключён в настройках Firebase',
+        'auth/account-exists-with-different-credential': 'Этот email зарегистрирован другим способом (например, через Google)'
+      };
+      if (msgs[code]) return msgs[code];
+      return e.message ? ('Ошибка: ' + e.message) : 'Произошла ошибка при авторизации';
+    };
+
+    const showError = (msg) => {
+      const el = document.getElementById('loginError');
+      if (el) el.textContent = msg;
+    };
+
+    // ── Обработка токена из Android APK или внешнего браузера ──────
     window.receiveAuthToken = async (data) => {
       console.log("receiveAuthToken:", data && data.idToken ? "токен есть" : "нет токена");
       if (!data || !data.idToken) return;
       try {
         const credential = GoogleAuthProvider.credential(data.idToken);
         await signInWithCredential(auth, credential);
-        // onAuthStateChanged автоматически вызовет startApp
+        window.showToast("✅ Вход через Google выполнен!");
       } catch(e) {
         console.error("receiveAuthToken error:", e);
+        showError(getAuthErrorMessage(e));
       }
     };
 
-    // ── Кнопка входа ───────────────────────────────────────────────
-    window.fbSignIn = async () => {
-      if (window.AndroidBridge) {
-        window.AndroidBridge.openBrowser("https://rydnichanin.github.io/MoneyTracker/auth.html");
-        return;
-      }
+    // Вызывается из MainActivity.java при deep link moneytracker://auth
+    window.handleAndroidAuth = async (authUrl) => {
+      console.log("handleAndroidAuth received URL:", authUrl);
+      if (!authUrl) return;
       try {
-        await signInWithPopup(auth, provider);
+        let idToken = null;
+        const match = authUrl.match(/[?&]idToken=([^&]+)/);
+        if (match) idToken = decodeURIComponent(match[1]);
+        if (!idToken) {
+          showError("Не удалось извлечь токен Google");
+          return;
+        }
+        showError("");
+        const credential = GoogleAuthProvider.credential(idToken);
+        await signInWithCredential(auth, credential);
+        window.showToast("✅ Вход через Google выполнен!");
       } catch(e) {
-        if (e?.code !== "auth/popup-closed-by-user") window.showToast("Ошибка входа: " + (e?.message || e), 'error');
+        console.error("handleAndroidAuth error:", e);
+        showError(getAuthErrorMessage(e));
+      }
+    };
+
+    // Проверка сохранённого токена (если вход выполнялся через auth.html в браузере)
+    const checkPendingToken = async () => {
+      try {
+        const pending = localStorage.getItem("pendingIdToken");
+        if (pending && !window.fbUser) {
+          localStorage.removeItem("pendingIdToken");
+          const credential = GoogleAuthProvider.credential(pending);
+          await signInWithCredential(auth, credential);
+          window.showToast("✅ Вход через Google выполнен!");
+        }
+      } catch(e) {
+        console.warn("checkPendingToken error:", e);
+      }
+    };
+    window.addEventListener("focus", checkPendingToken);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") checkPendingToken();
+    });
+    checkPendingToken();
+
+    // Проверка результата редиректа Google Sign-In при перезагрузке страницы
+    getRedirectResult(auth).then(result => {
+      if (result && result.user) {
+        startApp(result.user);
+      }
+    }).catch(err => {
+      console.warn("getRedirectResult error:", err);
+      if (err?.code && err.code !== 'auth/popup-closed-by-user') {
+        showError(getAuthErrorMessage(err));
+      }
+    });
+
+    // ── Кнопка входа через Google ──────────────────────────────────
+    window.fbSignIn = async () => {
+      showError('');
+      const googleBtn = document.getElementById('googleSignInBtn');
+      if (googleBtn) {
+        googleBtn.disabled = true;
+        googleBtn.style.opacity = '0.6';
+      }
+
+      // 1. Если запущено внутри APK и доступен мост openBrowser:
+      if (window.AndroidBridge && typeof window.AndroidBridge.openBrowser === 'function') {
+        try {
+          window.AndroidBridge.openBrowser("https://rydnichanin.github.io/MoneyTracker/auth.html");
+          setTimeout(() => { if (googleBtn) { googleBtn.disabled = false; googleBtn.style.opacity = '1'; } }, 2000);
+          return;
+        } catch(e) {
+          console.warn("AndroidBridge.openBrowser failed:", e);
+        }
+      }
+
+      // 2. Если запущен в Android WebView (где Google блокирует OAuth 403 disallowed_useragent)
+      const isAndroid = /android/i.test(navigator.userAgent);
+      const isWebView = /wv|android.*version\/[0-9]/i.test(navigator.userAgent) || !!window.AndroidBridge;
+
+      if (isWebView) {
+        try {
+          // Открываем внешний браузер Chrome через системный Intent
+          window.location.href = "intent://rydnichanin.github.io/MoneyTracker/auth.html#Intent;scheme=https;action=android.intent.action.VIEW;end;";
+          setTimeout(() => { if (googleBtn) { googleBtn.disabled = false; googleBtn.style.opacity = '1'; } }, 2500);
+          return;
+        } catch(e) {
+          console.warn("Intent failed:", e);
+        }
+      }
+
+      // 3. В веб-браузерах (десктоп, мобильный Chrome/Safari, PWA):
+      try {
+        const result = await signInWithPopup(auth, provider);
+        if (result && result.user) {
+          startApp(result.user);
+        }
+      } catch(e) {
+        console.warn("signInWithPopup error:", e);
+        if (e?.code === 'auth/popup-blocked' || e?.code === 'auth/operation-not-supported-in-this-environment' || (isAndroid && !isWebView)) {
+          try {
+            await signInWithRedirect(auth, provider);
+            return;
+          } catch(re) {
+            showError(getAuthErrorMessage(re));
+          }
+        } else if (e?.code !== 'auth/popup-closed-by-user' && e?.code !== 'auth/cancelled-popup-request') {
+          showError(getAuthErrorMessage(e));
+        }
+      } finally {
+        if (googleBtn) {
+          googleBtn.disabled = false;
+          googleBtn.style.opacity = '1';
+        }
       }
     };
 
     window.fbSignOut = async () => {
-      // Очищаем чувствительные данные из памяти перед выходом
       window.allTx = [];
       window.fbUser = null;
       window.appStarted = false;
       window.resetApp && window.resetApp();
-      // Очищаем кэши клиентов и адресов
       window._clientsCache = null;
       window._customAddrsCache = null;
       await signOut(auth);
     };
 
-    window.resetPassword = async () => {
-      const email = (document.getElementById('loginEmail')?.value || '').trim();
-      if (!email) return showError('Введите email выше');
-      try {
-        await sendPasswordResetEmail(auth, email);
-        showError('');
-        window.showToast('✅ Письмо отправлено на ' + email);
-      } catch(e) {
-        const msgs = {
-          'auth/user-not-found': 'Пользователь не найден',
-          'auth/invalid-email': 'Неверный формат email'
-        };
-        showError(msgs[e.code] || 'Ошибка: ' + e.message);
+    // ── Email / пароль ─────────────────────────────────────────────
+    let _authMode = 'login'; // 'login' | 'register'
+    window.setAuthMode = (mode) => {
+      _authMode = mode;
+      showError('');
+      const tabLogin = document.getElementById('authTabLogin');
+      const tabReg = document.getElementById('authTabReg');
+      const btnSubmit = document.getElementById('authSubmitBtn');
+      const forgotBtn = document.getElementById('authForgotBtn');
+      if (mode === 'login') {
+        if (tabLogin) { tabLogin.style.background = '#242424'; tabLogin.style.color = '#fff'; }
+        if (tabReg) { tabReg.style.background = 'transparent'; tabReg.style.color = '#777'; }
+        if (btnSubmit) btnSubmit.textContent = 'Войти';
+        if (forgotBtn) forgotBtn.style.display = 'block';
+      } else {
+        if (tabLogin) { tabLogin.style.background = 'transparent'; tabLogin.style.color = '#777'; }
+        if (tabReg) { tabReg.style.background = '#242424'; tabReg.style.color = '#fff'; }
+        if (btnSubmit) btnSubmit.textContent = 'Зарегистрироваться';
+        if (forgotBtn) forgotBtn.style.display = 'none';
       }
     };
 
-    // ── Email / пароль ─────────────────────────────────────────────
-    const showError = (msg) => {
-      const el = document.getElementById('loginError');
-      if (el) el.textContent = msg;
+    window.togglePasswordVisibility = () => {
+      const p = document.getElementById('loginPassword');
+      const icon = document.getElementById('eyeIcon');
+      if (!p) return;
+      if (p.type === 'password') {
+        p.type = 'text';
+        if (icon) icon.textContent = '🙈';
+      } else {
+        p.type = 'password';
+        if (icon) icon.textContent = '👁';
+      }
     };
+
     const getEmailPass = () => ({
-      email: (document.getElementById('loginEmail')?.value || '').trim(),
+      email: (document.getElementById('loginEmail')?.value || '').trim().toLowerCase(),
       pass:  (document.getElementById('loginPassword')?.value || '').trim()
     });
 
-    // ── Защита от брутфорса ────────────────────────────────────────
     const _loginGuard = {
       attempts: 0,
       lockedUntil: 0,
-      maxAttempts: 5,
       isLocked() {
-        if (this.lockedUntil > Date.now()) return true;
-        return false;
+        return this.lockedUntil > Date.now();
       },
       lockoutMs() {
-        // Экспоненциальная задержка: 5 попыток=30сек, 8=2мин, 10+=10мин
         if (this.attempts >= 10) return 10 * 60 * 1000;
         if (this.attempts >= 8)  return  2 * 60 * 1000;
         if (this.attempts >= 5)  return 30 * 1000;
@@ -563,46 +703,78 @@
       remainingSec() { return Math.ceil((this.lockedUntil - Date.now()) / 1000); }
     };
 
+    window.submitEmailAuth = async () => {
+      if (_authMode === 'login') {
+        await window.emailSignIn();
+      } else {
+        await window.emailRegister();
+      }
+    };
+
     window.emailSignIn = async () => {
       if (_loginGuard.isLocked()) {
         showError(`Слишком много попыток. Подождите ${_loginGuard.remainingSec()} сек.`);
         return;
       }
       const { email, pass } = getEmailPass();
-      if (!email || !pass) return showError('Введите email и пароль');
+      if (!email) return showError('Введите email');
+      if (!email.includes('@')) return showError('Введите корректный email (напр. user@mail.com)');
+      if (!pass) return showError('Введите пароль');
+
+      const btn = document.getElementById('authSubmitBtn');
+      if (btn) { btn.disabled = true; btn.textContent = 'Вход...'; }
       showError('');
+
       try {
         await signInWithEmailAndPassword(auth, email, pass);
         _loginGuard.success();
       } catch(e) {
         _loginGuard.fail();
-        const msgs = {
-          'auth/user-not-found': 'Пользователь не найден',
-          'auth/wrong-password': 'Неверный пароль',
-          'auth/invalid-email': 'Неверный формат email',
-          'auth/invalid-credential': 'Неверный email или пароль',
-          'auth/too-many-requests': 'Слишком много попыток, подождите'
-        };
         const remaining = _loginGuard.lockoutMs() > 0 
-          ? ` Блокировка на ${_loginGuard.remainingSec()} сек.` : '';
-        showError((msgs[e.code] || 'Ошибка: ' + e.message) + remaining);
+          ? ` (Блокировка на ${_loginGuard.remainingSec()} сек.)` : '';
+        showError(getAuthErrorMessage(e) + remaining);
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = _authMode === 'login' ? 'Войти' : 'Зарегистрироваться';
+        }
       }
     };
 
     window.emailRegister = async () => {
       const { email, pass } = getEmailPass();
-      if (!email || !pass) return showError('Введите email и пароль');
-      if (pass.length < 6) return showError('Пароль минимум 6 символов');
+      if (!email) return showError('Введите email для регистрации');
+      if (!email.includes('@')) return showError('Введите корректный email (напр. user@mail.com)');
+      if (!pass) return showError('Введите пароль');
+      if (pass.length < 6) return showError('Пароль должен содержать минимум 6 символов');
+
+      const btn = document.getElementById('authSubmitBtn');
+      if (btn) { btn.disabled = true; btn.textContent = 'Регистрация...'; }
       showError('');
+
       try {
         await createUserWithEmailAndPassword(auth, email, pass);
+        window.showToast('✅ Регистрация успешна!');
       } catch(e) {
-        const msgs = {
-          'auth/email-already-in-use': 'Этот email уже используется',
-          'auth/invalid-email': 'Неверный формат email',
-          'auth/weak-password': 'Пароль слишком простой'
-        };
-        showError(msgs[e.code] || 'Ошибка: ' + e.message);
+        showError(getAuthErrorMessage(e));
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = _authMode === 'login' ? 'Войти' : 'Зарегистрироваться';
+        }
+      }
+    };
+
+    window.resetPassword = async () => {
+      const email = (document.getElementById('loginEmail')?.value || '').trim().toLowerCase();
+      if (!email) return showError('Введите email выше, чтобы получить ссылку для сброса пароля');
+      if (!email.includes('@')) return showError('Введите корректный email');
+      try {
+        await sendPasswordResetEmail(auth, email);
+        showError('');
+        window.showToast('✅ Письмо для сброса пароля отправлено на ' + email);
+      } catch(e) {
+        showError(getAuthErrorMessage(e));
       }
     };
   </script>
@@ -618,37 +790,56 @@
 
 <div id="loginScreen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;background:#000;text-align:center;padding:24px;box-sizing:border-box;">
   <div style="font-size:52px;margin-bottom:12px;">💰</div>
-  <h2 style="margin-bottom:4px;">Учёт Курьера Pro</h2>
-  <p style="color:#444;margin-bottom:24px;font-size:13px;">Войдите чтобы продолжить</p>
+  <h2 style="margin-bottom:4px;font-size:24px;">Учёт Курьера Pro</h2>
+  <p style="color:#666;margin-bottom:20px;font-size:13px;">Войдите чтобы продолжить</p>
 
   <div style="width:100%;max-width:320px;">
-    <input id="loginEmail" type="email" placeholder="Email" autocomplete="email"
-      style="width:100%;padding:14px;border-radius:12px;border:1px solid #222;background:#111;color:#fff;font-size:16px;margin-bottom:10px;outline:none;box-sizing:border-box;" />
-    <input id="loginPassword" type="password" placeholder="Пароль"
-      style="width:100%;padding:14px;border-radius:12px;border:1px solid #222;background:#111;color:#fff;font-size:16px;margin-bottom:6px;outline:none;box-sizing:border-box;" />
-    <div id="loginError" style="color:#ff6b6b;font-size:12px;min-height:16px;margin-bottom:10px;text-align:left;padding:0 2px;"></div>
-
-    <button onclick="emailSignIn()"
-      style="width:100%;padding:15px;border-radius:12px;border:none;background:#65d48b;color:#000;font-size:16px;font-weight:bold;cursor:pointer;margin-bottom:10px;">
-      Войти
-    </button>
-    <button onclick="emailRegister()"
-      style="width:100%;padding:14px;border-radius:12px;border:1px solid #222;background:none;color:#888;font-size:14px;cursor:pointer;margin-bottom:10px;">
-      Зарегистрироваться
-    </button>
-    <button onclick="resetPassword()"
-      style="width:100%;padding:10px;border:none;background:none;color:#555;font-size:13px;cursor:pointer;margin-bottom:12px;">
-      Забыли пароль?
-    </button>
-
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
-      <div style="flex:1;height:1px;background:#1a1a1a;"></div>
-      <span style="color:#333;font-size:12px;">или</span>
-      <div style="flex:1;height:1px;background:#1a1a1a;"></div>
+    <!-- Переключатель Вход / Регистрация -->
+    <div style="display:flex;background:#141414;border:1px solid #222;border-radius:12px;padding:3px;margin-bottom:14px;">
+      <button id="authTabLogin" type="button" class="auth-tab active" onclick="setAuthMode('login')"
+        style="flex:1;padding:9px;border:none;border-radius:9px;font-size:13px;font-weight:600;color:#fff;background:#242424;cursor:pointer;transition:all 0.2s;">
+        Вход
+      </button>
+      <button id="authTabReg" type="button" class="auth-tab" onclick="setAuthMode('register')"
+        style="flex:1;padding:9px;border:none;border-radius:9px;font-size:13px;font-weight:600;color:#777;background:transparent;cursor:pointer;transition:all 0.2s;">
+        Регистрация
+      </button>
     </div>
 
-    <button onclick="fbSignIn()"
-      style="width:100%;padding:14px;border-radius:12px;border:1px solid #222;background:#111;color:#fff;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;box-sizing:border-box;">
+    <form onsubmit="event.preventDefault(); submitEmailAuth();" style="width:100%;margin:0;padding:0;">
+      <input id="loginEmail" type="email" placeholder="Email (напр. user@mail.com)" autocomplete="email" required
+        style="width:100%;padding:14px;border-radius:12px;border:1px solid #222;background:#111;color:#fff;font-size:15px;margin-bottom:10px;outline:none;box-sizing:border-box;" />
+
+      <div style="position:relative;margin-bottom:6px;">
+        <input id="loginPassword" type="password" placeholder="Пароль" autocomplete="current-password" required
+          style="width:100%;padding:14px 44px 14px 14px;border-radius:12px;border:1px solid #222;background:#111;color:#fff;font-size:15px;outline:none;box-sizing:border-box;" />
+        <button type="button" onclick="togglePasswordVisibility()" id="eyeIcon"
+          style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:#888;font-size:16px;cursor:pointer;padding:6px;line-height:1;">
+          👁
+        </button>
+      </div>
+
+      <div id="loginError" style="color:#ff6b6b;font-size:12px;min-height:16px;margin-bottom:10px;text-align:left;padding:2px 4px;line-height:1.3;"></div>
+
+      <button id="authSubmitBtn" type="submit"
+        style="width:100%;padding:15px;border-radius:12px;border:none;background:#65d48b;color:#000;font-size:16px;font-weight:bold;cursor:pointer;margin-bottom:8px;">
+        Войти
+      </button>
+
+      <button id="authForgotBtn" type="button" onclick="resetPassword()"
+        style="width:100%;padding:8px;border:none;background:none;color:#666;font-size:13px;cursor:pointer;margin-bottom:10px;">
+        Забыли пароль?
+      </button>
+    </form>
+
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+      <div style="flex:1;height:1px;background:#1c1c1c;"></div>
+      <span style="color:#444;font-size:12px;">или</span>
+      <div style="flex:1;height:1px;background:#1c1c1c;"></div>
+    </div>
+
+    <button id="googleSignInBtn" type="button" onclick="fbSignIn()"
+      style="width:100%;padding:14px;border-radius:12px;border:1px solid #282828;background:#141414;color:#fff;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;box-sizing:border-box;">
       <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#4285F4" d="M44.5 20H24v8.5h11.8C34.7 33.9 29.8 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 5.1 29.6 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21c10.5 0 20-7.6 20-21 0-1.4-.1-2.7-.5-4z"/></svg>
       Войти через Google
     </button>

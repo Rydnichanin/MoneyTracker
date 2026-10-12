@@ -3,27 +3,35 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Вход</title>
+  <title>Вход в Учёт Курьера Pro</title>
   <style>
-    body { background: #000; color: #fff; font-family: -apple-system, sans-serif;
+    body { background: #000; color: #fff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
-      height: 100vh; margin: 0; text-align: center; padding: 20px; box-sizing: border-box; }
-    .icon { font-size: 48px; margin-bottom: 16px; }
-    h2 { margin: 0 0 8px; font-size: 20px; }
-    p { color: #555; font-size: 14px; margin: 0 0 32px; }
+      min-height: 100vh; margin: 0; text-align: center; padding: 24px; box-sizing: border-box; }
+    .icon { font-size: 52px; margin-bottom: 16px; }
+    h2 { margin: 0 0 8px; font-size: 22px; font-weight: 700; }
+    p { color: #777; font-size: 14px; margin: 0 0 32px; max-width: 320px; line-height: 1.4; }
     button {
-      display: flex; align-items: center; gap: 12px;
+      display: flex; align-items: center; justify-content: center; gap: 12px;
       background: #fff; color: #000; border: none; border-radius: 14px;
-      padding: 15px 28px; font-size: 16px; font-weight: bold; cursor: pointer;
+      padding: 16px 32px; font-size: 16px; font-weight: 600; cursor: pointer;
+      box-shadow: 0 4px 20px rgba(255,255,255,0.15); width: 100%; max-width: 300px;
     }
-    .status { margin-top: 24px; font-size: 13px; color: #555; }
-    .error { color: #ff6b6b; }
+    button:active { transform: scale(0.98); }
+    .status { margin-top: 24px; font-size: 14px; color: #888; max-width: 320px; word-break: break-word; }
+    .status.error { color: #ff6b6b; }
+    .status.success { color: #65d48b; font-weight: 600; }
+    .app-link {
+      display: none; margin-top: 18px; padding: 12px 24px; background: #1a2a1a;
+      color: #65d48b; border: 1px solid #2a4a2a; border-radius: 10px;
+      text-decoration: none; font-size: 14px; font-weight: 600;
+    }
   </style>
 </head>
 <body>
   <div class="icon">🔐</div>
   <h2>Вход в аккаунт</h2>
-  <p>Войдите через Google чтобы продолжить</p>
+  <p>Войдите через Google для синхронизации всех данных</p>
   <button id="loginBtn" onclick="doLogin()">
     <svg width="20" height="20" viewBox="0 0 48 48">
       <path fill="#4285F4" d="M44.5 20H24v8.5h11.8C34.7 33.9 29.8 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 5.1 29.6 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21c10.5 0 20-7.6 20-21 0-1.4-.1-2.7-.5-4z"/>
@@ -31,10 +39,11 @@
     Войти через Google
   </button>
   <div class="status" id="status"></div>
+  <a id="appLink" class="app-link" href="#">Вернуться в приложение</a>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
     const app = initializeApp({
       apiKey: "AIzaSyBYvSsrzjgkrBwhaBAt0KlCGrAtzgOPYx8",
@@ -48,44 +57,94 @@
     const auth = getAuth(app);
     const provider = new GoogleAuthProvider();
 
+    async function handleUserSuccess(user) {
+      const btn = document.getElementById("loginBtn");
+      const status = document.getElementById("status");
+      const appLink = document.getElementById("appLink");
+      btn.style.display = "none";
+      status.textContent = "✅ Вход выполнен! Возврат в приложение...";
+      status.className = "status success";
+
+      const idToken = await user.getIdToken();
+      const name = encodeURIComponent(user.displayName || "");
+      const email = encodeURIComponent(user.email || "");
+
+      // 1. Сохраняем токен в localStorage / sessionStorage
+      try { sessionStorage.setItem("pendingIdToken", idToken); } catch(e) {}
+      try {
+        localStorage.setItem("pendingIdToken", idToken);
+        localStorage.setItem("pendingName", user.displayName || "");
+        localStorage.setItem("pendingEmail", user.email || "");
+      } catch(e) {}
+
+      // 2. Если открыто во всплывающем окне через window.opener
+      try {
+        if (window.opener && window.opener.receiveAuthToken) {
+          window.opener.receiveAuthToken({ idToken, name: user.displayName, email: user.email });
+          window.close();
+          return;
+        }
+      } catch(e) {}
+
+      // 3. Deep link обратно в APK
+      const deepLink = `moneytracker://auth?idToken=${encodeURIComponent(idToken)}&name=${name}&email=${email}`;
+      if (appLink) {
+        appLink.href = deepLink;
+        appLink.style.display = "inline-block";
+      }
+
+      window.location.href = deepLink;
+      // Если deep link не перехватился автоматически через 2 секунды:
+      setTimeout(() => {
+        status.innerHTML = "✅ Вход подтверждён!<br><span style='font-size:12px;color:#aaa;'>Если приложение не открылось автоматически, нажмите кнопку ниже:</span>";
+      }, 2000);
+    }
+
+    // Проверяем результат редиректа при загрузке страницы
+    getRedirectResult(auth).then(result => {
+      if (result && result.user) {
+        handleUserSuccess(result.user);
+      }
+    }).catch(e => {
+      console.warn("getRedirectResult error:", e);
+      const status = document.getElementById("status");
+      if (status && e?.message) {
+        status.textContent = "Ошибка: " + e.message;
+        status.className = "status error";
+      }
+    });
+
     window.doLogin = async () => {
       const btn = document.getElementById("loginBtn");
       const status = document.getElementById("status");
       btn.disabled = true;
       btn.style.opacity = "0.6";
-      status.textContent = "Выполняется вход...";
+      status.textContent = "Выполняется вход через Google...";
       status.className = "status";
 
       try {
         const result = await signInWithPopup(auth, provider);
-        const idToken = await result.user.getIdToken();
-        const name = encodeURIComponent(result.user.displayName || "");
-        const email = encodeURIComponent(result.user.email || "");
-        status.textContent = "Успешно! Возврат в приложение...";
-
-        // Сохраняем в sessionStorage и localStorage как запасной вариант
-        try { sessionStorage.setItem("pendingIdToken", idToken); } catch(e) {}
-        try {
-          localStorage.setItem("pendingIdToken", idToken);
-          localStorage.setItem("pendingName", result.user.displayName || "");
-          localStorage.setItem("pendingEmail", result.user.email || "");
-        } catch(e) {}
-
-        // Пробуем передать напрямую в opener (если открыто как popup)
-        try {
-          if (window.opener && window.opener.receiveAuthToken) {
-            window.opener.receiveAuthToken({ idToken, name: result.user.displayName, email: result.user.email });
-            window.close();
-            return;
-          }
-        } catch(e) {}
-
-        // Передаём токен обратно в APK через deep link
-        window.location.href = `moneytracker://auth?idToken=${encodeURIComponent(idToken)}&name=${name}&email=${email}`;
+        if (result && result.user) {
+          await handleUserSuccess(result.user);
+        }
       } catch (e) {
-        console.error(e);
-        status.textContent = "Ошибка: " + (e?.message || "Попробуйте снова");
-        status.className = "status error";
+        console.warn("signInWithPopup error:", e);
+        // В мобильных браузерах часто блокируется popup — переходим на redirect
+        if (e?.code === 'auth/popup-blocked' || e?.code === 'auth/operation-not-supported-in-this-environment' || /mobile|android|iphone|ipad/i.test(navigator.userAgent)) {
+          try {
+            status.textContent = "Перенаправление на Google...";
+            await signInWithRedirect(auth, provider);
+            return;
+          } catch(re) {
+            status.textContent = "Ошибка: " + (re?.message || "Попробуйте снова");
+            status.className = "status error";
+          }
+        } else if (e?.code !== 'auth/popup-closed-by-user' && e?.code !== 'auth/cancelled-popup-request') {
+          status.textContent = "Ошибка входа: " + (e?.message || "Попробуйте снова");
+          status.className = "status error";
+        } else {
+          status.textContent = "";
+        }
         btn.disabled = false;
         btn.style.opacity = "1";
       }
