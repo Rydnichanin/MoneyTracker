@@ -1109,16 +1109,49 @@
         </div>
         
         <div style="background:#111;border-radius:12px;padding:12px;margin-bottom:12px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-            <span style="font-size:12px;color:#888;">Доход для распределения:</span>
-            <div style="display:flex;gap:4px;">
-              <button id="budgetSourceTodayBtn" onclick="setBudgetSource('today')" style="padding:4px 8px;border-radius:6px;border:1px solid #65d48b;background:#0d2613;color:#65d48b;font-size:11px;font-weight:600;cursor:pointer;">Сегодня</button>
-              <button id="budgetSourceCustomBtn" onclick="setBudgetSource('custom')" style="padding:4px 8px;border-radius:6px;border:1px solid #2a2a2a;background:#1c1c1e;color:#888;font-size:11px;font-weight:600;cursor:pointer;">Своя сумма</button>
+          <!-- Выбор периода / диапазона -->
+          <div style="margin-bottom:10px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <span style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.5px;">Период дохода:</span>
+            </div>
+            <div id="budgetPeriodButtons" style="display:flex;flex-wrap:wrap;gap:4px;">
+              <button class="budget-period-btn" data-period="today" onclick="setBudgetPeriod('today')" style="padding:5px 9px;border-radius:6px;border:1px solid #65d48b;background:#0d2613;color:#65d48b;font-size:11px;font-weight:600;cursor:pointer;">Сегодня</button>
+              <button class="budget-period-btn" data-period="yesterday" onclick="setBudgetPeriod('yesterday')" style="padding:5px 9px;border-radius:6px;border:1px solid #2a2a2a;background:#1c1c1e;color:#888;font-size:11px;font-weight:600;cursor:pointer;">Вчера</button>
+              <button class="budget-period-btn" data-period="week" onclick="setBudgetPeriod('week')" style="padding:5px 9px;border-radius:6px;border:1px solid #2a2a2a;background:#1c1c1e;color:#888;font-size:11px;font-weight:600;cursor:pointer;">Неделя</button>
+              <button class="budget-period-btn" data-period="month" onclick="setBudgetPeriod('month')" style="padding:5px 9px;border-radius:6px;border:1px solid #2a2a2a;background:#1c1c1e;color:#888;font-size:11px;font-weight:600;cursor:pointer;">Месяц</button>
+              <button class="budget-period-btn" data-period="range" onclick="setBudgetPeriod('range')" style="padding:5px 9px;border-radius:6px;border:1px solid #2a2a2a;background:#1c1c1e;color:#888;font-size:11px;font-weight:600;cursor:pointer;">Диапазон</button>
+              <button class="budget-period-btn" data-period="custom" onclick="setBudgetPeriod('custom')" style="padding:5px 9px;border-radius:6px;border:1px solid #2a2a2a;background:#1c1c1e;color:#888;font-size:11px;font-weight:600;cursor:pointer;">Своя сумма</button>
             </div>
           </div>
-          <div style="display:flex;justify-content:space-between;align-items:center;">
-            <div style="font-size:22px;font-weight:bold;color:#fff;" id="budgetBaseAmountDisplay">0 ₸</div>
-            <input id="budgetCustomAmountInput" type="number" inputmode="decimal" placeholder="Сумма" style="display:none;width:130px;padding:8px 10px;font-size:15px;text-align:right;" oninput="onBudgetCustomAmountChange()" />
+
+          <!-- Произвольный диапазон дат (если выбран 'range') -->
+          <div id="budgetDateRangeRow" style="display:none;margin-bottom:10px;">
+            <div style="font-size:11px;color:#888;margin-bottom:4px;">Диапазон дат:</div>
+            <div class="row2" style="gap:6px;">
+              <input id="budgetFromDate" type="date" style="padding:6px 8px;font-size:13px;" onchange="onBudgetRangeChange()" />
+              <input id="budgetToDate" type="date" style="padding:6px 8px;font-size:13px;" onchange="onBudgetRangeChange()" />
+            </div>
+          </div>
+
+          <!-- Выбор графы дохода -->
+          <div style="margin-bottom:10px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+              <span style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.5px;">Графа дохода:</span>
+            </div>
+            <select id="budgetGlobalIncomeSource" onchange="onBudgetGlobalSourceChange()"
+              style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid #2a2a2a;background:#18181a;color:#fff;font-size:13px;outline:none;">
+              <option value="all">🌐 Все доходы (общий заработок)</option>
+            </select>
+          </div>
+
+          <!-- Базовая сумма -->
+          <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid #1a1a1a;padding-top:10px;margin-top:6px;">
+            <div>
+              <div style="font-size:10px;color:#666;text-transform:uppercase;" id="budgetBaseLabel">Доход базы</div>
+              <div style="font-size:22px;font-weight:bold;color:#fff;" id="budgetBaseAmountDisplay">0 ₸</div>
+            </div>
+            <input id="budgetCustomAmountInput" type="number" inputmode="decimal" placeholder="Сумма"
+              style="display:none;width:130px;padding:8px 10px;font-size:15px;text-align:right;" oninput="onBudgetCustomAmountChange()" />
           </div>
         </div>
 
@@ -3435,6 +3468,105 @@
   const BUDGET_CATEGORIES_KEY = 'budget_categories_v1';
   const BUDGET_SOURCE_KEY = 'budget_source_v1';
   const BUDGET_CUSTOM_AMOUNT_KEY = 'budget_custom_amount_v1';
+  const BUDGET_RANGE_FROM_KEY = 'budget_range_from_v1';
+  const BUDGET_RANGE_TO_KEY = 'budget_range_to_v1';
+  const BUDGET_GLOBAL_SOURCE_KEY = 'budget_global_source_v1';
+
+  function getAvailableIncomeSources() {
+    const sources = new Map();
+    // Стандартные курьерские смены/точки
+    const standard = ['F1', 'F2', 'F3', 'Ночь'];
+    standard.forEach(s => sources.set(s, { id: s, name: '📍 ' + s }));
+
+    // Из категорий DEFAULTS.income
+    if (window.DEFAULTS && Array.isArray(window.DEFAULTS.income)) {
+      window.DEFAULTS.income.forEach(cat => {
+        if (cat.name && !sources.has(cat.name)) {
+          sources.set(cat.name, { id: cat.name, name: '📁 ' + cat.name });
+        }
+        if (Array.isArray(cat.sub)) {
+          cat.sub.forEach(sub => {
+            if (sub && !sources.has(sub)) {
+              sources.set(sub, { id: sub, name: '🏷️ ' + sub });
+            }
+          });
+        }
+      });
+    }
+
+    // Из реальных транзакций
+    if (Array.isArray(window.allTx)) {
+      window.allTx.forEach(t => {
+        if (t.type === 'income') {
+          if (t.subcategory && !sources.has(t.subcategory)) {
+            sources.set(t.subcategory, { id: t.subcategory, name: '🏷️ ' + t.subcategory });
+          }
+          if (t.categoryName && !sources.has(t.categoryName)) {
+            sources.set(t.categoryName, { id: t.categoryName, name: '📁 ' + t.categoryName });
+          }
+        }
+      });
+    }
+
+    return Array.from(sources.values());
+  }
+
+  function getBudgetDates(period, customFrom, customTo) {
+    const n = new Date();
+    if (n.getHours() < 3) n.setDate(n.getDate() - 1); // правило курьера до 3:00 ночи
+    const todayStr = new Date(n - n.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+
+    let from = todayStr, to = todayStr, label = 'Сегодня';
+
+    if (period === 'today') {
+      from = todayStr; to = todayStr; label = 'Сегодня';
+    } else if (period === 'yesterday') {
+      const y = new Date(n);
+      y.setDate(y.getDate() - 1);
+      const yStr = new Date(y - y.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+      from = yStr; to = yStr; label = 'Вчера';
+    } else if (period === 'week') {
+      const d = new Date(n);
+      const day = d.getDay(); // 0 - воскресенье
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+      const mon = new Date(d.setDate(diff));
+      from = new Date(mon - mon.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+      to = todayStr;
+      label = 'Неделя';
+    } else if (period === 'month') {
+      from = todayStr.substring(0, 7) + '-01';
+      to = todayStr;
+      label = 'Месяц';
+    } else if (period === 'range' || period === 'custom') {
+      from = customFrom || todayStr;
+      to = customTo || todayStr;
+      label = (from === to) ? from : `${from} — ${to}`;
+    }
+
+    return { from, to, label };
+  }
+
+  function calcIncomeForBudget(incomeSource, from, to) {
+    const isDepTransfer = t => t.subcategory && (t.subcategory.startsWith('← ') || t.subcategory.startsWith('→ '));
+    const txs = (window.allTx || []).filter(t => {
+      if (t.type !== 'income' || isDepTransfer(t)) return false;
+      if (from && t.date < from) return false;
+      if (to && t.date > to) return false;
+
+      if (incomeSource && incomeSource !== 'all') {
+        const sub = (t.subcategory || '').trim().toLowerCase();
+        const cat = (t.categoryName || '').trim().toLowerCase();
+        const target = incomeSource.trim().toLowerCase();
+        if (sub !== target && cat !== target) return false;
+      }
+      return true;
+    });
+
+    return {
+      sum: txs.reduce((acc, t) => acc + t.amount, 0),
+      count: txs.length
+    };
+  }
 
   function getBudgetCategories() {
     try {
@@ -3443,11 +3575,11 @@
     } catch(e) {}
     // Стандартные категории по умолчанию
     return [
-      { id: 'b_1', name: 'Отложить / Накопления', mode: 'percent', value: 20, color: '#65d48b' },
-      { id: 'b_2', name: 'Авто / Бензин', mode: 'percent', value: 25, color: '#ffd166' },
-      { id: 'b_3', name: 'Еда и продукты', mode: 'percent', value: 20, color: '#6ec6ff' },
-      { id: 'b_4', name: 'Обязательные платежи', mode: 'amount', value: 3000, color: '#a78bfa' },
-      { id: 'b_5', name: 'Свободные траты', mode: 'percent', value: 15, color: '#ff6b6b' }
+      { id: 'b_1', name: 'Отложить / Накопления', mode: 'percent', value: 20, color: '#65d48b', incomeSource: 'all', period: 'global' },
+      { id: 'b_2', name: 'Авто / Бензин', mode: 'percent', value: 25, color: '#ffd166', incomeSource: 'all', period: 'global' },
+      { id: 'b_3', name: 'Еда и продукты', mode: 'percent', value: 20, color: '#6ec6ff', incomeSource: 'all', period: 'global' },
+      { id: 'b_4', name: 'Обязательные платежи', mode: 'amount', value: 3000, color: '#a78bfa', incomeSource: 'all', period: 'global' },
+      { id: 'b_5', name: 'Свободные траты', mode: 'percent', value: 15, color: '#ff6b6b', incomeSource: 'all', period: 'global' }
     ];
   }
 
@@ -3466,16 +3598,33 @@
     } catch(err) { console.warn('budgetCategories Firebase sync error:', err.message); }
   }
 
-  window.setBudgetSource = (src) => {
-    try { localStorage.setItem(BUDGET_SOURCE_KEY, src); } catch(e) {}
+  window.setBudgetPeriod = (period) => {
+    try { localStorage.setItem(BUDGET_SOURCE_KEY, period); } catch(e) {}
     try {
       const { fbDB, fbMethods, fbUser } = window;
       if (fbUser && fbUser.uid && fbDB) {
         fbMethods.setDoc(fbMethods.doc(fbDB, 'users', fbUser.uid), {
-          budgetSource: src
+          budgetSource: period
         }, { merge: true });
       }
     } catch(err) {}
+    renderBudget();
+  };
+
+  // Для обратной совместимости
+  window.setBudgetSource = window.setBudgetPeriod;
+
+  window.onBudgetRangeChange = () => {
+    const f = document.getElementById('budgetFromDate')?.value || '';
+    const t = document.getElementById('budgetToDate')?.value || '';
+    if (f) localStorage.setItem(BUDGET_RANGE_FROM_KEY, f);
+    if (t) localStorage.setItem(BUDGET_RANGE_TO_KEY, t);
+    renderBudget();
+  };
+
+  window.onBudgetGlobalSourceChange = () => {
+    const src = document.getElementById('budgetGlobalIncomeSource')?.value || 'all';
+    localStorage.setItem(BUDGET_GLOBAL_SOURCE_KEY, src);
     renderBudget();
   };
 
@@ -3497,48 +3646,112 @@
     const listEl = document.getElementById('budgetCategoryList');
     if (!listEl) return;
 
-    // Вычисляем сегодняшний доход (с учетом правила до 3 часов ночи)
     const n = new Date(); if (n.getHours() < 3) n.setDate(n.getDate() - 1);
     const today = new Date(n - n.getTimezoneOffset() * 60000).toISOString().split('T')[0];
-    const isDepTransfer = t => t.subcategory && (t.subcategory.startsWith('← ') || t.subcategory.startsWith('→ '));
-    const todayIncome = (window.allTx || []).filter(t => t.type === 'income' && t.date === today && !isDepTransfer(t)).reduce((s,t) => s + t.amount, 0);
 
-    const source = localStorage.getItem(BUDGET_SOURCE_KEY) || 'today';
+    const currentPeriod = localStorage.getItem(BUDGET_SOURCE_KEY) || 'today';
     const customAmt = Number(localStorage.getItem(BUDGET_CUSTOM_AMOUNT_KEY)) || 0;
-    const baseAmt = source === 'custom' ? customAmt : todayIncome;
+    const globalSrc = localStorage.getItem(BUDGET_GLOBAL_SOURCE_KEY) || 'all';
 
-    const sourceTodayBtn = document.getElementById('budgetSourceTodayBtn');
-    const sourceCustomBtn = document.getElementById('budgetSourceCustomBtn');
-    const customInp = document.getElementById('budgetCustomAmountInput');
-    const baseDisp = document.getElementById('budgetBaseAmountDisplay');
-
-    if (sourceTodayBtn && sourceCustomBtn && customInp && baseDisp) {
-      if (source === 'custom') {
-        sourceTodayBtn.style.background = '#1c1c1e'; sourceTodayBtn.style.borderColor = '#2a2a2a'; sourceTodayBtn.style.color = '#888';
-        sourceCustomBtn.style.background = '#0d2613'; sourceCustomBtn.style.borderColor = '#65d48b'; sourceCustomBtn.style.color = '#65d48b';
-        customInp.style.display = 'block';
-        customInp.value = customAmt || '';
-        baseDisp.textContent = baseAmt.toLocaleString() + ' ₸';
-      } else {
-        sourceTodayBtn.style.background = '#0d2613'; sourceTodayBtn.style.borderColor = '#65d48b'; sourceTodayBtn.style.color = '#65d48b';
-        sourceCustomBtn.style.background = '#1c1c1e'; sourceCustomBtn.style.borderColor = '#2a2a2a'; sourceCustomBtn.style.color = '#888';
-        customInp.style.display = 'none';
-        baseDisp.textContent = todayIncome.toLocaleString() + ' ₸ (сегодня)';
-      }
+    // 1. Обновляем выпадающий список глобальных источников
+    const globalSrcSelect = document.getElementById('budgetGlobalIncomeSource');
+    const availableSources = getAvailableIncomeSources();
+    if (globalSrcSelect) {
+      let opts = '<option value="all">🌐 Все доходы (общий заработок)</option>';
+      availableSources.forEach(s => {
+        const sel = s.id === globalSrc ? 'selected' : '';
+        opts += `<option value="${esc(s.id)}" ${sel}>${esc(s.name)}</option>`;
+      });
+      globalSrcSelect.innerHTML = opts;
     }
 
+    // 2. Обновляем кнопки выбора периода
+    document.querySelectorAll('.budget-period-btn').forEach(btn => {
+      const p = btn.getAttribute('data-period');
+      if (p === currentPeriod) {
+        btn.style.background = '#0d2613';
+        btn.style.borderColor = '#65d48b';
+        btn.style.color = '#65d48b';
+      } else {
+        btn.style.background = '#1c1c1e';
+        btn.style.borderColor = '#2a2a2a';
+        btn.style.color = '#888';
+      }
+    });
+
+    // 3. Блоки произвольного диапазона и своей суммы
+    const dateRangeRow = document.getElementById('budgetDateRangeRow');
+    const customInp = document.getElementById('budgetCustomAmountInput');
+    const fromInp = document.getElementById('budgetFromDate');
+    const toInp = document.getElementById('budgetToDate');
+
+    if (dateRangeRow) dateRangeRow.style.display = currentPeriod === 'range' ? 'block' : 'none';
+    if (customInp) {
+      customInp.style.display = currentPeriod === 'custom' ? 'block' : 'none';
+      customInp.value = customAmt || '';
+    }
+
+    let globalFrom = localStorage.getItem(BUDGET_RANGE_FROM_KEY) || today;
+    let globalTo = localStorage.getItem(BUDGET_RANGE_TO_KEY) || today;
+    if (fromInp && !fromInp.value) fromInp.value = globalFrom;
+    if (toInp && !toInp.value) toInp.value = globalTo;
+
+    // 4. Расчёт базового дохода вкладки
+    const dInfo = getBudgetDates(currentPeriod, globalFrom, globalTo);
+    let globalBaseAmt = 0;
+    let baseLabel = 'Базовый доход';
+
+    if (currentPeriod === 'custom') {
+      globalBaseAmt = customAmt;
+      baseLabel = 'Введена своя сумма';
+    } else {
+      const res = calcIncomeForBudget(globalSrc, dInfo.from, dInfo.to);
+      globalBaseAmt = res.sum;
+      const srcName = globalSrc === 'all' ? 'Все доходы' : globalSrc;
+      baseLabel = `${res.count} опер. · ${dInfo.label} (${srcName})`;
+    }
+
+    const baseDisp = document.getElementById('budgetBaseAmountDisplay');
+    const baseLblEl = document.getElementById('budgetBaseLabel');
+    if (baseDisp) baseDisp.textContent = globalBaseAmt.toLocaleString() + ' ₸';
+    if (baseLblEl) baseLblEl.textContent = baseLabel;
+
+    // 5. Рендерим категории
     const cats = getBudgetCategories();
     let totalAllocated = 0;
 
     const itemsHtml = cats.map(c => {
+      // Период категории
+      const effPeriod = (c.period && c.period !== 'global') ? c.period : currentPeriod;
+      let cDates;
+      if (effPeriod === 'custom') {
+        cDates = { from: c.dateFrom || today, to: c.dateTo || today, label: `${c.dateFrom || today} — ${c.dateTo || today}` };
+      } else {
+        cDates = getBudgetDates(effPeriod, globalFrom, globalTo);
+      }
+
+      // Источник дохода категории
+      const effSrc = (c.incomeSource && c.incomeSource !== 'global') ? c.incomeSource : globalSrc;
+      const effSrcObj = availableSources.find(s => s.id === effSrc);
+      const effSrcName = effSrc === 'all' ? 'Все доходы' : (effSrcObj ? effSrcObj.name : effSrc);
+
+      // Базовый доход для конкретной категории
+      let catBaseAmt = 0;
+      if (effPeriod === 'custom' && currentPeriod === 'custom' && c.period === 'global') {
+        catBaseAmt = globalBaseAmt;
+      } else {
+        catBaseAmt = calcIncomeForBudget(effSrc, cDates.from, cDates.to).sum;
+      }
+
       let allocated = 0;
       if (c.mode === 'percent') {
-        allocated = Math.round((baseAmt * c.value) / 100);
+        allocated = Math.round((catBaseAmt * c.value) / 100);
       } else {
         allocated = Number(c.value) || 0;
       }
       totalAllocated += allocated;
-      const pctOfBase = baseAmt > 0 ? Math.min(100, Math.round((allocated / baseAmt) * 100)) : 0;
+
+      const pctOfBase = catBaseAmt > 0 ? Math.min(100, Math.round((allocated / catBaseAmt) * 100)) : 0;
       const color = c.color || '#65d48b';
 
       return `
@@ -3547,8 +3760,21 @@
             <span class="budget-item-name">${esc(c.name)}</span>
             <span class="budget-item-val" style="color:${color};">${allocated.toLocaleString()} ₸</span>
           </div>
+
+          <div style="display:flex;flex-wrap:wrap;gap:4px;margin:6px 0;">
+            <span style="background:#152238;color:#6ec6ff;border:1px solid #233554;font-size:10px;font-weight:600;padding:2px 7px;border-radius:5px;">
+              📊 ${esc(effSrcName)}
+            </span>
+            <span style="background:#221935;color:#c084fc;border:1px solid #3b2758;font-size:10px;font-weight:600;padding:2px 7px;border-radius:5px;">
+              📅 ${esc(cDates.label)}
+            </span>
+            <span style="background:#132817;color:#65d48b;border:1px solid #1e4526;font-size:10px;font-weight:600;padding:2px 7px;border-radius:5px;">
+              База: ${catBaseAmt.toLocaleString()} ₸
+            </span>
+          </div>
+
           <div class="budget-item-meta">
-            <span>${c.mode === 'percent' ? `${c.value}% от дохода` : `Фикс: ${Number(c.value).toLocaleString()} ₸`}</span>
+            <span>${c.mode === 'percent' ? `${c.value}% от базы` : `Фикс: ${Number(c.value).toLocaleString()} ₸`}</span>
             <span>${pctOfBase}% от базы</span>
           </div>
           <div class="budget-progress-bg">
@@ -3564,7 +3790,7 @@
 
     listEl.innerHTML = itemsHtml || '<div class="muted" style="padding:16px 0;text-align:center;">Нет категорий распределения</div>';
 
-    const remaining = baseAmt - totalAllocated;
+    const remaining = globalBaseAmt - totalAllocated;
     const totAllocEl = document.getElementById('budgetTotalAllocated');
     const totRemEl = document.getElementById('budgetTotalRemaining');
     if (totAllocEl) totAllocEl.textContent = totalAllocated.toLocaleString() + ' ₸';
@@ -3586,35 +3812,78 @@
     const item = id ? cats.find(c => c.id === id) : null;
     const isNew = !item;
 
+    const availableSources = getAvailableIncomeSources();
+    let srcOptions = `
+      <option value="global" ${!item || item.incomeSource === 'global' ? 'selected' : ''}>🔄 Как в фильтре бюджета</option>
+      <option value="all" ${item && item.incomeSource === 'all' ? 'selected' : ''}>🌐 Все доходы (общий заработок)</option>
+    `;
+    availableSources.forEach(s => {
+      const sel = item && item.incomeSource === s.id ? 'selected' : '';
+      srcOptions += `<option value="${esc(s.id)}" ${sel}>${esc(s.name)}</option>`;
+    });
+
     const modal = document.createElement('div');
     modal.id = '_budgetModal';
-    modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;padding:20px;';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto;';
     modal.innerHTML = `
-      <div style="background:#1c1c1e;border-radius:16px;padding:20px;width:100%;max-width:340px;border:1px solid #2a2a2a;">
-        <div style="font-size:15px;font-weight:700;color:#65d48b;margin-bottom:14px;">
-          ${isNew ? '➕ Новая категория распределения' : '✏️ Редактировать категорию'}
+      <div style="background:#1c1c1e;border-radius:16px;padding:20px;width:100%;max-width:360px;border:1px solid #2a2a2a;box-sizing:border-box;max-height:90vh;overflow-y:auto;">
+        <div style="font-size:16px;font-weight:700;color:#65d48b;margin-bottom:14px;">
+          ${isNew ? '➕ Новая категория бюджета' : '✏️ Настройка категории'}
         </div>
+
         <div style="margin-bottom:10px;">
           <label style="font-size:11px;color:#888;display:block;margin-bottom:4px;">Название:</label>
-          <input id="_bName" type="text" value="${item ? esc(item.name) : ''}" placeholder="Напр. Накопления или Бензин"
+          <input id="_bName" type="text" value="${item ? esc(item.name) : ''}" placeholder="Напр. Накопления, Авто, Еда"
             style="width:100%;padding:10px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:14px;outline:none;box-sizing:border-box;">
         </div>
+
         <div style="margin-bottom:10px;">
           <label style="font-size:11px;color:#888;display:block;margin-bottom:4px;">Тип распределения:</label>
           <select id="_bMode" onchange="document.getElementById('_bValLabel').textContent = this.value==='percent'?'Процент (%):':'Сумма (₸):'"
-            style="width:100%;padding:10px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:14px;outline:none;">
-            <option value="percent" ${item && item.mode==='percent'?'selected':''}>Процент от заработка (%)</option>
+            style="width:100%;padding:10px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:14px;outline:none;box-sizing:border-box;">
+            <option value="percent" ${item && item.mode==='percent'?'selected':''}>Процент от дохода (%)</option>
             <option value="amount" ${item && item.mode==='amount'?'selected':''}>Определённая сумма (₸)</option>
           </select>
         </div>
-        <div style="margin-bottom:14px;">
+
+        <div style="margin-bottom:10px;">
           <label id="_bValLabel" style="font-size:11px;color:#888;display:block;margin-bottom:4px;">
             ${item && item.mode==='amount' ? 'Сумма (₸):' : 'Процент (%):'}
           </label>
           <input id="_bValue" type="number" inputmode="decimal" value="${item ? item.value : ''}" placeholder="Напр. 20 или 5000"
             style="width:100%;padding:10px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:14px;outline:none;box-sizing:border-box;">
         </div>
-        <div style="display:flex;gap:8px;">
+
+        <div style="margin-bottom:10px;">
+          <label style="font-size:11px;color:#888;display:block;margin-bottom:4px;">Графа дохода (источник):</label>
+          <select id="_bIncomeSource"
+            style="width:100%;padding:10px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:13px;outline:none;box-sizing:border-box;">
+            ${srcOptions}
+          </select>
+        </div>
+
+        <div style="margin-bottom:10px;">
+          <label style="font-size:11px;color:#888;display:block;margin-bottom:4px;">Диапазон дат (период):</label>
+          <select id="_bPeriod" onchange="document.getElementById('_bCustomDatesWrap').style.display = (this.value==='custom'?'block':'none')"
+            style="width:100%;padding:10px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:13px;outline:none;box-sizing:border-box;">
+            <option value="global" ${!item || item.period==='global'?'selected':''}>🔄 Как в фильтре бюджета</option>
+            <option value="today" ${item && item.period==='today'?'selected':''}>📅 Сегодня</option>
+            <option value="yesterday" ${item && item.period==='yesterday'?'selected':''}>📅 Вчера</option>
+            <option value="week" ${item && item.period==='week'?'selected':''}>📅 Текущая неделя</option>
+            <option value="month" ${item && item.period==='month'?'selected':''}>📅 Текущий месяц</option>
+            <option value="custom" ${item && item.period==='custom'?'selected':''}>📆 Произвольный диапазон</option>
+          </select>
+        </div>
+
+        <div id="_bCustomDatesWrap" style="display:${item && item.period==='custom'?'block':'none'};margin-bottom:12px;background:#141416;padding:10px;border-radius:8px;border:1px solid #2a2a2a;">
+          <label style="font-size:11px;color:#888;display:block;margin-bottom:4px;">Период дат:</label>
+          <div class="row2" style="gap:6px;">
+            <input id="_bDateFrom" type="date" value="${item ? (item.dateFrom || '') : ''}" style="width:100%;padding:8px;border-radius:6px;border:1px solid #333;background:#2c2c2e;color:#fff;font-size:12px;" />
+            <input id="_bDateTo" type="date" value="${item ? (item.dateTo || '') : ''}" style="width:100%;padding:8px;border-radius:6px;border:1px solid #333;background:#2c2c2e;color:#fff;font-size:12px;" />
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:14px;">
           <button onclick="document.getElementById('_budgetModal').remove()"
             style="flex:1;padding:12px;border-radius:10px;border:1px solid #333;background:none;color:#888;font-size:14px;cursor:pointer;">Отмена</button>
           <button onclick="saveBudgetCategoryModal('${id || ''}')"
@@ -3630,6 +3899,11 @@
     const name = document.getElementById('_bName').value.trim();
     const mode = document.getElementById('_bMode').value;
     const val = Number(document.getElementById('_bValue').value);
+    const incomeSource = document.getElementById('_bIncomeSource').value;
+    const period = document.getElementById('_bPeriod').value;
+    const dateFrom = document.getElementById('_bDateFrom') ? document.getElementById('_bDateFrom').value : '';
+    const dateTo = document.getElementById('_bDateTo') ? document.getElementById('_bDateTo').value : '';
+
     if (!name) return window.showToast('Введите название', 'error');
     if (!Number.isFinite(val) || val <= 0) return window.showToast('Введите корректное значение', 'error');
 
@@ -3638,14 +3912,31 @@
     if (id) {
       const idx = cats.findIndex(c => c.id === id);
       if (idx >= 0) {
-        cats[idx].name = name;
-        cats[idx].mode = mode;
-        cats[idx].value = val;
+        cats[idx] = {
+          ...cats[idx],
+          name,
+          mode,
+          value: val,
+          incomeSource,
+          period,
+          dateFrom,
+          dateTo
+        };
       }
     } else {
       const newId = 'b_' + Date.now();
       const color = colors[cats.length % colors.length];
-      cats.push({ id: newId, name, mode, value: val, color });
+      cats.push({
+        id: newId,
+        name,
+        mode,
+        value: val,
+        color,
+        incomeSource,
+        period,
+        dateFrom,
+        dateTo
+      });
     }
     saveBudgetCategories(cats);
     document.getElementById('_budgetModal').remove();
