@@ -1604,6 +1604,18 @@
         if (data.budgetCustomAmount !== undefined) {
           localStorage.setItem('budget_custom_amount_v1', String(data.budgetCustomAmount));
         }
+        if (data.budgetRangeFrom) {
+          localStorage.setItem('budget_range_from_v1', data.budgetRangeFrom);
+        }
+        if (data.budgetRangeTo) {
+          localStorage.setItem('budget_range_to_v1', data.budgetRangeTo);
+        }
+        if (data.budgetSingleDate) {
+          localStorage.setItem('budget_single_date_v1', data.budgetSingleDate);
+        }
+        if (data.budgetGlobalSource) {
+          localStorage.setItem('budget_global_source_v1', data.budgetGlobalSource);
+        }
         if (data.incomeGoal !== undefined) {
           localStorage.setItem('incomeGoal', String(data.incomeGoal));
           if (window.renderAnalytics) window.renderAnalytics();
@@ -3655,7 +3667,15 @@
 
   window.onBudgetSingleDateChange = () => {
     const d = document.getElementById('budgetSingleDate')?.value || '';
-    if (d) localStorage.setItem(BUDGET_SINGLE_DATE_KEY, d);
+    if (d) {
+      localStorage.setItem(BUDGET_SINGLE_DATE_KEY, d);
+      try {
+        const { fbDB, fbMethods, fbUser } = window;
+        if (fbUser && fbUser.uid && fbDB) {
+          fbMethods.setDoc(fbMethods.doc(fbDB, 'users', fbUser.uid), { budgetSingleDate: d }, { merge: true });
+        }
+      } catch(e) {}
+    }
     renderBudget();
   };
 
@@ -3664,12 +3684,27 @@
     const t = document.getElementById('budgetToDate')?.value || '';
     if (f) localStorage.setItem(BUDGET_RANGE_FROM_KEY, f);
     if (t) localStorage.setItem(BUDGET_RANGE_TO_KEY, t);
+    try {
+      const { fbDB, fbMethods, fbUser } = window;
+      if (fbUser && fbUser.uid && fbDB) {
+        fbMethods.setDoc(fbMethods.doc(fbDB, 'users', fbUser.uid), {
+          budgetRangeFrom: f,
+          budgetRangeTo: t
+        }, { merge: true });
+      }
+    } catch(e) {}
     renderBudget();
   };
 
   window.onBudgetGlobalSourceChange = () => {
     const src = document.getElementById('budgetGlobalIncomeSource')?.value || 'all';
     localStorage.setItem(BUDGET_GLOBAL_SOURCE_KEY, src);
+    try {
+      const { fbDB, fbMethods, fbUser } = window;
+      if (fbUser && fbUser.uid && fbDB) {
+        fbMethods.setDoc(fbMethods.doc(fbDB, 'users', fbUser.uid), { budgetGlobalSource: src }, { merge: true });
+      }
+    } catch(e) {}
     renderBudget();
   };
 
