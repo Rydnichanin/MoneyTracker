@@ -972,9 +972,16 @@
           </div>
         </div>
         <div class="acc-chips" id="accountBalances"></div>
-        <div class="gas-wrap">
-          <div class="gas-label" id="gasText">Бензин: 0%</div>
+        <div class="gas-wrap" style="cursor:pointer;" onclick="switchTab('expense')">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
+            <div class="gas-label" id="gasText" style="margin-bottom:0;">Бензин: 0%</div>
+            <div id="gasOdoQuick" style="font-size:10px;color:#8899a6;font-weight:500;"></div>
+          </div>
           <div class="gas-bg"><div class="gas-fill" id="gasFill"></div></div>
+          <div id="gasConsumptionRow" style="display:flex;justify-content:space-between;align-items:center;font-size:11px;margin-top:6px;padding-top:4px;border-top:1px dashed #233554;">
+            <span id="gasAvgCons" style="color:#ffd166;font-weight:600;">⛽ Общий расход: —</span>
+            <span id="gasLastCons" style="color:#6ec6ff;font-weight:600;">Посл. заправка: —</span>
+          </div>
         </div>
       </div>
 
@@ -1936,8 +1943,14 @@
     const currentCats = (window.DEFAULTS && window.DEFAULTS[elT.value]) || [];
     const catObj = currentCats.find(c => c.id === elC.value);
     const catName = (catObj ? catObj.name : '').toLowerCase();
-    const subName = (elS ? elS.value || '' : '').toLowerCase();
-    const isFuel = elT.value === 'expense' && (catName.includes('бенз') || subName.includes('бенз') || catName.includes('топлив') || subName.includes('топлив') || catName.includes('газ') || subName.includes('газ'));
+    const isFuel = elT.value === 'expense' && (
+      catName.includes('бенз') || subName.includes('бенз') ||
+      catName.includes('топлив') || subName.includes('топлив') ||
+      catName.includes('газ') || subName.includes('газ') ||
+      catName.includes('заправ') || subName.includes('заправ') ||
+      catName.includes('гсм') || subName.includes('гсм') ||
+      catName.includes('авто') || catName.includes('машин')
+    );
 
     const fp = Number(localStorage.getItem('fuelPrice')) || 0;
     if (priceHint) {
@@ -1979,9 +1992,12 @@
       window._analyticsStale = false;
       if (window.renderAnalytics) window.renderAnalytics();
     }
-    if (name === 'expense' && window._expAnalyticsStale) {
-      window._expAnalyticsStale = false;
-      if (window.renderExpenseFullAnalytics) window.renderExpenseFullAnalytics();
+    if (name === 'expense') {
+      if (window.renderFuelTracker) window.renderFuelTracker();
+      if (window._expAnalyticsStale) {
+        window._expAnalyticsStale = false;
+        if (window.renderExpenseFullAnalytics) window.renderExpenseFullAnalytics();
+      }
     }
     if (name === 'budget') {
       if (window.renderBudget) window.renderBudget();
@@ -2417,7 +2433,14 @@
         const catObj = currentCats.find(c=>c.id===elC.value);
         const catName = (catObj ? catObj.name : '').toLowerCase();
         const subName = (elS.value || '').toLowerCase();
-        const isFuel = elT.value === 'expense' && (catName.includes('бенз') || subName.includes('бенз') || catName.includes('топлив') || subName.includes('топлив') || catName.includes('газ') || subName.includes('газ'));
+        const isFuel = elT.value === 'expense' && (
+          catName.includes('бенз') || subName.includes('бенз') ||
+          catName.includes('топлив') || subName.includes('топлив') ||
+          catName.includes('газ') || subName.includes('газ') ||
+          catName.includes('заправ') || subName.includes('заправ') ||
+          catName.includes('гсм') || subName.includes('гсм') ||
+          catName.includes('авто') || catName.includes('машин')
+        );
         const fw = document.getElementById("fuelFieldsWrap");
         if (fw) fw.style.display = isFuel ? 'block' : 'none';
         if (window.autoCalcFuelLiters) window.autoCalcFuelLiters();
@@ -2653,8 +2676,41 @@
       .map(([n,v])=>`<div class="acc-chip">${n}: <b style="color:${v>=0?'#65d48b':'#ff6b6b'}">${v.toLocaleString()} ₸</b></div>`).join("");
 
     const gasP=inc>0?((gas/inc)*100).toFixed(1):0;
-    document.getElementById("gasText").textContent=`Бензин: ${gasP}% (${gas.toLocaleString()} ₸)`;
-    document.getElementById("gasFill").style.width=Math.min(Number(gasP)*3,100)+"%";
+    const gasTextEl = document.getElementById("gasText");
+    if (gasTextEl) gasTextEl.textContent = `Бензин: ${gasP}% (${gas.toLocaleString()} ₸)`;
+    const gasFillEl = document.getElementById("gasFill");
+    if (gasFillEl) gasFillEl.style.width = Math.min(Number(gasP)*3,100)+"%";
+
+    // Показатели расхода топлива (общий и за последнюю заправку)
+    const fuelStats = window.calculateFuelStats ? window.calculateFuelStats() : null;
+    const avgConsEl = document.getElementById("gasAvgCons");
+    const lastConsEl = document.getElementById("gasLastCons");
+    const odoQuickEl = document.getElementById("gasOdoQuick");
+
+    if (fuelStats) {
+      if (odoQuickEl && fuelStats.lastOdometer) {
+        odoQuickEl.textContent = `${Number(fuelStats.lastOdometer).toLocaleString()} км`;
+      } else if (odoQuickEl) {
+        odoQuickEl.textContent = '';
+      }
+      if (avgConsEl) {
+        avgConsEl.innerHTML = fuelStats.avgConsumption > 0 
+          ? `⛽ Общий: <b style="color:#ffd166;">${fuelStats.avgConsumption} л/100км</b>` 
+          : `⛽ Общий: <span style="color:#778899;">Мало данных</span>`;
+      }
+      if (lastConsEl) {
+        if (fuelStats.lastInterval && fuelStats.lastInterval.consumption > 0) {
+          const distStr = fuelStats.lastInterval.distance ? ` <small style="color:#8899a6;">(${fuelStats.lastInterval.distance} км)</small>` : '';
+          lastConsEl.innerHTML = `Посл. заправка: <b style="color:#6ec6ff;">${fuelStats.lastInterval.consumption} л/100км</b>${distStr}`;
+        } else {
+          lastConsEl.innerHTML = `Посл. заправка: <span style="color:#778899;">—</span>`;
+        }
+      }
+    } else {
+      if (avgConsEl) avgConsEl.textContent = `⛽ Общий расход: —`;
+      if (lastConsEl) lastConsEl.textContent = `Посл. заправка: —`;
+      if (odoQuickEl) odoQuickEl.textContent = '';
+    }
 
     document.getElementById("earningsDetails").innerHTML=Object.entries(statsInc).map(([k,d])=>`
       <div class="stat-row"><div class="stat-main"><span>${k} (${d.cnt})</span><b>${d.sum.toLocaleString()} ₸</b></div>
@@ -2798,8 +2854,8 @@
       window._analyticsStale = true;
     }
 
+    if (window.renderFuelTracker) renderFuelTracker();
     if (document.getElementById('tab-expense')?.classList.contains('active')) {
-      if (window.renderFuelTracker) renderFuelTracker();
       if (window.renderExpenseFullAnalytics) renderExpenseFullAnalytics();
     } else {
       window._expAnalyticsStale = true;
@@ -4191,15 +4247,25 @@
   // ══ 2. УЧЁТ БЕНЗИНА, ОДОМЕТРА И РАСХОДА НА 100 КМ ══════════════
   // ════════════════════════════════════════════════════════════════
   window.calculateFuelStats = () => {
-    // Собираем все транзакции расходов на бензин/топливо
+    // Собираем все транзакции расходов на авто / топливо
     const fuelTxs = (window.allTx || []).filter(t => {
       if (t.type !== 'expense') return false;
-      const sub = (t.subcategory || '').toLowerCase();
-      const cat = (t.categoryName || '').toLowerCase();
-      return sub.includes('бенз') || cat.includes('бенз') || sub.includes('топлив') || cat.includes('топлив') || sub.includes('газ') || cat.includes('газ');
+      if (t.fullTank || (t.odometer !== undefined && t.odometer !== null && Number(t.odometer) > 0) || (t.liters !== undefined && Number(t.liters) > 0)) {
+        return true;
+      }
+      const sub = String(t.subcategory || '').toLowerCase();
+      const cat = String(t.categoryName || '').toLowerCase();
+      const com = String(t.comment || '').toLowerCase();
+      return sub.includes('бенз') || cat.includes('бенз') || com.includes('бенз') ||
+             sub.includes('топлив') || cat.includes('топлив') || com.includes('топлив') ||
+             sub.includes('газ') || cat.includes('газ') || com.includes('газ') ||
+             sub.includes('заправ') || cat.includes('заправ') || com.includes('заправ') ||
+             sub.includes('гсм') || cat.includes('гсм') ||
+             sub.includes('авто') || cat.includes('авто') ||
+             sub.includes('машин') || cat.includes('машин');
     }).sort((a,b) => {
-      // Сортируем хронологически от старых к новым для отслеживания одометра
       if (a.date !== b.date) return a.date > b.date ? 1 : -1;
+      if (a.odometer && b.odometer) return Number(a.odometer) - Number(b.odometer);
       return (a.createdAt || 0) - (b.createdAt || 0);
     });
 
@@ -4208,50 +4274,63 @@
     // Оцениваем литры для записей, где указана сумма, но нет литров (по сохранённой цене бензина или ~220 ₸)
     const ASSUMED_PRICE_PER_LITER = Number(localStorage.getItem('fuelPrice')) || 220;
     const enriched = fuelTxs.map(t => {
-      const liters = (t.liters && t.liters > 0) ? t.liters : (t.amount > 0 ? (t.amount / ASSUMED_PRICE_PER_LITER) : 0);
-      return { ...t, calcLiters: liters };
+      const liters = (t.liters && Number(t.liters) > 0)
+        ? Number(t.liters)
+        : (Number(t.amount) > 0 ? (Number(t.amount) / ASSUMED_PRICE_PER_LITER) : 0);
+      return { ...t, amount: Number(t.amount) || 0, calcLiters: liters };
     });
 
-    // Расчёт интервалов между заправками от полного до полного бака
-    // Алгоритм:
-    // Идём по хронологии. Находим первую точку с fullTank и одометром.
-    // Накапливаем литры промежуточных заправок до следующего fullTank.
-    // При встрече следующего fullTank: расход = (накопленные литры) / (дельта одометра) * 100.
+    // Расчёт интервалов между заправками от полного до полного бака (и по точкам одометра)
     const intervals = [];
-    let prevFull = null;
+    let prevPoint = null; // предыдущая точка с одометром
+    let prevFull = null;  // предыдущая точка с полным баком
     let accumulatedLiters = 0;
     let accumulatedCost = 0;
     let partialCount = 0;
 
     enriched.forEach(t => {
       const hasOdo = t.odometer !== undefined && t.odometer !== null && Number(t.odometer) > 0;
+      const isFull = Boolean(t.fullTank);
+
       if (prevFull) {
         accumulatedLiters += t.calcLiters;
         accumulatedCost += t.amount;
-        if (!t.fullTank) partialCount++;
+        if (!isFull) partialCount++;
+      } else if (prevPoint) {
+        accumulatedLiters += t.calcLiters;
+        accumulatedCost += t.amount;
+        if (!isFull) partialCount++;
       }
-      if (t.fullTank && hasOdo) {
-        if (prevFull && Number(t.odometer) > Number(prevFull.odometer)) {
-          const distance = Number(t.odometer) - Number(prevFull.odometer);
-          const consumption = (accumulatedLiters / distance) * 100;
-          const costPerKm = accumulatedCost / distance;
+
+      if (isFull && hasOdo) {
+        const startPoint = prevFull || prevPoint;
+        if (startPoint && Number(t.odometer) > Number(startPoint.odometer)) {
+          const distance = Number(t.odometer) - Number(startPoint.odometer);
+          const usedLiters = accumulatedLiters > 0 ? accumulatedLiters : t.calcLiters;
+          const usedCost = accumulatedCost > 0 ? accumulatedCost : t.amount;
+          const consumption = (usedLiters / distance) * 100;
+          const costPerKm = usedCost / distance;
           intervals.push({
-            fromOdo: Number(prevFull.odometer),
+            fromOdo: Number(startPoint.odometer),
             toOdo: Number(t.odometer),
             distance,
-            liters: accumulatedLiters,
-            cost: accumulatedCost,
+            liters: Math.round(usedLiters * 10) / 10,
+            cost: usedCost,
             consumption: Math.round(consumption * 10) / 10,
             costPerKm: Math.round(costPerKm * 10) / 10,
             partialCount,
             date: t.date,
-            isExact: true
+            isExact: Boolean(prevFull)
           });
         }
         prevFull = t;
         accumulatedLiters = 0;
         accumulatedCost = 0;
         partialCount = 0;
+      }
+
+      if (hasOdo) {
+        prevPoint = t;
       }
     });
 
@@ -4265,18 +4344,42 @@
     const totalFuelCost = enriched.reduce((s,t) => s + t.amount, 0);
     const totalFuelLiters = enriched.reduce((s,t) => s + t.calcLiters, 0);
 
+    // Последний интервал
+    let lastInterval = intervals.length ? intervals[intervals.length - 1] : null;
+    if (!lastInterval && withOdo.length >= 2) {
+      const p1 = withOdo[withOdo.length - 2];
+      const p2 = withOdo[withOdo.length - 1];
+      const d = Number(p2.odometer) - Number(p1.odometer);
+      if (d > 0) {
+        const l = p2.calcLiters > 0 ? p2.calcLiters : (p2.amount / ASSUMED_PRICE_PER_LITER);
+        const c = (l / d) * 100;
+        lastInterval = {
+          fromOdo: Number(p1.odometer),
+          toOdo: Number(p2.odometer),
+          distance: d,
+          liters: Math.round(l * 10) / 10,
+          cost: p2.amount,
+          consumption: Math.round(c * 10) / 10,
+          costPerKm: Math.round((p2.amount / d) * 10) / 10,
+          partialCount: 0,
+          date: p2.date,
+          isExact: false
+        };
+      }
+    }
+
     // Средний расход
     let avgConsumption = 0;
     if (intervals.length > 0) {
       const sumDist = intervals.reduce((s,i) => s + i.distance, 0);
       const sumLit = intervals.reduce((s,i) => s + i.liters, 0);
       if (sumDist > 0) avgConsumption = Math.round((sumLit / sumDist) * 100 * 10) / 10;
-    } else if (totalDistanceAllTime > 0) {
+    } else if (totalDistanceAllTime > 0 && totalFuelLiters > 0) {
       avgConsumption = Math.round((totalFuelLiters / totalDistanceAllTime) * 100 * 10) / 10;
+    } else if (lastInterval && lastInterval.consumption > 0) {
+      avgConsumption = lastInterval.consumption;
     }
 
-    // Последний интервал
-    const lastInterval = intervals.length ? intervals[intervals.length - 1] : null;
     const lastOdometer = withOdo.length ? withOdo[withOdo.length - 1].odometer : null;
 
     return {
@@ -4298,7 +4401,7 @@
     if (!card || !content) return;
 
     const stats = calculateFuelStats();
-    if (!stats) {
+    if (!stats || stats.totalTxs === 0) {
       card.style.display = 'none';
       return;
     }
@@ -4316,12 +4419,13 @@
     if (intervals.length > 0) {
       historyHtml = `
         <div style="margin-top:10px;border-top:1px solid #1a2a40;padding-top:8px;">
-          <div style="font-size:11px;font-weight:600;color:#6ec6ff;margin-bottom:6px;">Последние расчеты от полного бака:</div>
-          ${intervals.slice(-3).reverse().map(inv => `
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #142032;font-size:12px;">
+          <div style="font-size:11px;font-weight:600;color:#6ec6ff;margin-bottom:6px;">Последние замеры расхода:</div>
+          ${intervals.slice(-5).reverse().map(inv => `
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #142032;font-size:12px;">
               <div>
                 <span style="font-weight:600;color:#ffd166;">${inv.consumption} л/100км</span>
-                <span style="color:#777;font-size:10px;margin-left:6px;">(${inv.distance} км · ${inv.liters.toFixed(1)} л)</span>
+                <span style="color:#778899;font-size:10px;margin-left:6px;">(${inv.distance} км · ${inv.liters.toFixed(1)} л)</span>
+                ${inv.isExact ? '<span style="color:#65d48b;font-size:9px;background:#0d2613;border:1px solid #1e4526;padding:1px 4px;border-radius:4px;margin-left:4px;">полный бак</span>' : ''}
               </div>
               <span style="color:#65d48b;font-weight:bold;">${inv.cost.toLocaleString()} ₸</span>
             </div>
@@ -4330,7 +4434,7 @@
       `;
     } else {
       historyHtml = `
-        <div style="font-size:11px;color:#8899a6;margin-top:8px;background:#0d1522;padding:8px 10px;border-radius:8px;border:1px solid #1b283d;">
+        <div style="font-size:11px;color:#8899a6;margin-top:8px;background:#0d1522;padding:8px 10px;border-radius:8px;border:1px solid #1b283d;line-height:1.4;">
           💡 Для точного расчёта расхода на 100 км заправляйте <b>полный бак</b> с указанием показания <b>одометра</b>. Промежуточные заправки будут учтены автоматически при следующем полном баке.
         </div>
       `;
@@ -4346,7 +4450,7 @@
         <div class="fuel-box">
           <div class="fuel-label">Последний замер</div>
           <div class="fuel-metric" style="color:#6ec6ff;">${lastConsText}</div>
-          <div style="font-size:10px;color:#778899;margin-top:3px;">${lastInterval ? (lastInterval.partialCount > 0 ? `+${lastInterval.partialCount} неполн. заправок` : 'от полного до полного') : 'нет замеров'}</div>
+          <div style="font-size:10px;color:#778899;margin-top:3px;">${lastInterval ? (lastInterval.isExact ? (lastInterval.partialCount > 0 ? `+${lastInterval.partialCount} неполн. заправок` : 'от полного до полного') : 'по одометру') : 'нет замеров'}</div>
         </div>
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:6px 2px;color:#aaa;">
