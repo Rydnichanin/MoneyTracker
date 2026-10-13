@@ -4246,10 +4246,20 @@
   // ════════════════════════════════════════════════════════════════
   // ══ 2. УЧЁТ БЕНЗИНА, ОДОМЕТРА И РАСХОДА НА 100 КМ ══════════════
   // ════════════════════════════════════════════════════════════════
+  window.setFuelOdoMode = (mode) => {
+    try { localStorage.setItem('fuel_odo_mode', mode); } catch(e) {}
+    if (window.renderFuelTracker) window.renderFuelTracker();
+    if (window.render) window.render();
+    if (document.getElementById('_fuelDetailsModal')) window.openFuelDetailsModal();
+  };
+
   window.calculateFuelStats = () => {
+    const odoMode = localStorage.getItem('fuel_odo_mode') || 'auto'; // 'auto', 'total', 'trip'
+
     // Собираем все транзакции расходов на авто / топливо
     const fuelTxs = (window.allTx || []).filter(t => {
       if (t.type !== 'expense') return false;
+      // Если есть явные атрибуты топлива/одометра
       if (t.fullTank || (t.odometer !== undefined && t.odometer !== null && Number(t.odometer) > 0) || (t.liters !== undefined && Number(t.liters) > 0)) {
         return true;
       }
@@ -4260,9 +4270,7 @@
              sub.includes('топлив') || cat.includes('топлив') || com.includes('топлив') ||
              sub.includes('газ') || cat.includes('газ') || com.includes('газ') ||
              sub.includes('заправ') || cat.includes('заправ') || com.includes('заправ') ||
-             sub.includes('гсм') || cat.includes('гсм') ||
-             sub.includes('авто') || cat.includes('авто') ||
-             sub.includes('машин') || cat.includes('машин');
+             sub.includes('гсм') || cat.includes('гсм');
     }).sort((a,b) => {
       if (a.date !== b.date) return a.date > b.date ? 1 : -1;
       if (a.odometer && b.odometer) return Number(a.odometer) - Number(b.odometer);
@@ -4271,7 +4279,6 @@
 
     if (!fuelTxs.length) return null;
 
-    // Оцениваем литры для записей, где указана сумма, но нет литров (по сохранённой цене бензина или ~220 ₸)
     const ASSUMED_PRICE_PER_LITER = Number(localStorage.getItem('fuelPrice')) || 220;
     const enriched = fuelTxs.map(t => {
       const liters = (t.liters && Number(t.liters) > 0)
@@ -4280,10 +4287,9 @@
       return { ...t, amount: Number(t.amount) || 0, calcLiters: liters };
     });
 
-    // Расчёт интервалов между заправками от полного до полного бака (и по точкам одометра)
     const intervals = [];
-    let prevPoint = null; // предыдущая точка с одометром
-    let prevFull = null;  // предыдущая точка с полным баком
+    let prevPoint = null;
+    let prevFull = null;
     let accumulatedLiters = 0;
     let accumulatedCost = 0;
     let partialCount = 0;
@@ -4304,15 +4310,46 @@
 
       if (isFull && hasOdo) {
         const startPoint = prevFull || prevPoint;
-        if (startPoint && Number(t.odometer) > Number(startPoint.odometer)) {
-          const distance = Number(t.odometer) - Number(startPoint.odometer);
+        let distance = 0;
+        const curOdoVal = Number(t.odometer);
+        const startOdoVal = startPoint ? Number(startPoint.odometer) : 0;
+
+        if (odoMode === 'trip') {
+          // В режиме суточного пробега значение в поле одометра и есть пробег на этом баке
+          distance = curOdoVal;
+        } else if (odoMode === 'total') {
+          // В режиме общего одометра вычисляем разницу
+          if (startPoint && curOdoVal > startOdoVal) distance = curOdoVal - startOdoVal;
+        } else {
+          // Авто-режим:
+          if (startPoint && curOdoVal > startOdoVal) {
+            // Если оба одометра маленькие (< 1000) и дельта слишком мала при большом объёме топлива (>25 л),
+            // возможно водитель ввёл пробег за поездку на каждом баке
+            const diff = curOdoVal - startOdoVal;
+            const usedLit = accumulatedLiters > 0 ? accumulatedLiters : t.calcLiters;
+            if (curOdoVal < 1000 && diff < 150 && usedLit >= 30) {
+              distance = curOdoVal; // используем сам пробег
+            } else {
+              distance = diff;
+            }
+          } else if (curOdoVal < 1000) {
+            // Одометр меньше предыдущего — это пробег за поездку
+            distance = curOdoVal;
+          }
+        }
+
+        if (distance > 0) {
           const usedLiters = accumulatedLiters > 0 ? accumulatedLiters : t.calcLiters;
           const usedCost = accumulatedCost > 0 ? accumulatedCost : t.amount;
           const consumption = (usedLiters / distance) * 100;
           const costPerKm = usedCost / distance;
           intervals.push({
-            fromOdo: Number(startPoint.odometer),
-            toOdo: Number(t.odometer),
+            txId: t.id,
+            fromTxId: startPoint ? startPoint.id : null,
+            fromOdo: startOdoVal,
+            toOdo: curOdoVal,
+            fromDate: startPoint ? startPoint.date : t.date,
+            toDate: t.date,
             distance,
             liters: Math.round(usedLiters * 10) / 10,
             cost: usedCost,
@@ -4334,17 +4371,20 @@
       }
     });
 
-    // Общий пробег по одометру за всё время (если есть хотя бы 2 записи с одометром)
     const withOdo = enriched.filter(t => t.odometer !== undefined && t.odometer !== null && Number(t.odometer) > 0);
     let totalDistanceAllTime = 0;
     if (withOdo.length >= 2) {
-      totalDistanceAllTime = Number(withOdo[withOdo.length - 1].odometer) - Number(withOdo[0].odometer);
+      const minOdo = Number(withOdo[0].odometer);
+      const maxOdo = Number(withOdo[withOdo.length - 1].odometer);
+      if (maxOdo > minOdo) totalDistanceAllTime = maxOdo - minOdo;
+    }
+    if (odoMode === 'trip' && intervals.length > 0) {
+      totalDistanceAllTime = intervals.reduce((s,i) => s + i.distance, 0);
     }
 
     const totalFuelCost = enriched.reduce((s,t) => s + t.amount, 0);
     const totalFuelLiters = enriched.reduce((s,t) => s + t.calcLiters, 0);
 
-    // Последний интервал
     let lastInterval = intervals.length ? intervals[intervals.length - 1] : null;
     if (!lastInterval && withOdo.length >= 2) {
       const p1 = withOdo[withOdo.length - 2];
@@ -4354,8 +4394,12 @@
         const l = p2.calcLiters > 0 ? p2.calcLiters : (p2.amount / ASSUMED_PRICE_PER_LITER);
         const c = (l / d) * 100;
         lastInterval = {
+          txId: p2.id,
+          fromTxId: p1.id,
           fromOdo: Number(p1.odometer),
           toOdo: Number(p2.odometer),
+          fromDate: p1.date,
+          toDate: p2.date,
           distance: d,
           liters: Math.round(l * 10) / 10,
           cost: p2.amount,
@@ -4368,7 +4412,6 @@
       }
     }
 
-    // Средний расход
     let avgConsumption = 0;
     if (intervals.length > 0) {
       const sumDist = intervals.reduce((s,i) => s + i.distance, 0);
@@ -4390,7 +4433,9 @@
       avgConsumption,
       lastInterval,
       intervals,
-      lastOdometer
+      lastOdometer,
+      odoMode,
+      rawFuelTxs: enriched.slice().reverse()
     };
   };
 
@@ -4407,6 +4452,11 @@
     }
 
     card.style.display = 'block';
+    card.style.cursor = 'pointer';
+    card.onclick = (e) => {
+      if (!e.target.closest('button')) window.openFuelDetailsModal();
+    };
+
     if (badge && stats.lastOdometer) {
       badge.textContent = `Текущий одометр: ${Number(stats.lastOdometer).toLocaleString()} км`;
     }
@@ -4419,8 +4469,11 @@
     if (intervals.length > 0) {
       historyHtml = `
         <div style="margin-top:10px;border-top:1px solid #1a2a40;padding-top:8px;">
-          <div style="font-size:11px;font-weight:600;color:#6ec6ff;margin-bottom:6px;">Последние замеры расхода:</div>
-          ${intervals.slice(-5).reverse().map(inv => `
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <div style="font-size:11px;font-weight:600;color:#6ec6ff;">Последние замеры расхода:</div>
+            <span style="font-size:10px;color:#8899a6;">(нажмите для деталей)</span>
+          </div>
+          ${intervals.slice(-3).reverse().map(inv => `
             <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #142032;font-size:12px;">
               <div>
                 <span style="font-weight:600;color:#ffd166;">${inv.consumption} л/100км</span>
@@ -4458,7 +4511,175 @@
         <span>Потрачено: <b style="color:#ff6b6b;">${totalFuelCost.toLocaleString()} ₸</b></span>
       </div>
       ${historyHtml}
+      <button type="button" onclick="window.openFuelDetailsModal()" style="width:100%;margin-top:10px;padding:10px;border-radius:10px;border:1px solid #1e3552;background:linear-gradient(135deg, #101c2e, #162a45);color:#6ec6ff;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+        <span>📊 Подробная статистика заправок и формулы</span>
+        <span style="font-size:14px;">➔</span>
+      </button>
     `;
+  };
+
+  window.openFuelDetailsModal = () => {
+    const old = document.getElementById('_fuelDetailsModal');
+    if (old) old.remove();
+
+    const stats = calculateFuelStats();
+    if (!stats || stats.totalTxs === 0) {
+      window.showToast('Нет данных по заправкам топлива', 'error');
+      return;
+    }
+
+    const { avgConsumption, totalDistanceAllTime, totalFuelCost, totalFuelLiters, lastInterval, intervals, lastOdometer, odoMode, rawFuelTxs } = stats;
+
+    const modal = document.createElement('div');
+    modal.id = '_fuelDetailsModal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.88);display:flex;align-items:center;justify-content:center;padding:14px;overflow-y:auto;';
+
+    const costPerKm = (lastInterval && lastInterval.costPerKm) 
+      ? `${lastInterval.costPerKm} ₸/км` 
+      : (totalDistanceAllTime > 0 ? `${Math.round(totalFuelCost / totalDistanceAllTime * 10) / 10} ₸/км` : '—');
+
+    const invMap = {};
+    intervals.forEach(inv => {
+      if (inv.txId) invMap[inv.txId] = inv;
+    });
+
+    let warningHtml = '';
+    if (lastInterval && lastInterval.consumption > 22) {
+      warningHtml = `
+        <div style="background:#2d1414;border:1px solid #5a2222;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:11px;color:#ff9b9b;line-height:1.4;">
+          ⚠️ <b>Расход ${lastInterval.consumption} л / 100 км выглядит необычно высоким!</b><br>
+          По расчёту: заправлено <b>${lastInterval.liters} л</b>, а пробег между записями составил всего <b>${lastInterval.distance} км</b>.<br>
+          ${odoMode !== 'trip' ? `Если в поле одометра вы вводите <b>пробег за поездку на баке</b> (напр. ~300 км), переключите режим ниже на <b>«Суточный Trip»</b>.` : ''}
+          Также проверьте показания одометра в записях ниже и нажмите <b>✏️</b> для исправления опечатки.
+        </div>
+      `;
+    }
+
+    const rowsHtml = (rawFuelTxs || []).map(t => {
+      const inv = invMap[t.id];
+      const hasOdo = t.odometer !== undefined && t.odometer !== null && Number(t.odometer) > 0;
+      return `
+        <div style="background:#161618;border:1px solid #28282c;border-radius:10px;padding:10px;margin-bottom:8px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+            <div style="font-size:12px;font-weight:700;color:#fff;">
+              ${t.date} <span style="font-size:10px;color:#777;font-weight:normal;">${t.time || ''}</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="font-size:10px;padding:1px 6px;border-radius:4px;border:1px solid ${t.fullTank ? '#1e4526' : '#283548'};background:${t.fullTank ? '#0d2613' : '#101a26'};color:${t.fullTank ? '#65d48b' : '#6ec6ff'};">
+                ${t.fullTank ? '⛽ Полный бак' : 'Дозаправка'}
+              </span>
+              <button type="button" onclick="document.getElementById('_fuelDetailsModal').remove(); window.editTx('${t.id}')"
+                style="background:#242428;border:1px solid #38383e;color:#ffd166;padding:3px 8px;border-radius:6px;font-size:11px;cursor:pointer;font-weight:600;">
+                ✏️
+              </button>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#ddd;margin-bottom:3px;">
+            <span>Заправлено: <b style="color:#ffd166;">${t.calcLiters ? t.calcLiters.toFixed(1) : '—'} л</b> (${t.amount.toLocaleString()} ₸)</span>
+            <span style="color:#6ec6ff;">Одометр: <b>${hasOdo ? Number(t.odometer).toLocaleString() + ' км' : '—'}</b></span>
+          </div>
+          ${inv ? `
+            <div style="background:#0e1724;border:1px solid #1c2e47;border-radius:6px;padding:6px 8px;margin-top:6px;font-size:11px;display:flex;justify-content:space-between;align-items:center;">
+              <span style="color:#8899a6;">Отрезок: <b>${inv.distance} км</b></span>
+              <span style="color:#ffd166;font-weight:700;">Расход: ${inv.consumption} л/100км</span>
+              <span style="color:#65d48b;">${inv.costPerKm} ₸/км</span>
+            </div>
+          ` : ''}
+          ${t.comment ? `<div style="font-size:10px;color:#778899;margin-top:4px;">💬 ${esc(t.comment)}</div>` : ''}
+        </div>
+      `;
+    }).join('');
+
+    modal.innerHTML = `
+      <div style="background:#18181a;border-radius:16px;padding:18px;width:100%;max-width:390px;border:1px solid #2a2a2e;box-sizing:border-box;max-height:90vh;overflow-y:auto;box-shadow:0 10px 40px rgba(0,0,0,0.8);">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <div style="font-size:16px;font-weight:700;color:#6ec6ff;display:flex;align-items:center;gap:6px;">
+            <span>⛽ Расход топлива · Подробно</span>
+          </div>
+          <button type="button" onclick="document.getElementById('_fuelDetailsModal').remove()"
+            style="background:none;border:none;color:#888;font-size:22px;cursor:pointer;line-height:1;padding:0 4px;">✕</button>
+        </div>
+
+        <!-- Переключатель режима одометра -->
+        <div style="background:#13151a;padding:8px 10px;border-radius:10px;margin-bottom:12px;border:1px solid #222630;display:flex;justify-content:space-between;align-items:center;">
+          <div style="font-size:11px;color:#8899a6;">Режим пробега:</div>
+          <div style="display:flex;gap:4px;">
+            <button type="button" onclick="setFuelOdoMode('total')"
+              style="padding:4px 8px;border-radius:6px;font-size:11px;font-weight:600;border:1px solid ${odoMode==='total'?'#65d48b':'#2c2c30'};background:${odoMode==='total'?'#0d2613':'#1c1c20'};color:${odoMode==='total'?'#65d48b':'#888'};cursor:pointer;">
+              Общий одометр
+            </button>
+            <button type="button" onclick="setFuelOdoMode('trip')"
+              style="padding:4px 8px;border-radius:6px;font-size:11px;font-weight:600;border:1px solid ${odoMode==='trip'?'#65d48b':'#2c2c30'};background:${odoMode==='trip'?'#0d2613':'#1c1c20'};color:${odoMode==='trip'?'#65d48b':'#888'};cursor:pointer;">
+              Суточный Trip
+            </button>
+          </div>
+        </div>
+
+        <!-- Карточки ключевых показателей -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+          <div style="background:#1c1c20;border:1px solid #2c2c30;border-radius:10px;padding:10px;">
+            <div style="font-size:10px;color:#8899a6;">Средний расход</div>
+            <div style="font-size:17px;font-weight:700;color:#ffd166;margin-top:2px;">
+              ${avgConsumption > 0 ? avgConsumption + ' л' : 'Мало данных'}
+            </div>
+            <div style="font-size:9px;color:#666;">на 100 км за всё время</div>
+          </div>
+          <div style="background:#1c1c20;border:1px solid #2c2c30;border-radius:10px;padding:10px;">
+            <div style="font-size:10px;color:#8899a6;">Последний замер</div>
+            <div style="font-size:17px;font-weight:700;color:#6ec6ff;margin-top:2px;">
+              ${lastInterval ? lastInterval.consumption + ' л' : '—'}
+            </div>
+            <div style="font-size:9px;color:#666;">на 100 км (${lastInterval ? lastInterval.distance + ' км' : 'нет'})</div>
+          </div>
+          <div style="background:#1c1c20;border:1px solid #2c2c30;border-radius:10px;padding:10px;">
+            <div style="font-size:10px;color:#8899a6;">Стоимость 1 км</div>
+            <div style="font-size:16px;font-weight:700;color:#65d48b;margin-top:2px;">${costPerKm}</div>
+            <div style="font-size:9px;color:#666;">затраты на бензин</div>
+          </div>
+          <div style="background:#1c1c20;border:1px solid #2c2c30;border-radius:10px;padding:10px;">
+            <div style="font-size:10px;color:#8899a6;">Пробег по замерам</div>
+            <div style="font-size:16px;font-weight:700;color:#fff;margin-top:2px;">
+              ${totalDistanceAllTime > 0 ? totalDistanceAllTime.toLocaleString() + ' км' : '—'}
+            </div>
+            <div style="font-size:9px;color:#666;">Всего: ${totalFuelLiters} л · ${totalFuelCost.toLocaleString()} ₸</div>
+          </div>
+        </div>
+
+        ${warningHtml}
+
+        <!-- Формула расчёта -->
+        <div style="background:#101a26;border:1px solid #1c324e;border-radius:10px;padding:10px 12px;margin-bottom:14px;">
+          <div style="font-size:11px;font-weight:700;color:#6ec6ff;margin-bottom:4px;">📐 Формула расчёта расхода топлива:</div>
+          <div style="font-size:11px;color:#cbd5e1;line-height:1.45;">
+            <b>(Заправлено литров ÷ Пройденный пробег) × 100</b>
+            ${lastInterval ? `
+              <div style="margin-top:4px;padding:4px 6px;background:#152234;border-radius:6px;font-family:monospace;font-size:11px;color:#ffd166;">
+                (${lastInterval.liters} л ÷ ${lastInterval.distance} км) × 100 = <b>${lastInterval.consumption} л/100км</b>
+              </div>
+              <div style="font-size:10px;color:#8899a6;margin-top:3px;">
+                Отрезок: от <b>${lastInterval.fromOdo.toLocaleString()} км</b> до <b>${lastInterval.toOdo.toLocaleString()} км</b> (${lastInterval.distance} км)
+              </div>
+            ` : ''}
+          </div>
+        </div>
+
+        <div style="font-size:12px;font-weight:700;color:#ddd;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
+          <span>📋 История заправок (${(rawFuelTxs || []).length}):</span>
+          <span style="font-size:10px;color:#8899a6;">нажмите ✏️ для правки</span>
+        </div>
+
+        <div style="max-height:280px;overflow-y:auto;padding-right:2px;margin-bottom:12px;">
+          ${rowsHtml || '<div style="color:#777;font-size:12px;">Нет записанных заправок</div>'}
+        </div>
+
+        <button type="button" onclick="document.getElementById('_fuelDetailsModal').remove()"
+          style="width:100%;padding:12px;border-radius:10px;border:none;background:#2c2c30;color:#fff;font-size:14px;font-weight:600;cursor:pointer;">
+          Закрыть
+        </button>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
   };
 
   // ════════════════════════════════════════════════════════════════
