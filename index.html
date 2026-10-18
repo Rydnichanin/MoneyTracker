@@ -3183,7 +3183,7 @@
 
   window.renderHistorySheet = () => {
     const search = (document.getElementById('histSearch').value||'').toLowerCase().trim();
-    let list = [...(window.allTx||[])];
+    let list = [...(window.allTx||[])].filter(t => !(t.isDeleted || t.deletedAt));
 
     // Тип
     if (_histTypeFilter !== 'all') list = list.filter(t => t.type === _histTypeFilter);
