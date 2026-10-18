@@ -938,6 +938,17 @@
           <button class="btn-main" style="background:#0a1a2a;color:#6ec6ff;border:1px solid #1a3a5a;padding:11px;margin:0;" onclick="saveFuelPrice()">Сохранить цену</button>
         </div>
       </div>
+      <div class="card" style="border-color:#1e355b;">
+        <div class="card-title" style="color:#6ec6ff;">🛢 Замена масла</div>
+        <div style="font-size:12px;color:#8899a6;margin-bottom:10px;">
+          Записывай замену масла с <b>реальным одометром</b> (слово «масло» в категории, подкатегории или примечании). На главном экране появится напоминание.
+        </div>
+        <div class="row2">
+          <input id="setOilInterval" type="number" inputmode="numeric" placeholder="Интервал, км (5000)" />
+          <input id="setOilWarn" type="number" inputmode="numeric" placeholder="Напомнить за, км (500)" />
+        </div>
+        <button class="btn-main" style="background:#0a1a2a;color:#6ec6ff;border:1px solid #1a3a5a;padding:11px;margin-top:8px;" onclick="saveOilSettings()">Сохранить</button>
+      </div>
       <div id="settingsList"></div>
     </div>
   </div>
@@ -990,6 +1001,7 @@
             <span id="gasAvgCons" style="color:#ffd166;font-weight:600;">⛽ Общий расход: —</span>
             <span id="gasLastCons" style="color:#6ec6ff;font-weight:600;">Посл. заправка: —</span>
           </div>
+          <div id="oilReminder" style="display:none;"></div>
         </div>
       </div>
 
@@ -1665,6 +1677,9 @@
           const el = document.getElementById('setFuelPrice');
           if (el) el.value = data.fuelPrice;
         }
+        if (data.oilInterval !== undefined) localStorage.setItem('oilInterval', String(data.oilInterval));
+        if (data.oilWarnBefore !== undefined) localStorage.setItem('oilWarnBefore', String(data.oilWarnBefore));
+        if ((data.oilInterval !== undefined || data.oilWarnBefore !== undefined) && window.renderOilReminder) window.renderOilReminder();
         if (data.clients) {
           try {
             const parsed = typeof data.clients === 'string' ? JSON.parse(data.clients) : data.clients;
@@ -1911,6 +1926,9 @@
     const fp = localStorage.getItem('fuelPrice') || '';
     const fpInp = document.getElementById('setFuelPrice');
     if (fpInp) fpInp.value = fp;
+    const oiInp = document.getElementById('setOilInterval'), owInp = document.getElementById('setOilWarn');
+    if (oiInp) oiInp.value = localStorage.getItem('oilInterval') || '5000';
+    if (owInp) owInp.value = localStorage.getItem('oilWarnBefore') || '500';
     setTimeout(() => document.getElementById('settingsPage').classList.add('open'), 50);
   };
   window.closeSettings = () => {
@@ -1944,6 +1962,86 @@
     if (!t) return false;
     if (t.includes('бенз') || t.includes('топлив') || t.includes('заправ') || t.includes('гсм')) return true;
     return /(^|[^а-яёa-z0-9])газ($|[^а-яёa-z0-9])/.test(t);
+  };
+
+  // Замена масла (категория, подкатегория или комментарий содержит «масл»)
+  window.isOilText = (s) => /масл/.test(String(s || '').toLowerCase());
+
+  // Сервис/обслуживание авто — это НЕ заправка, даже если в записи указан одометр
+  window.isServiceText = (s) => {
+    const t = String(s || '').toLowerCase();
+    if (!t) return false;
+    return ['масл','ремонт','мойк','шиномонт','запчаст','сервис','диагност','тормоз','колодк',
+            'свеч','фильтр','антифриз','аккумулят','страховк','осаго','штраф','парковк']
+      .some(w => t.includes(w));
+  };
+
+  // Напоминание о замене масла: считает пробег с последней записи «масло» с одометром.
+  // Настройки: интервал замены (по умолчанию 5000 км) и за сколько км напоминать (500 → с 4500 км).
+  window.calculateOilStatus = () => {
+    const interval = Number(localStorage.getItem('oilInterval')) || 5000;
+    const warnBefore = Number(localStorage.getItem('oilWarnBefore'));
+    const warnAt = interval - (Number.isFinite(warnBefore) && warnBefore > 0 ? warnBefore : 500);
+    const byTime = (a, b) => (a.date === b.date ? (a.createdAt || 0) - (b.createdAt || 0) : (a.date > b.date ? 1 : -1));
+    const withOdo = (window.allTx || [])
+      .filter(t => t.type === 'expense' && Number(t.odometer) > 0)
+      .sort(byTime);
+    if (!withOdo.length) return null;
+    const oilTxs = withOdo.filter(t => window.isOilText(t.subcategory) || window.isOilText(t.categoryName) || window.isOilText(t.comment));
+    if (!oilTxs.length) return null;
+    const lastOil = oilTxs[oilTxs.length - 1];
+    const current = Number(withOdo[withOdo.length - 1].odometer); // самый свежий замер одометра
+    const oilOdo = Number(lastOil.odometer);
+    const driven = current - oilOdo;
+    const left = interval - driven;
+    let state = 'ok';
+    if (driven < 0 || (oilOdo < 1000 && current >= 10000) || driven > interval * 2) state = 'check';
+    else if (driven >= interval) state = 'due';
+    else if (driven >= warnAt) state = 'soon';
+    return { state, interval, warnAt, current, oilOdo, driven, left, oilDate: lastOil.date };
+  };
+
+  window.renderOilReminder = () => {
+    const el = document.getElementById('oilReminder');
+    if (!el) return;
+    const s = window.calculateOilStatus();
+    if (!s) { el.style.display = 'none'; el.innerHTML = ''; return; }
+    const n = (v) => Math.round(v).toLocaleString('ru-RU');
+    let color = '#8899a6', bg = 'transparent', border = '#233554', text = '';
+    if (s.state === 'check') {
+      color = '#ff9b9b'; bg = '#2d1414'; border = '#5a2222';
+      text = s.driven < 0
+        ? `⚠️ Замена масла записана с одометром ${n(s.oilOdo)} км — больше текущего (${n(s.current)} км). Проверьте запись (✏️).`
+        : `⚠️ Замена масла записана с одометром ${n(s.oilOdo)} км — похоже на ошибку (сейчас ${n(s.current)} км). Исправьте запись (✏️), и напоминание заработает.`;
+    } else if (s.state === 'due') {
+      color = '#ff9b9b'; bg = '#2d1414'; border = '#5a2222';
+      text = `🛢 <b>Пора менять масло!</b> С прошлой замены прошло ${n(s.driven)} км (интервал ${n(s.interval)} км).`;
+    } else if (s.state === 'soon') {
+      color = '#ffd166'; bg = '#2a2410'; border = '#5a4a1a';
+      text = `🛢 <b>Скоро замена масла:</b> прошло ${n(s.driven)} км, осталось ~${n(s.left)} км.`;
+    } else {
+      text = `🛢 Масло: прошло ${n(s.driven)} км, до замены ~${n(s.left)} км`;
+    }
+    el.style.display = 'block';
+    el.style.cssText = `display:block;font-size:11px;line-height:1.4;margin-top:6px;padding:${bg === 'transparent' ? '0' : '8px 10px'};border-radius:8px;color:${color};background:${bg};border:${bg === 'transparent' ? 'none' : '1px solid ' + border};`;
+    el.innerHTML = text;
+  };
+
+  window.saveOilSettings = async () => {
+    const interval = Number(document.getElementById('setOilInterval').value);
+    const warn = Number(document.getElementById('setOilWarn').value);
+    if (!Number.isFinite(interval) || interval < 1000) { window.showToast('Интервал замены масла — от 1000 км', 'error'); return; }
+    if (!Number.isFinite(warn) || warn < 0 || warn >= interval) { window.showToast('«Напоминать за» должно быть меньше интервала', 'error'); return; }
+    localStorage.setItem('oilInterval', String(interval));
+    localStorage.setItem('oilWarnBefore', String(warn));
+    if (window.renderOilReminder) window.renderOilReminder();
+    try {
+      const { fbDB, fbMethods, fbUser } = window;
+      if (fbUser && fbUser.uid && fbDB) {
+        await fbMethods.setDoc(fbMethods.doc(fbDB, 'users', fbUser.uid), { oilInterval: interval, oilWarnBefore: warn }, { merge: true });
+      }
+    } catch(e) { console.warn('saveOilSettings Firebase error:', e.message); }
+    window.showToast(`✅ Масло: замена каждые ${interval} км, напомню с ${interval - warn} км`);
   };
 
   window._fuelLitersManuallyEdited = false;
@@ -2452,6 +2550,7 @@
         // Поля одометра/литров показываем для топлива и для общих категорий «авто/машина»
         const isFuel = elT.value === 'expense' && (
           window.isFuelText(catName) || window.isFuelText(subName) ||
+          window.isOilText(catName) || window.isOilText(subName) ||
           catName.includes('авто') || catName.includes('машин')
         );
         const fw = document.getElementById("fuelFieldsWrap");
@@ -2693,6 +2792,9 @@
     if (gasTextEl) gasTextEl.textContent = `Бензин: ${gasP}% (${gas.toLocaleString()} ₸)`;
     const gasFillEl = document.getElementById("gasFill");
     if (gasFillEl) gasFillEl.style.width = Math.min(Number(gasP)*3,100)+"%";
+
+    // Напоминание о замене масла
+    if (window.renderOilReminder) window.renderOilReminder();
 
     // Показатели расхода топлива (общий и за последнюю заправку)
     const fuelStats = window.calculateFuelStats ? window.calculateFuelStats() : null;
@@ -4273,13 +4375,17 @@
     const fuelTxs = (window.allTx || []).filter(t => {
       if (t.type !== 'expense') return false;
       const looksLikeFuel = window.isFuelText(t.subcategory) || window.isFuelText(t.categoryName) || window.isFuelText(t.comment);
-      // Явные отметки «полный бак» или одометр — запись точно про заправку/пробег
-      if (t.fullTank || (t.odometer !== undefined && t.odometer !== null && Number(t.odometer) > 0)) {
-        return true;
-      }
-      // Только литры без одометра: берём лишь если запись похожа на топливо.
-      // Раньше литры, автоподставленные в мойку/магазин и т.п., попадали в расчёт и завышали расход.
-      if (t.liters !== undefined && Number(t.liters) > 0) return looksLikeFuel;
+      const looksLikeService = window.isServiceText(t.subcategory) || window.isServiceText(t.categoryName) || window.isServiceText(t.comment);
+      const hasOdo = t.odometer !== undefined && t.odometer !== null && Number(t.odometer) > 0;
+      const hasLit = t.liters !== undefined && t.liters !== null && Number(t.liters) > 0;
+      // Замена масла, ремонт, мойка и т.п. — не заправка, даже с одометром.
+      // Раньше такая запись становилась «точкой отсчёта» (например, масло с одометром 1) и ломала расход.
+      if (looksLikeService && !looksLikeFuel && !t.fullTank) return false;
+      if (t.fullTank) return true;
+      // Заправка с одометром и литрами — точно заправка, как бы ни называлась категория
+      if (hasOdo && hasLit) return true;
+      // Одометр без литров или литры без одометра: только если запись похожа на топливо.
+      // (Раньше любая трата с одометром или с автоподставленными литрами считалась заправкой.)
       return looksLikeFuel;
     }).sort((a,b) => {
       if (a.date !== b.date) return a.date > b.date ? 1 : -1;
