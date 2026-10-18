@@ -931,12 +931,14 @@
       <div class="card" style="border-color:#1e355b;">
         <div class="card-title" style="color:#6ec6ff;">⛽ Цена за литр бензина</div>
         <div style="font-size:12px;color:#8899a6;margin-bottom:10px;">
-          Используется при заправке: введи сумму в ₸ — литры рассчитаются автоматически
+          Введи сумму в ₸ — литры рассчитаются автоматически. Новая цена действует <b>с выбранной даты</b>, прошлые заправки остаются по старой цене.
         </div>
         <div class="row2">
-          <input id="setFuelPrice" type="number" step="0.1" inputmode="decimal" placeholder="Напр. 225" />
-          <button class="btn-main" style="background:#0a1a2a;color:#6ec6ff;border:1px solid #1a3a5a;padding:11px;margin:0;" onclick="saveFuelPrice()">Сохранить цену</button>
+          <input id="setFuelPrice" type="number" step="0.1" inputmode="decimal" placeholder="Напр. 242" />
+          <input id="setFuelPriceDate" type="date" />
         </div>
+        <button class="btn-main" style="background:#0a1a2a;color:#6ec6ff;border:1px solid #1a3a5a;padding:11px;margin-top:8px;" onclick="saveFuelPrice()">Сохранить цену с этой даты</button>
+        <div id="fuelPriceHistoryList"></div>
       </div>
       <div class="card" style="border-color:#1e355b;">
         <div class="card-title" style="color:#6ec6ff;">🛢 Замена масла</div>
@@ -1031,6 +1033,10 @@
             <div class="row2" style="margin-bottom:6px;">
               <input id="fuelOdometer" type="number" inputmode="numeric" placeholder="Одометр (км)" style="padding:10px;font-size:14px;" />
               <input id="fuelLiters" type="number" step="0.01" inputmode="decimal" placeholder="Литры (напр. 30)" style="padding:10px;font-size:14px;" oninput="window._fuelLitersManuallyEdited = true;" />
+            </div>
+            <div id="fuelPriceRow" style="display:none;margin-bottom:6px;">
+              <input id="fuelPricePerL" type="number" step="0.1" inputmode="decimal" placeholder="Цена за литр, ₸" style="padding:10px;font-size:14px;" oninput="window._fuelPriceManual = this.value !== ''; if (window.autoCalcFuelLiters) window.autoCalcFuelLiters();" />
+              <div style="font-size:10px;color:#778899;margin-top:3px;">Цена выросла? Впиши новую: она сохранится для этой и следующих заправок, прошлые не изменятся</div>
             </div>
             <div style="font-size:10px;color:#778899;margin-bottom:6px;" id="fuelCalcNote"></div>
             <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#ddd;cursor:pointer;">
@@ -1677,6 +1683,14 @@
           const el = document.getElementById('setFuelPrice');
           if (el) el.value = data.fuelPrice;
         }
+        if (data.fuelPriceHistory !== undefined) {
+          try {
+            const fh = typeof data.fuelPriceHistory === 'string' ? data.fuelPriceHistory : JSON.stringify(data.fuelPriceHistory);
+            localStorage.setItem('fuelPriceHistory', fh);
+            if (window.getFuelPriceOn) localStorage.setItem('fuelPrice', String(window.getFuelPriceOn(window.fuelToday()) || data.fuelPrice || ''));
+            if (window.renderFuelPriceHistory) window.renderFuelPriceHistory();
+          } catch(e) { console.warn('fuelPriceHistory load:', e.message); }
+        }
         if (data.oilInterval !== undefined) localStorage.setItem('oilInterval', String(data.oilInterval));
         if (data.oilWarnBefore !== undefined) localStorage.setItem('oilWarnBefore', String(data.oilWarnBefore));
         if ((data.oilInterval !== undefined || data.oilWarnBefore !== undefined) && window.renderOilReminder) window.renderOilReminder();
@@ -1923,9 +1937,12 @@
   };
   window.openSettings = () => {
     closeDrawer();
-    const fp = localStorage.getItem('fuelPrice') || '';
+    const fp = window.getFuelPriceOn(window.fuelToday()) || '';
     const fpInp = document.getElementById('setFuelPrice');
     if (fpInp) fpInp.value = fp;
+    const fpDate = document.getElementById('setFuelPriceDate');
+    if (fpDate) fpDate.value = window.fuelToday();
+    window.renderFuelPriceHistory();
     const oiInp = document.getElementById('setOilInterval'), owInp = document.getElementById('setOilWarn');
     if (oiInp) oiInp.value = localStorage.getItem('oilInterval') || '5000';
     if (owInp) owInp.value = localStorage.getItem('oilWarnBefore') || '500';
@@ -1935,24 +1952,83 @@
     document.getElementById('settingsPage').classList.remove('open');
   };
 
+  // ── История цен на бензин ──────────────────────────────────────
+  // Цена действует «с даты». Заправки до этой даты остаются по старой цене,
+  // после — считаются по новой. Прошлые записи при смене цены НЕ пересчитываются.
+  window.fuelToday = () => {
+    const d = new Date(); const p = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  };
+  window.fuelFmtDate = (iso) => (iso === '1970-01-01' ? 'начала' : String(iso).split('-').reverse().join('.'));
+  window.getFuelPriceHistory = () => {
+    let arr = [];
+    try { const raw = JSON.parse(localStorage.getItem('fuelPriceHistory') || '[]'); if (Array.isArray(raw)) arr = raw; } catch(e) {}
+    arr = arr.map(e => ({ from: String(e.from || ''), price: Number(e.price) }))
+             .filter(e => /^\d{4}-\d{2}-\d{2}$/.test(e.from) && e.price > 0)
+             .sort((a, b) => (a.from < b.from ? -1 : a.from > b.from ? 1 : 0));
+    if (!arr.length) {
+      // Истории ещё нет, но цена была задана раньше — она считается ценой «с начала»
+      const fp = Number(localStorage.getItem('fuelPrice'));
+      if (fp > 0) arr = [{ from: '1970-01-01', price: fp }];
+    }
+    return arr;
+  };
+  window.getFuelPriceOn = (dateStr) => {
+    const h = window.getFuelPriceHistory();
+    if (!h.length) return 0;
+    const d = String(dateStr || window.fuelToday()).slice(0, 10);
+    let price = h[0].price;
+    for (const e of h) { if (e.from <= d) price = e.price; else break; }
+    return price;
+  };
+  window.setFuelPriceHistory = async (arr) => {
+    arr = arr.slice().sort((a, b) => (a.from < b.from ? -1 : a.from > b.from ? 1 : 0));
+    localStorage.setItem('fuelPriceHistory', JSON.stringify(arr));
+    const current = window.getFuelPriceOn(window.fuelToday());
+    localStorage.setItem('fuelPrice', String(current));
+    try {
+      const { fbDB, fbMethods, fbUser } = window;
+      if (fbUser && fbUser.uid && fbDB) {
+        await fbMethods.setDoc(fbMethods.doc(fbDB, 'users', fbUser.uid), {
+          fuelPrice: current,
+          fuelPriceHistory: JSON.stringify(arr),
+          fuelPriceUpdated: Date.now()
+        }, { merge: true });
+      }
+    } catch(e) { console.warn('setFuelPriceHistory Firebase error:', e.message); }
+    if (window.renderFuelPriceHistory) window.renderFuelPriceHistory();
+    if (window.render) window.render();
+  };
+  window.renderFuelPriceHistory = () => {
+    const box = document.getElementById('fuelPriceHistoryList');
+    if (!box) return;
+    const h = window.getFuelPriceHistory().slice().reverse();
+    if (!h.length) { box.innerHTML = ''; return; }
+    box.innerHTML = '<div style="font-size:11px;color:#8899a6;margin:10px 0 4px;">История цен:</div>' + h.map(e =>
+      `<div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;padding:5px 0;border-top:1px solid #1c2a3e;">
+         <span>с ${window.fuelFmtDate(e.from)} — <b style="color:#65d48b;">${e.price} ₸/л</b></span>
+         <button class="set-del" onclick="deleteFuelPriceEntry('${e.from}')">✕</button>
+       </div>`).join('');
+  };
+  window.deleteFuelPriceEntry = (from) => {
+    const h = window.getFuelPriceHistory();
+    if (h.length <= 1) { window.showToast('Нельзя удалить единственную цену', 'error'); return; }
+    window.setFuelPriceHistory(h.filter(e => e.from !== from));
+  };
   window.saveFuelPrice = async () => {
     const val = Number(document.getElementById('setFuelPrice').value);
     if (!Number.isFinite(val) || val <= 0) {
       window.showToast('Введите корректную цену за литр', 'error');
       return;
     }
-    localStorage.setItem('fuelPrice', String(val));
+    const dEl = document.getElementById('setFuelPriceDate');
+    const from = (dEl && dEl.value) ? dEl.value : window.fuelToday();
+    // Новая цена добавляется в историю с даты «from»; прошлые цены сохраняются
+    const hist = window.getFuelPriceHistory().filter(e => e.from !== from);
+    hist.push({ from, price: val });
+    await window.setFuelPriceHistory(hist);
     if (window.autoCalcFuelLiters) window.autoCalcFuelLiters();
-    try {
-      const { fbDB, fbMethods, fbUser } = window;
-      if (fbUser && fbUser.uid && fbDB) {
-        await fbMethods.setDoc(fbMethods.doc(fbDB, 'users', fbUser.uid), {
-          fuelPrice: val,
-          fuelPriceUpdated: Date.now()
-        }, { merge: true });
-      }
-    } catch(e) { console.warn('saveFuelPrice Firebase error:', e.message); }
-    window.showToast(`✅ Цена за литр: ${val} ₸ сохранена в Firebase`);
+    window.showToast(`✅ ${val} ₸/л действует с ${window.fuelFmtDate(from)}. Прошлые заправки не изменились`);
   };
 
   // Определяет, относится ли текст (категория, подкатегория, комментарий) к топливу.
@@ -2062,7 +2138,20 @@
     // Литры считаем автоматически ТОЛЬКО для настоящего топлива (не для мойки, ТО, магазина и т.п.)
     const isFuel = elT.value === 'expense' && (window.isFuelText(catName) || window.isFuelText(subName));
 
-    const fp = Number(localStorage.getItem('fuelPrice')) || 0;
+    // Цена берётся на ДАТУ записи (из истории цен), а не «текущая» — так старые заправки не меняются
+    const dateEl = document.getElementById('date');
+    const fDate = (dateEl && dateEl.value) ? dateEl.value : window.fuelToday();
+    const priceEl = document.getElementById('fuelPricePerL');
+    const priceRow = document.getElementById('fuelPriceRow');
+    const histPrice = window.getFuelPriceOn(fDate);
+    let fp = histPrice;
+    if (isFuel && priceEl) {
+      const typed = Number(priceEl.value);
+      if (window._fuelPriceManual && typed > 0) fp = typed;
+      else if (!window._fuelPriceManual) priceEl.value = histPrice > 0 ? histPrice : '';
+    }
+    window._fuelFormIsFuel = isFuel;
+    if (priceRow) priceRow.style.display = isFuel ? 'block' : 'none';
     if (priceHint) {
       priceHint.innerHTML = fp > 0 ? `Цена: <b style="color:#65d48b;">${fp} ₸/л</b>` : `<span style="color:#e0a050;">цена не задана</span>`;
     }
@@ -2558,6 +2647,12 @@
         if (window.autoCalcFuelLiters) window.autoCalcFuelLiters();
       };
 
+      const fuelDateEl = document.getElementById("date");
+      if (fuelDateEl && !fuelDateEl._fuelDateBound) {
+        fuelDateEl._fuelDateBound = true;
+        fuelDateEl.addEventListener("change", () => { if (window.autoCalcFuelLiters) window.autoCalcFuelLiters(); });
+      }
+
       const amtEl = document.getElementById("amount");
       if (amtEl && !amtEl._fuelInputBound) {
         amtEl._fuelInputBound = true;
@@ -2644,6 +2739,24 @@
       const errors = window.validateTx(txData);
       if (errors.length) { window.showToast('⚠️ ' + errors[0], 'error'); return; }
 
+      // Цена за литр: если в форме вписана НОВАЯ цена — запоминаем её «с даты записи».
+      // Следующие заправки пойдут по ней, прошлые остаются по старой (в них литры уже сохранены).
+      // Если запись внесена задним числом (раньше последней смены цены) — историю не трогаем.
+      if (type === 'expense' && window._fuelFormIsFuel && window._fuelPriceManual) {
+        const pEl = document.getElementById('fuelPricePerL');
+        const newPrice = pEl ? Number(pEl.value) : 0;
+        if (newPrice > 0 && newPrice !== window.getFuelPriceOn(txData.date)) {
+          const hist = window.getFuelPriceHistory();
+          const lastFrom = hist.length ? hist[hist.length - 1].from : '';
+          if (!hist.length || txData.date >= lastFrom) {
+            const next = hist.filter(e => e.from !== txData.date);
+            next.push({ from: txData.date, price: newPrice });
+            window.setFuelPriceHistory(next);
+            window.showToast(`⛽ Новая цена ${newPrice} ₸/л действует с ${window.fuelFmtDate(txData.date)}`);
+          }
+        }
+      }
+
       // ── Оптимистичное добавление: сразу показываем в списке, ──────
       // не дожидаясь ответа сервера. Firebase подтвердит в фоне —
       // если не получится, запись откатится и покажется ошибка.
@@ -2655,6 +2768,9 @@
       document.getElementById("fuelFullTank").checked = false;
       window._fuelLitersManuallyEdited = false;
       const fNote = document.getElementById("fuelCalcNote"); if (fNote) fNote.innerHTML = "";
+      window._fuelPriceManual = false;
+      const fPriceEl = document.getElementById("fuelPricePerL"); if (fPriceEl) fPriceEl.value = "";
+      if (window.autoCalcFuelLiters) window.autoCalcFuelLiters();
       setToday();
       debouncedRender();
       window.showToast(`${type==='income'?'+':'−'}${amt.toLocaleString()} ₸ записано`);
@@ -4395,11 +4511,12 @@
 
     if (!fuelTxs.length) return null;
 
-    const ASSUMED_PRICE_PER_LITER = Number(localStorage.getItem('fuelPrice')) || 220;
+    // Цена для оценки литров (когда литры не введены) — на дату КАЖДОЙ заправки из истории цен
+    const priceFor = (t) => window.getFuelPriceOn(t.date) || Number(localStorage.getItem('fuelPrice')) || 220;
     const enriched = fuelTxs.map(t => {
       const liters = (t.liters && Number(t.liters) > 0)
         ? Number(t.liters)
-        : (Number(t.amount) > 0 ? (Number(t.amount) / ASSUMED_PRICE_PER_LITER) : 0);
+        : (Number(t.amount) > 0 ? (Number(t.amount) / priceFor(t)) : 0);
       return { ...t, amount: Number(t.amount) || 0, calcLiters: liters, litersEstimated: !(t.liters && Number(t.liters) > 0) };
     });
 
@@ -4523,7 +4640,7 @@
       const p2 = withOdo[withOdo.length - 1];
       const d = Number(p2.odometer) - Number(p1.odometer);
       if (d > 0) {
-        const l = p2.calcLiters > 0 ? p2.calcLiters : (p2.amount / ASSUMED_PRICE_PER_LITER);
+        const l = p2.calcLiters > 0 ? p2.calcLiters : (p2.amount / priceFor(p2));
         const c = (l / d) * 100;
         lastInterval = {
           txId: p2.id,
