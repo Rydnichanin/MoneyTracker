@@ -66,6 +66,8 @@
     .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; z-index: 200; display: flex; background: #0a0a0a; border-top: 1px solid #1a1a1a; height: var(--nav-h); max-width: 500px; margin: 0 auto; }
     .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; cursor: pointer; color: #2a2a2a; border: none; background: none; padding-bottom: 6px; transition: color 0.15s; }
     .nav-item.active { color: var(--pos); }
+    .nav-item .nav-label { white-space: nowrap; }
+    @media (max-width: 380px) { .nav-label { font-size: 9px; } .nav-icon { font-size: 19px; } .nav-item { gap: 2px; } }
     .nav-icon { font-size: 22px; line-height: 1; }
     .nav-label { font-size: 10px; font-weight: 600; }
 
@@ -1212,6 +1214,19 @@
     </div>
 
     <!-- 6. ЧАТ / ВСТАВКА ИЗ WHATSAPP -->
+    <!-- УДАЛЁННЫЕ ЗАПИСИ: мягкое удаление позволяет восстановить операцию -->
+    <div class="tab" id="tab-deleted">
+      <div class="card">
+        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+          <span>🗑️ Удалённые записи</span>
+          <span id="deletedCount" style="color:var(--neg);">0</span>
+        </div>
+        <div style="font-size:12px;color:#777;margin-bottom:10px;">Записи здесь не участвуют в балансе и статистике. Их можно восстановить.</div>
+        <input id="deletedSearch" type="search" placeholder="Поиск по сумме, категории или комментарию..." oninput="renderDeletedTx()" style="margin-bottom:10px;" />
+        <div id="deletedList"><div class="muted">Удалённых записей пока нет</div></div>
+      </div>
+    </div>
+
     <div class="tab" id="tab-wa">
       <div class="card" style="border-color:#1a2a1a;">
         <div class="card-title" style="color:#65d48b;">📋 Вставить из WhatsApp</div>
@@ -1270,6 +1285,9 @@
     </button>
     <button class="nav-item" onclick="switchTab('expense')" id="nav-expense">
       <span class="nav-icon">📉</span><span class="nav-label">Расходы</span>
+    </button>
+    <button class="nav-item" onclick="switchTab('deleted')" id="nav-deleted">
+      <span class="nav-icon">🗑️</span><span class="nav-label">Удалённые</span>
     </button>
     <button class="nav-item" onclick="switchTab('budget')" id="nav-budget">
       <span class="nav-icon">🎯</span><span class="nav-label">Бюджет</span>
@@ -2692,6 +2710,7 @@
         allTx = [...pendingTx, ...serverTx]; window.allTx = allTx;
         if (!document.getElementById("fromDate").value) setRange('today'); else debouncedRender();
         if (document.getElementById('historySheet')?.classList.contains('open')) renderHistorySheet();
+        renderDeletedTx();
         cacheTxToLocal();
       } catch(err) {
         console.error('Ошибка обработки транзакций:', err);
@@ -2811,6 +2830,7 @@
   function render() {
     const from=document.getElementById("fromDate").value, to=document.getElementById("toDate").value;
     const filtered=allTx.filter(t=>{
+      if (t.isDeleted || t.deletedAt) return false;
       if(!(!from||t.date>=from)||!(!to||t.date<=to)) return false;
       if(t.subcategory&&(t.subcategory.startsWith('← ')||t.subcategory.startsWith('→ '))) return false;
       return true;
@@ -2893,6 +2913,7 @@
     const accs={};
     ACCOUNTS.forEach(a=>{accs[a.name]=Number(a.initialBalance)||0;});
     allTx.forEach(t=>{
+      if (t.isDeleted || t.deletedAt) return;
       if(t.type==='transfer'){if(accs[t.fromAccount]!==undefined)accs[t.fromAccount]-=t.amount;if(accs[t.toAccount]!==undefined)accs[t.toAccount]+=t.amount;return;}
       const acc=t.account&&t.account!=='undefined'&&t.account!==''&&t.account!=='Счет не выбран'?t.account:null;
       if(!acc)return; if(accs[acc]===undefined)accs[acc]=0;
@@ -5253,19 +5274,53 @@
     }
   };
 
+  // Мягкое удаление сохраняет документ в Firestore для последующего восстановления.
   window.deleteTx = (id) => {
     if (String(id).startsWith('tmp_')) { window.showToast('Запись ещё сохраняется — подожди секунду', 'warn'); return; }
-    showConfirm('Удалить запись?', async () => {
+    showConfirm('Переместить запись в удалённые?', async () => {
       try {
-        await window.fbMethods.deleteDoc(
-          window.fbMethods.doc(window.fbDB, "users", window.fbUser.uid, "transactions", id)
-        );
-        window.showToast('Запись удалена');
+        await window.fbMethods.updateDoc(window.fbMethods.doc(window.fbDB, 'users', window.fbUser.uid, 'transactions', id), { isDeleted: true, deletedAt: Date.now() });
+        window.showToast('Запись перемещена в удалённые');
       } catch(e) {
         window.showToast('Ошибка удаления', 'error');
         console.error('deleteTx:', e);
       }
     });
+  };
+
+  window.renderDeletedTx = () => {
+    const list = document.getElementById('deletedList');
+    const count = document.getElementById('deletedCount');
+    if (!list || !count) return;
+    const queryText = (document.getElementById('deletedSearch')?.value || '').trim().toLowerCase();
+    const deleted = allTx.filter(t => t.isDeleted || t.deletedAt).sort((a,b) => Number(b.deletedAt || 0) - Number(a.deletedAt || 0));
+    count.textContent = String(deleted.length);
+    const filtered = deleted.filter(t => [t.amount,t.type,t.categoryName,t.subcategory,t.comment,t.account,t.fromAccount,t.toAccount,t.date].map(v => String(v ?? '')).join(' ').toLowerCase().includes(queryText));
+    list.innerHTML = filtered.map(t => {
+      const amount = Number(t.amount || 0).toLocaleString('ru-RU');
+      const typeLabel = t.type === 'income' ? 'Доход' : t.type === 'expense' ? 'Расход' : 'Перевод';
+      const date = [t.date,t.time].filter(Boolean).map(esc).join(' ');
+      const title = t.type === 'transfer' ? esc(t.fromAccount || '') + ' → ' + esc(t.toAccount || '') : esc(t.subcategory || t.categoryName || 'Без категории');
+      const comment = t.comment ? '<div style="font-size:11px;color:#888;margin-top:4px;">📝 ' + esc(t.comment) + '</div>' : '';
+      const deletedDate = t.deletedAt ? new Date(Number(t.deletedAt)).toLocaleString('ru-RU') : '';
+      return '<div class="hist-item"><div style="min-width:0;flex:1;"><b class="' + (t.type === 'income' ? 'pos' : t.type === 'expense' ? 'neg' : '') + '">' + amount + ' ₸</b>' +
+        '<span style="font-size:11px;color:#777;"> · ' + typeLabel + '</span><div style="font-size:13px;margin-top:3px;word-break:break-word;">' + title + '</div>' +
+        '<div class="stat-sub">' + date + (t.account ? ' · ' + esc(t.account) : '') + '</div>' + comment +
+        '<div style="font-size:10px;color:#555;margin-top:4px;">Удалено: ' + esc(deletedDate || 'дата неизвестна') + '</div></div>' +
+        '<button onclick="restoreTx(\'' + esc(t.id) + '\')" style="background:#0a1f10;border:1px solid #245b35;border-radius:8px;color:#65d48b;padding:8px 10px;cursor:pointer;flex-shrink:0;">↩ Вернуть</button></div>';
+    }).join('') || '<div class="muted" style="padding:12px 0;">' + (deleted.length ? 'Ничего не найдено' : 'Удалённых записей пока нет') + '</div>';
+  };
+
+  window.restoreTx = async (id) => {
+    if (!id || String(id).startsWith('tmp_')) return;
+    try {
+      await window.fbMethods.updateDoc(window.fbMethods.doc(window.fbDB, 'users', window.fbUser.uid, 'transactions', id), { isDeleted: false, deletedAt: null });
+      window.showToast('Запись восстановлена');
+      window.renderDeletedTx();
+    } catch(e) {
+      window.showToast('Не удалось восстановить запись', 'error');
+      console.error('restoreTx:', e);
+    }
   };
 
   window.editTx = (id) => {
