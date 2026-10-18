@@ -25,7 +25,7 @@
   <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()" />
   <meta http-equiv="Content-Security-Policy" content="
     default-src 'self';
-    script-src 'self' 'unsafe-inline' https://www.gstatic.com;
+    script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com;
     style-src 'self' 'unsafe-inline';
     connect-src 'self'
       https://*.googleapis.com
@@ -34,7 +34,7 @@
       https://firestore.googleapis.com
       https://identitytoolkit.googleapis.com
       https://securetoken.googleapis.com;
-    frame-src 'none';
+    frame-src https://*.firebaseapp.com https://accounts.google.com;
     object-src 'none';
     base-uri 'self';
   " />
@@ -918,6 +918,14 @@
         <div class="row2">
           <input id="setAccName" type="text" placeholder="Напр: Kaspi">
           <button class="btn-main" style="background:#222;color:#fff;padding:11px;margin:0;" onclick="addAccount()">Добавить</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Начальный баланс счёта</div>
+        <select id="setBalanceAcc"></select>
+        <div class="row2" style="margin-top:8px;">
+          <input id="setBalanceVal" type="number" inputmode="decimal" placeholder="Сумма, ₸">
+          <button class="btn-main" style="background:#222;color:#fff;padding:11px;margin:0;" onclick="setInitialBalance()">Установить</button>
         </div>
       </div>
       <div class="card" style="border-color:#1e355b;">
@@ -1929,6 +1937,15 @@
     window.showToast(`✅ Цена за литр: ${val} ₸ сохранена в Firebase`);
   };
 
+  // Определяет, относится ли текст (категория, подкатегория, комментарий) к топливу.
+  // «газ» ищем только как отдельное слово: раньше он срабатывал на «магазин», «газета» и т.п.
+  window.isFuelText = (s) => {
+    const t = String(s || '').toLowerCase();
+    if (!t) return false;
+    if (t.includes('бенз') || t.includes('топлив') || t.includes('заправ') || t.includes('гсм')) return true;
+    return /(^|[^а-яёa-z0-9])газ($|[^а-яёa-z0-9])/.test(t);
+  };
+
   window._fuelLitersManuallyEdited = false;
   window.autoCalcFuelLiters = () => {
     const elT = document.getElementById("type");
@@ -1943,14 +1960,9 @@
     const currentCats = (window.DEFAULTS && window.DEFAULTS[elT.value]) || [];
     const catObj = currentCats.find(c => c.id === elC.value);
     const catName = (catObj ? catObj.name : '').toLowerCase();
-    const isFuel = elT.value === 'expense' && (
-      catName.includes('бенз') || subName.includes('бенз') ||
-      catName.includes('топлив') || subName.includes('топлив') ||
-      catName.includes('газ') || subName.includes('газ') ||
-      catName.includes('заправ') || subName.includes('заправ') ||
-      catName.includes('гсм') || subName.includes('гсм') ||
-      catName.includes('авто') || catName.includes('машин')
-    );
+    const subName = (elS && elS.value ? elS.value : '').toLowerCase();
+    // Литры считаем автоматически ТОЛЬКО для настоящего топлива (не для мойки, ТО, магазина и т.п.)
+    const isFuel = elT.value === 'expense' && (window.isFuelText(catName) || window.isFuelText(subName));
 
     const fp = Number(localStorage.getItem('fuelPrice')) || 0;
     if (priceHint) {
@@ -1959,6 +1971,9 @@
 
     if (!isFuel) {
       if (noteEl) noteEl.innerHTML = '';
+      // Если литры были подставлены автоматически, а категория сменилась на не-топливо — убираем,
+      // иначе запись (мойка, ТО, магазин) попадёт в расчёт расхода как заправка
+      if (!window._fuelLitersManuallyEdited) litEl.value = '';
       return;
     }
 
@@ -2202,7 +2217,7 @@
             ACCOUNTS.push({ id: d.id, ...data }); window.ACCOUNTS = ACCOUNTS;
             const ib = Number(data.initialBalance)||0;
             setHtml += `<div class="set-item">
-              <div class="set-item-top"><span>💳 ${data.name}</span><button class="set-del" onclick="deleteSet('${d.id}')">✕</button></div>
+              <div class="set-item-top"><span>💳 ${esc(data.name)}</span><button class="set-del" onclick="deleteSet('${d.id}')">✕</button></div>
               <div style="font-size:10px;color:#333;margin-top:3px;">Нач. баланс: ${ib.toLocaleString()} ₸</div>
             </div>`;
           }
@@ -2234,8 +2249,9 @@
     };
     window.setInitialBalance = async () => {
       const accId = document.getElementById("setBalanceAcc").value;
-      const val = Number(document.getElementById("setBalanceVal").value);
-      if (!accId || isNaN(val)) return;
+      const rawVal = document.getElementById("setBalanceVal").value;
+      const val = Number(rawVal);
+      if (!accId || rawVal === '' || isNaN(val)) return;
       await fbMethods.updateDoc(fbMethods.doc(fbDB,"users",window.fbUser.uid,"settings",accId), { initialBalance: val });
       document.getElementById("setBalanceVal").value = "";
       window.showToast("Начальный баланс установлен!");
@@ -2253,7 +2269,7 @@
       const type = document.getElementById('defType').value;
       const cats = DEFAULTS[type] || [];
       const sel = document.getElementById('defCat');
-      sel.innerHTML = cats.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+      sel.innerHTML = cats.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');
       updateDefSubs();
     };
     window.updateDefSubs = () => {
@@ -2382,11 +2398,11 @@
       const elT=document.getElementById("type"), elC=document.getElementById("category");
       const elS=document.getElementById("subcategory"), elAcc=document.getElementById("accountSelect");
       const sorted=[...ACCOUNTS].sort((a,b)=>a.name.toLowerCase().includes('налич')?-1:b.name.toLowerCase().includes('налич')?1:0);
-      elAcc.innerHTML = sorted.length ? sorted.map(a=>`<option value="${a.name}">${a.name}</option>`).join("") : '<option value="">Счет не выбран</option>';
+      elAcc.innerHTML = sorted.length ? sorted.map(a=>`<option value="${esc(a.name)}">${esc(a.name)}</option>`).join("") : '<option value="">Счет не выбран</option>';
       const fromSel=document.getElementById("transferFrom"), toSel=document.getElementById("transferTo");
-      if (fromSel&&toSel) { const opts=sorted.map(a=>`<option value="${a.name}">${a.name}</option>`).join(""); fromSel.innerHTML=opts; toSel.innerHTML=opts; if(sorted.length>1)toSel.selectedIndex=1; }
+      if (fromSel&&toSel) { const opts=sorted.map(a=>`<option value="${esc(a.name)}">${esc(a.name)}</option>`).join(""); fromSel.innerHTML=opts; toSel.innerHTML=opts; if(sorted.length>1)toSel.selectedIndex=1; }
       const balSel=document.getElementById("setBalanceAcc");
-      if (balSel) balSel.innerHTML=sorted.map(a=>`<option value="${a.id}">${a.name}</option>`).join("");
+      if (balSel) balSel.innerHTML=sorted.map(a=>`<option value="${a.id}">${esc(a.name)}</option>`).join("");
 
       // restoreLast=true → берём дефолт из настроек (localStorage)
       // restoreLast=false → берём то что в памяти сессии (window._s*)
@@ -2401,8 +2417,8 @@
       }
 
       const currentCats=DEFAULTS[elT.value]||[];
-      elC.innerHTML=currentCats.map(c=>`<option value="${c.id}">${c.name}</option>`).join("");
-      document.getElementById("setParentCat").innerHTML=[...DEFAULTS.income,...DEFAULTS.expense].map(c=>`<option value="${c.id}">${c.name}</option>`).join("");
+      elC.innerHTML=currentCats.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join("");
+      document.getElementById("setParentCat").innerHTML=[...DEFAULTS.income,...DEFAULTS.expense].map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join("");
 
       if (restoreLast) {
         const catExists = currentCats.find(c=>c.id===defCat);
@@ -2433,12 +2449,9 @@
         const catObj = currentCats.find(c=>c.id===elC.value);
         const catName = (catObj ? catObj.name : '').toLowerCase();
         const subName = (elS.value || '').toLowerCase();
+        // Поля одометра/литров показываем для топлива и для общих категорий «авто/машина»
         const isFuel = elT.value === 'expense' && (
-          catName.includes('бенз') || subName.includes('бенз') ||
-          catName.includes('топлив') || subName.includes('топлив') ||
-          catName.includes('газ') || subName.includes('газ') ||
-          catName.includes('заправ') || subName.includes('заправ') ||
-          catName.includes('гсм') || subName.includes('гсм') ||
+          window.isFuelText(catName) || window.isFuelText(subName) ||
           catName.includes('авто') || catName.includes('машин')
         );
         const fw = document.getElementById("fuelFieldsWrap");
@@ -2638,7 +2651,7 @@
     const hasMore = filtered.length > _txRenderLimit;
 
     document.getElementById("list").innerHTML=visibleTx.map(t=>{
-      const acc=t.account&&t.account!=='undefined'&&t.account!==''&&t.account!=='Счет не выбран'?` [${t.account}]`:'';
+      const acc=t.account&&t.account!=='undefined'&&t.account!==''&&t.account!=='Счет не выбран'?` [${esc(t.account)}]`:'';
       const ts=t.time?`${t.date} ${t.time}`:t.date;
       const pendingStyle=t._pending?' style="opacity:0.55;"':'';
       const pendingTag=t._pending?' <span style="color:#888;font-size:10px;">⏳ сохраняется…</span>':'';
@@ -2825,7 +2838,7 @@
       expAnalHtml += `<div class="exp-stat-card"><div class="card-title">🔥 Топ-5 крупных расходов</div>`;
       expAnalHtml += topExpenses.map((t, i) => {
         const catName = t.subcategory || t.categoryName || 'Прочее';
-        return `<div class="stat-row"><div class="stat-main"><span>${i+1}. ${catName}</span><b class="neg">${t.amount.toLocaleString()} ₸</b></div><div class="stat-sub">${t.date}${t.comment ? ' · ' + t.comment : ''}</div></div>`;
+        return `<div class="stat-row"><div class="stat-main"><span>${i+1}. ${esc(catName)}</span><b class="neg">${t.amount.toLocaleString()} ₸</b></div><div class="stat-sub">${t.date}${t.comment ? ' · ' + esc(t.comment) : ''}</div></div>`;
       }).join('');
       expAnalHtml += '</div>';
     }
@@ -2983,7 +2996,7 @@
       `<span><span class="pos">+${inc.toLocaleString()}</span> / <span class="neg">-${exp.toLocaleString()}</span> ₸</span>`;
 
     document.getElementById('histList').innerHTML = list.map(t => {
-      const acc = t.account&&t.account!=='undefined'&&t.account!==''&&t.account!=='Счет не выбран'?` [${t.account}]`:'';
+      const acc = t.account&&t.account!=='undefined'&&t.account!==''&&t.account!=='Счет не выбран'?` [${esc(t.account)}]`:'';
       const ts = t.time ? `${t.date} ${t.time}` : t.date;
       let fuelTag = '';
       if (t.odometer !== undefined && t.odometer !== null && t.odometer !== '') {
@@ -4259,18 +4272,15 @@
     // Собираем все транзакции расходов на авто / топливо
     const fuelTxs = (window.allTx || []).filter(t => {
       if (t.type !== 'expense') return false;
-      // Если есть явные атрибуты топлива/одометра
-      if (t.fullTank || (t.odometer !== undefined && t.odometer !== null && Number(t.odometer) > 0) || (t.liters !== undefined && Number(t.liters) > 0)) {
+      const looksLikeFuel = window.isFuelText(t.subcategory) || window.isFuelText(t.categoryName) || window.isFuelText(t.comment);
+      // Явные отметки «полный бак» или одометр — запись точно про заправку/пробег
+      if (t.fullTank || (t.odometer !== undefined && t.odometer !== null && Number(t.odometer) > 0)) {
         return true;
       }
-      const sub = String(t.subcategory || '').toLowerCase();
-      const cat = String(t.categoryName || '').toLowerCase();
-      const com = String(t.comment || '').toLowerCase();
-      return sub.includes('бенз') || cat.includes('бенз') || com.includes('бенз') ||
-             sub.includes('топлив') || cat.includes('топлив') || com.includes('топлив') ||
-             sub.includes('газ') || cat.includes('газ') || com.includes('газ') ||
-             sub.includes('заправ') || cat.includes('заправ') || com.includes('заправ') ||
-             sub.includes('гсм') || cat.includes('гсм');
+      // Только литры без одометра: берём лишь если запись похожа на топливо.
+      // Раньше литры, автоподставленные в мойку/магазин и т.п., попадали в расчёт и завышали расход.
+      if (t.liters !== undefined && Number(t.liters) > 0) return looksLikeFuel;
+      return looksLikeFuel;
     }).sort((a,b) => {
       if (a.date !== b.date) return a.date > b.date ? 1 : -1;
       if (a.odometer && b.odometer) return Number(a.odometer) - Number(b.odometer);
@@ -4284,7 +4294,7 @@
       const liters = (t.liters && Number(t.liters) > 0)
         ? Number(t.liters)
         : (Number(t.amount) > 0 ? (Number(t.amount) / ASSUMED_PRICE_PER_LITER) : 0);
-      return { ...t, amount: Number(t.amount) || 0, calcLiters: liters };
+      return { ...t, amount: Number(t.amount) || 0, calcLiters: liters, litersEstimated: !(t.liters && Number(t.liters) > 0) };
     });
 
     const intervals = [];
@@ -4314,7 +4324,11 @@
         const curOdoVal = Number(t.odometer);
         const startOdoVal = startPoint ? Number(startPoint.odometer) : 0;
 
-        if (odoMode === 'trip') {
+        if (!startPoint) {
+          // Первая заправка с одометром — только точка отсчёта. Литры, залитые в неё, пошли
+          // на пробег ДО неё, поэтому расход по ней считать нельзя (раньше получалась ерунда).
+          distance = 0;
+        } else if (odoMode === 'trip') {
           // В режиме суточного пробега значение в поле одометра и есть пробег на этом баке
           distance = curOdoVal;
         } else if (odoMode === 'total') {
@@ -4339,6 +4353,8 @@
         }
 
         if (distance > 0) {
+          // accumulatedLiters уже включает литры этой заправки (добавлены выше), поэтому
+          // запасной вариант t.calcLiters нужен только если накопление почему-то пустое
           const usedLiters = accumulatedLiters > 0 ? accumulatedLiters : t.calcLiters;
           const usedCost = accumulatedCost > 0 ? accumulatedCost : t.amount;
           const consumption = (usedLiters / distance) * 100;
@@ -4352,6 +4368,7 @@
             toDate: t.date,
             distance,
             liters: Math.round(usedLiters * 10) / 10,
+            rawLiters: usedLiters,
             cost: usedCost,
             consumption: Math.round(consumption * 10) / 10,
             costPerKm: Math.round(costPerKm * 10) / 10,
@@ -4415,11 +4432,19 @@
     let avgConsumption = 0;
     if (intervals.length > 0) {
       const sumDist = intervals.reduce((s,i) => s + i.distance, 0);
-      const sumLit = intervals.reduce((s,i) => s + i.liters, 0);
+      const sumLit = intervals.reduce((s,i) => s + (i.rawLiters !== undefined ? i.rawLiters : i.liters), 0);
       if (sumDist > 0) avgConsumption = Math.round((sumLit / sumDist) * 100 * 10) / 10;
-    } else if (totalDistanceAllTime > 0 && totalFuelLiters > 0) {
-      avgConsumption = Math.round((totalFuelLiters / totalDistanceAllTime) * 100 * 10) / 10;
-    } else if (lastInterval && lastInterval.consumption > 0) {
+    } else if (totalDistanceAllTime > 0 && withOdo.length >= 2) {
+      // Без «полных баков»: считаем литры только МЕЖДУ первым и последним замером одометра.
+      // Литры первой заправки и заправки вне диапазона пробега в расход не входят
+      // (раньше брались все литры за всё время — расход получался завышенным).
+      const firstIdx = enriched.indexOf(withOdo[0]);
+      const lastIdx = enriched.indexOf(withOdo[withOdo.length - 1]);
+      let litersInRange = 0;
+      for (let i = firstIdx + 1; i <= lastIdx; i++) litersInRange += enriched[i].calcLiters;
+      if (litersInRange > 0) avgConsumption = Math.round((litersInRange / totalDistanceAllTime) * 100 * 10) / 10;
+    }
+    if (!avgConsumption && lastInterval && lastInterval.consumption > 0) {
       avgConsumption = lastInterval.consumption;
     }
 
@@ -5019,14 +5044,14 @@
     const old = document.getElementById('_editDialog');
     if (old) old.remove();
 
-    const accOpts = (window.ACCOUNTS||[]).map(a => `<option value="${a.name}" ${a.name===t.account?'selected':''}>${a.name}</option>`).join('');
+    const accOpts = (window.ACCOUNTS||[]).map(a => `<option value="${esc(a.name)}" ${a.name===t.account?'selected':''}>${esc(a.name)}</option>`).join('');
     const cats = [...(window.DEFAULTS?.income||[]), ...(window.DEFAULTS?.expense||[])];
     const currentCat = cats.find(c => c.name === t.categoryName);
-    const catOpts = cats.map(c => `<option value="${c.name}" ${c.name===t.categoryName?'selected':''}>${c.name}</option>`).join('');
+    const catOpts = cats.map(c => `<option value="${esc(c.name)}" ${c.name===t.categoryName?'selected':''}>${esc(c.name)}</option>`).join('');
     const subOpts = currentCat?.sub?.length
       ? '<select id="_editSub" style="width:100%;padding:11px;border-radius:10px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:15px;outline:none;box-sizing:border-box;">' +
-        currentCat.sub.map(s=>`<option value="${s}" ${s===t.subcategory?'selected':''}>${s}</option>`).join('') + '</select>'
-      : `<input id="_editSub" type="text" value="${t.subcategory||''}" placeholder="Подкатегория" style="width:100%;padding:11px;border-radius:10px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:15px;outline:none;box-sizing:border-box;">`;
+        currentCat.sub.map(s=>`<option value="${esc(s)}" ${s===t.subcategory?'selected':''}>${esc(s)}</option>`).join('') + '</select>'
+      : `<input id="_editSub" type="text" value="${esc(t.subcategory||'')}" placeholder="Подкатегория" style="width:100%;padding:11px;border-radius:10px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:15px;outline:none;box-sizing:border-box;">`;
 
     const div = document.createElement('div');
     div.id = '_editDialog';
@@ -5056,7 +5081,7 @@
           <input id="_editTime" type="time" value="${t.time||''}"
             style="flex:1;padding:11px;border-radius:10px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:15px;outline:none;">
         </div>
-        <input id="_editComment" type="text" value="${t.comment||''}" placeholder="Примечание"
+        <input id="_editComment" type="text" value="${esc(t.comment||'')}" placeholder="Примечание"
           style="width:100%;padding:11px;border-radius:10px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:15px;outline:none;box-sizing:border-box;margin-bottom:10px;">
         <div style="background:#151922;border:1px solid #233554;border-radius:10px;padding:10px;margin-bottom:14px;">
           <div style="font-size:11px;font-weight:600;color:#6ec6ff;margin-bottom:6px;">⛽ Данные заправки / одометра</div>
@@ -5441,7 +5466,7 @@
       <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #1a1a1a;${e.confident===false?'background:#1a1500;border-radius:8px;padding-left:8px;padding-right:8px;':''}">
         <div>
           <div style="font-size:14px;font-weight:600;">${e.point} · ${e.type}${e.confident===false?' <span style="color:#ffd166;">❓</span>':''}</div>
-          <div style="font-size:13px;color:#c0c0c0;margin-top:3px;font-weight:500;">${e.address}</div>
+          <div style="font-size:13px;color:#c0c0c0;margin-top:3px;font-weight:500;">${esc(e.address)}</div>
           ${e.msgTime ? `<div style="font-size:11px;color:#888;margin-top:2px;">🕐 ${e.msgTime}</div>` : ''}
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
@@ -5477,7 +5502,7 @@
     div.innerHTML = `
       <div style="background:#1c1c1e;border-radius:16px;padding:20px;width:100%;max-width:340px;border:1px solid #2a2a2a;">
         <div style="font-size:14px;font-weight:700;margin-bottom:4px;">Уточни адрес</div>
-        <div style="font-size:13px;color:#c0c0c0;margin-bottom:14px;">${e.address}</div>
+        <div style="font-size:13px;color:#c0c0c0;margin-bottom:14px;">${esc(e.address)}</div>
         <div style="display:flex;gap:6px;margin-bottom:10px;" id="_waEditTypeRow">
           <button data-t="under" style="flex:1;padding:9px 4px;border-radius:8px;border:2px solid #2a2a2a;background:#1c1c1e;color:#888;font-size:12px;font-weight:600;cursor:pointer;">🏠 Подъезд</button>
           <button data-t="flat" style="flex:1;padding:9px 4px;border-radius:8px;border:2px solid #2a2a2a;background:#1c1c1e;color:#888;font-size:12px;font-weight:600;cursor:pointer;">🏢 Квартира</button>
@@ -6003,27 +6028,7 @@
 </script>
 
 <script>
-// ── Service Worker регистрация ─────────────────────────────────
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then(reg => {
-        console.log('[SW] Зарегистрирован, scope:', reg.scope);
-        reg.addEventListener('updatefound', () => {
-          const nw = reg.installing;
-          nw.addEventListener('statechange', () => {
-            if (nw.state === 'installed' && navigator.serviceWorker.controller) {
-              window.showToast('🔄 Доступно обновление — обновите страницу', 'warn');
-            }
-          });
-        });
-      })
-      .catch(e => {
-        // SW не критичен — приложение работает и без него
-        console.warn('[SW] Не зарегистрирован (убедись что sw.js лежит в корне репо):', e.message);
-      });
-  });
-}
+// (Service Worker регистрируется один раз выше, как ./sw.js — дубликат с /sw.js удалён)
 
 // ── Онлайн / Офлайн индикатор ─────────────────────────────────
 window.addEventListener('online', () => {
