@@ -113,7 +113,7 @@ def main() -> None:
     if loader.exists(): shutil.copy2(loader,OUT/"js"/"ai-loader.js"); index=index.replace("</head>",'  <script defer src="./js/ai-loader.js"></script>\n</head>',1)
     profiler=ROOT/"js"/"startup-profiler.js"
     if profiler.exists(): shutil.copy2(profiler,OUT/"js"/"startup-profiler.js"); index=index.replace("</head>",'  <script defer src="./js/startup-profiler.js"></script>\n</head>',1)
-    for name in ["auth.html","manifest.json","sw.js","ai_parser.js","icon.png"]:
+    for name in ["auth.html","manifest.json","sw.js","ai_parser.js","icon.png","version.json"]:
         src=ROOT/name
         if src.exists(): shutil.copy2(src,OUT/name)
     (OUT/"index.html").write_text(index,encoding="utf-8")
