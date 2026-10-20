@@ -963,6 +963,18 @@
           <button class="btn-main" style="background:#0a1a2a;color:#6ec6ff;border:1px solid #1a3a5a;padding:11px;margin:0;" onclick="saveFuelPrice()">Сохранить цену</button>
         </div>
       </div>
+      <div class="card" style="border-color:#382b4e;">
+        <div class="card-title" style="color:#a78bfa;display:flex;justify-content:space-between;align-items:center;">
+          <span>🚀 Обновления приложения</span>
+          <span id="appVersionBadge" style="font-size:11px;padding:2px 8px;border-radius:6px;background:#251e36;color:#c4b5fd;border:1px solid #4a3e72;font-weight:600;">v5.0</span>
+        </div>
+        <div style="font-size:12px;color:#aaa;line-height:1.4;margin-bottom:12px;">
+          Приложение автоматически проверяет новые версии и предлагает установить обновления без потери данных.
+        </div>
+        <button type="button" class="btn-main" style="background:#1e1a2c;color:#a78bfa;border:1px solid #453460;padding:11px;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px;" onclick="window.checkForAppUpdates(true)">
+          <span>🔄 Проверить обновления сейчас</span>
+        </button>
+      </div>
       <div id="settingsList"></div>
     </div>
   </div>
@@ -1532,25 +1544,6 @@
   // HTTPS редирект (для веб версии)
   if (location.protocol === 'http:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
     location.replace('https:' + location.href.substring(5));
-  }
-
-  // ── Service Worker — кэш статики для мгновенной повторной загрузки ──
-  // (файл sw.js должен лежать в той же папке, что и index.html)
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js').then(reg => {
-        // Если появилась новая версия — предлагаем обновиться
-        reg.addEventListener('updatefound', () => {
-          const newWorker = reg.installing;
-          if (!newWorker) return;
-          newWorker.addEventListener('statechange', () => {
-            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              window.showToast('🔄 Доступно обновление — перезапусти приложение', 'warn');
-            }
-          });
-        });
-      }).catch(e => console.warn('SW registration failed:', e.message));
-    });
   }
 
   window.showConfirm = function(message, onConfirm) {
@@ -7025,34 +7018,179 @@
   });
 </script>
 
+<!-- БАННЕР ПРЕДЛОЖЕНИЯ ОБНОВЛЕНИЯ -->
+<div id="appUpdatePrompt" style="display:none;position:fixed;bottom:calc(var(--nav-h) + 12px);left:12px;right:12px;max-width:440px;margin:0 auto;z-index:9999;background:linear-gradient(135deg,#1c192b 0%,#12131d 100%);border:1.5px solid #63439b;border-radius:16px;padding:16px;box-shadow:0 12px 32px rgba(0,0,0,0.85);box-sizing:border-box;">
+  <div style="display:flex;align-items:flex-start;gap:12px;">
+    <div style="font-size:26px;line-height:1;filter:drop-shadow(0 0 8px rgba(167,139,250,0.6));">🚀</div>
+    <div style="flex:1;min-width:0;">
+      <div style="font-size:14px;font-weight:700;color:#fff;margin-bottom:3px;">Доступно обновление!</div>
+      <div style="font-size:12px;color:#bbb;line-height:1.4;margin-bottom:12px;">Вышла новая версия приложения с исправлениями и новыми возможностями.</div>
+      <div style="display:flex;gap:8px;">
+        <button id="btnApplyUpdate" onclick="window.applyAppUpdate()" style="flex:1;background:#65d48b;color:#000;border:none;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;box-shadow:0 3px 12px rgba(101,212,139,0.3);">
+          <span>🔄 Обновить сейчас</span>
+        </button>
+        <button onclick="window.dismissAppUpdate()" style="background:#232035;color:#aaa;border:1px solid #3c3456;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:600;cursor:pointer;">
+          Позже
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
-// ── Service Worker регистрация ─────────────────────────────────
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then(reg => {
-        console.log('[SW] Зарегистрирован, scope:', reg.scope);
-        reg.addEventListener('updatefound', () => {
-          const nw = reg.installing;
-          nw.addEventListener('statechange', () => {
-            if (nw.state === 'installed' && navigator.serviceWorker.controller) {
-              window.showToast('🔄 Доступно обновление — обновите страницу', 'warn');
-            }
-          });
-        });
-      })
-      .catch(e => {
-        // SW не критичен — приложение работает и без него
-        console.warn('[SW] Не зарегистрирован (убедись что sw.js лежит в корне репо):', e.message);
+// ── СИСТЕМА АВТОМАТИЧЕСКИХ ОБНОВЛЕНИЙ PWA ───────────────────────
+window._waitingServiceWorker = null;
+window._updateAvailable = false;
+window._swRegistration = null;
+
+window.promptUserForUpdate = (worker) => {
+  if (!worker) return;
+  window._waitingServiceWorker = worker;
+  window._updateAvailable = true;
+
+  // 1. Показываем всплывающий баннер
+  const promptEl = document.getElementById('appUpdatePrompt');
+  if (promptEl) {
+    promptEl.style.display = 'block';
+  } else {
+    window.showToast('🚀 Доступно обновление приложения!', 'info');
+  }
+
+  // 2. Также закрепляем плашку в верхней панели алертов на случай если пользователь нажмёт «Позже»
+  const bannerEl = document.getElementById('globalAlertBanner');
+  if (bannerEl && !document.getElementById('updatePill')) {
+    const pill = document.createElement('div');
+    pill.id = 'updatePill';
+    pill.className = 'global-alert-pill';
+    pill.style.cssText = 'background:#241935;border:1px solid #63439b;color:#c4b5fd;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px;margin:8px 12px 4px;border-radius:10px;font-size:12px;';
+    pill.innerHTML = `<span>🚀 Доступна новая версия приложения</span><button type="button" onclick="event.stopPropagation();window.applyAppUpdate()" style="background:#65d48b;color:#000;border:none;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:bold;cursor:pointer;">Обновить</button>`;
+    pill.onclick = () => window.applyAppUpdate();
+    bannerEl.prepend(pill);
+  }
+};
+
+window.dismissAppUpdate = () => {
+  const promptEl = document.getElementById('appUpdatePrompt');
+  if (promptEl) promptEl.style.display = 'none';
+  window.showToast('Обновление отложено. Вы можете обновиться в любой момент через верхнюю плашку или в Настройках.', 'info');
+};
+
+window.applyAppUpdate = () => {
+  const btn = document.getElementById('btnApplyUpdate');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span>⏳ Обновляем...</span>';
+    btn.style.opacity = '0.7';
+  }
+  window.showToast('⏳ Применяем обновление...', 'info');
+
+  if (window._waitingServiceWorker) {
+    // Отправляем сигнал ожидающему сервис-воркеру активироваться
+    window._waitingServiceWorker.postMessage({ action: 'skipWaiting' });
+  } else if (window._swRegistration && window._swRegistration.waiting) {
+    window._swRegistration.waiting.postMessage({ action: 'skipWaiting' });
+  } else {
+    window.location.reload();
+  }
+
+  // Запасной перезапуск на случай, если событие controllerchange не сработает
+  setTimeout(() => {
+    window.location.reload();
+  }, 2000);
+};
+
+window.checkForAppUpdates = async (manual = false) => {
+  if (!('serviceWorker' in navigator)) {
+    if (manual) window.showToast('Сервис-воркер не поддерживается данным браузером', 'warn');
+    return;
+  }
+  try {
+    const reg = window._swRegistration || (await navigator.serviceWorker.getRegistration());
+    if (!reg) {
+      if (manual) window.showToast('Сервис-воркер ещё не активен', 'warn');
+      return;
+    }
+    if (manual) window.showToast('🔄 Проверка обновлений...', 'info');
+    await reg.update();
+
+    if (reg.waiting && navigator.serviceWorker.controller) {
+      window.promptUserForUpdate(reg.waiting);
+    } else if (reg.installing) {
+      reg.installing.addEventListener('statechange', () => {
+        if (reg.installing && reg.installing.state === 'installed' && navigator.serviceWorker.controller) {
+          window.promptUserForUpdate(reg.installing);
+        }
       });
+    } else if (manual) {
+      setTimeout(() => {
+        if (!window._updateAvailable) {
+          window.showToast('✅ У вас установлена последняя версия', 'success');
+        }
+      }, 1000);
+    }
+  } catch (err) {
+    console.warn('Update check failed:', err);
+    if (manual) window.showToast('Ошибка проверки обновлений: ' + err.message, 'error');
+  }
+};
+
+// Регистрация Service Worker и настройка слушателей жизненного цикла
+if ('serviceWorker' in navigator) {
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (refreshing) return;
+    refreshing = true;
+    window.location.reload();
+  });
+
+  window.addEventListener('load', async () => {
+    try {
+      const reg = await navigator.serviceWorker.register('./sw.js');
+      window._swRegistration = reg;
+      console.log('[SW] Зарегистрирован, scope:', reg.scope);
+
+      // 1. Проверяем, есть ли уже ожидающий воркер (скачанный ранее)
+      if (reg.waiting && navigator.serviceWorker.controller) {
+        window.promptUserForUpdate(reg.waiting);
+      }
+
+      // 2. Слушаем появление нового сервис-воркера
+      reg.addEventListener('updatefound', () => {
+        const nw = reg.installing;
+        if (!nw) return;
+        nw.addEventListener('statechange', () => {
+          if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+            window.promptUserForUpdate(nw);
+          }
+        });
+      });
+
+      // 3. Автоматическая проверка при каждом открытии
+      reg.update().catch(() => {});
+
+      // 4. Проверка при возвращении пользователя в приложение (разблокировка/смена вкладки)
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+          reg.update().catch(() => {});
+        }
+      });
+
+      // 5. Периодическая фоновая проверка каждые 15 минут
+      setInterval(() => {
+        reg.update().catch(() => {});
+      }, 15 * 60 * 1000);
+
+    } catch (e) {
+      console.warn('[SW] Ошибка регистрации sw.js:', e.message);
+    }
   });
 }
 
 // ── Онлайн / Офлайн индикатор ─────────────────────────────────
 window.addEventListener('online', () => {
   window.showToast('✅ Подключение восстановлено');
-  // Перерисовываем данные — Firebase мог накопить изменения
   if (window.render) window.render();
+  if (window.checkForAppUpdates) window.checkForAppUpdates(false);
 });
 window.addEventListener('offline', () => {
   window.showToast('📵 Нет сети — работаем офлайн', 'warn');

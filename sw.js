@@ -2,11 +2,12 @@
 // Кэшируем оболочку приложения и статику.
 // Firebase/Firestore запросы не кэшируем — это живые данные.
 
-const CACHE_NAME = 'courier-app-v4';
+const CACHE_NAME = 'courier-app-v5';
 const APP_SHELL = [
   './',
   './index.html',
-  './manifest.json'
+  './manifest.json',
+  './style.css'
 ];
 
 self.addEventListener('install', (event) => {
@@ -15,7 +16,14 @@ self.addEventListener('install', (event) => {
       await Promise.all(APP_SHELL.map((url) => cache.add(url).catch(() => {})));
     })
   );
-  self.skipWaiting();
+  // НЕ вызываем skipWaiting автоматически, чтобы приложение могло предложить обновление пользователю
+});
+
+// Получаем команду от приложения на применение обновления
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.action === 'skipWaiting') {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener('activate', (event) => {
