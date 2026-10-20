@@ -2,21 +2,32 @@
 // Кэшируем оболочку приложения и статику.
 // Firebase/Firestore запросы не кэшируем — это живые данные.
 
-const CACHE_NAME = 'courier-app-v5';
+const CACHE_NAME = 'courier-app-v6';
 const APP_SHELL = [
   './',
   './index.html',
   './manifest.json',
+  './icon.png',
   './style.css'
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(async (cache) => {
-      await Promise.all(APP_SHELL.map((url) => cache.add(url).catch(() => {})));
+      // Принудительно запрашиваем свежие файлы из сети, минуя любой HTTP-кэш (cache: 'reload')
+      await Promise.all(
+        APP_SHELL.map((url) =>
+          fetch(new Request(url, { cache: 'reload' }))
+            .then((res) => {
+              if (res && res.ok) return cache.put(url, res);
+            })
+            .catch((err) => console.warn('[SW] Ошибка кэширования ресурса:', url, err))
+        )
+      );
     })
   );
-  // НЕ вызываем skipWaiting автоматически, чтобы приложение могло предложить обновление пользователю
+  // Не вызываем self.skipWaiting() автоматически при установке,
+  // чтобы приложение успело показать пользователю кнопку «Обновить сейчас».
 });
 
 // Получаем команду от приложения на применение обновления
@@ -28,11 +39,20 @@ self.addEventListener('message', (event) => {
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((names) => Promise.all(
-      names.filter((n) => n !== CACHE_NAME).map((n) => caches.delete(n))
-    ))
+    (async () => {
+      // Удаляем ВСЕ старые кэши предыдущих версий
+      const names = await caches.keys();
+      await Promise.all(
+        names.filter((n) => n !== CACHE_NAME).map((n) => caches.delete(n))
+      );
+      await self.clients.claim();
+      // Оповещаем все открытые окна о завершении активации обновления
+      const clientList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      for (const client of clientList) {
+        client.postMessage({ action: 'swActivated', version: CACHE_NAME });
+      }
+    })()
   );
-  self.clients.claim();
 });
 
 // Обработка клика по push-уведомлению (переход в приложение)
@@ -54,25 +74,39 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
 
+  // version.json ВСЕГДА берём строго из сети без какого-либо кэша
+  if (url.pathname.endsWith('version.json')) {
+    event.respondWith(
+      fetch(new Request(req, { cache: 'no-store' })).catch(() => new Response('{}'))
+    );
+    return;
+  }
+
+  // Для навигации (HTML страница) — Network First с обновлением кэша, fallback на кэш
   if (req.mode === 'navigate') {
     event.respondWith(
-      fetch(req).then((res) => {
-        const clone = res.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
+      fetch(new Request(req, { cache: 'reload' })).then((res) => {
+        if (res && res.status === 200) {
+          const clone = res.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
+        }
         return res;
       }).catch(() => caches.match(req).then((r) => r || caches.match('./index.html')))
     );
     return;
   }
 
-  event.respondWith(caches.match(req).then((cached) => {
-    const network = fetch(req).then((res) => {
-      if (res && res.status === 200) {
-        const clone = res.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
-      }
-      return res;
-    }).catch(() => cached);
-    return cached || network;
-  }));
+  // Для статических файлов (CSS, JS, иконки, манифест) — Stale While Revalidate
+  event.respondWith(
+    caches.match(req).then((cached) => {
+      const network = fetch(new Request(req, { cache: 'reload' })).then((res) => {
+        if (res && res.status === 200) {
+          const clone = res.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
+        }
+        return res;
+      }).catch(() => cached);
+      return cached || network;
+    })
+  );
 });

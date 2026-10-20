@@ -17,7 +17,9 @@
   <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js" />
   <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js" />
   <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js" />
-  <link rel="manifest" href="/manifest.json" />
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" type="image/png" sizes="512x512" href="./icon.png" />
+  <link rel="apple-touch-icon" href="./icon.png" />
   <!-- Безопасность -->
   <meta http-equiv="X-Content-Type-Options" content="nosniff" />
   <meta http-equiv="X-Frame-Options" content="DENY" />
@@ -966,14 +968,19 @@
       <div class="card" style="border-color:#382b4e;">
         <div class="card-title" style="color:#a78bfa;display:flex;justify-content:space-between;align-items:center;">
           <span>🚀 Обновления приложения</span>
-          <span id="appVersionBadge" style="font-size:11px;padding:2px 8px;border-radius:6px;background:#251e36;color:#c4b5fd;border:1px solid #4a3e72;font-weight:600;">v5.0</span>
+          <span id="appVersionBadge" style="font-size:11px;padding:2px 8px;border-radius:6px;background:#251e36;color:#c4b5fd;border:1px solid #4a3e72;font-weight:600;">v5.1.0</span>
         </div>
         <div style="font-size:12px;color:#aaa;line-height:1.4;margin-bottom:12px;">
-          Приложение автоматически проверяет новые версии и предлагает установить обновления без потери данных.
+          Приложение автоматически проверяет новые версии. Если на телефоне осталась старая версия — нажмите «Сбросить кэш и обновить».
         </div>
-        <button type="button" class="btn-main" style="background:#1e1a2c;color:#a78bfa;border:1px solid #453460;padding:11px;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px;" onclick="window.checkForAppUpdates(true)">
-          <span>🔄 Проверить обновления сейчас</span>
-        </button>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <button type="button" class="btn-main" style="background:#1e1a2c;color:#a78bfa;border:1px solid #453460;padding:11px;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px;" onclick="window.checkForAppUpdates(true)">
+            <span>🔄 Проверить обновления сейчас</span>
+          </button>
+          <button type="button" class="btn-main" style="background:#2a1520;color:#ff85a1;border:1px solid #5a2538;padding:10px;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px;" onclick="window.forceFullAppReset()">
+            <span>🧹 Сбросить кэш и обновить всё</span>
+          </button>
+        </div>
       </div>
       <div id="settingsList"></div>
     </div>
@@ -7024,7 +7031,7 @@
     <div style="font-size:26px;line-height:1;filter:drop-shadow(0 0 8px rgba(167,139,250,0.6));">🚀</div>
     <div style="flex:1;min-width:0;">
       <div style="font-size:14px;font-weight:700;color:#fff;margin-bottom:3px;">Доступно обновление!</div>
-      <div style="font-size:12px;color:#bbb;line-height:1.4;margin-bottom:12px;">Вышла новая версия приложения с исправлениями и новыми возможностями.</div>
+      <div id="appUpdateSubtitle" style="font-size:12px;color:#bbb;line-height:1.4;margin-bottom:12px;">Вышла новая версия приложения с исправлениями и новыми возможностями.</div>
       <div style="display:flex;gap:8px;">
         <button id="btnApplyUpdate" onclick="window.applyAppUpdate()" style="flex:1;background:#65d48b;color:#000;border:none;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;box-shadow:0 3px 12px rgba(101,212,139,0.3);">
           <span>🔄 Обновить сейчас</span>
@@ -7038,15 +7045,34 @@
 </div>
 
 <script>
-// ── СИСТЕМА АВТОМАТИЧЕСКИХ ОБНОВЛЕНИЙ PWA ───────────────────────
+// ── СИСТЕМА ПОЛНОГО АВТОМАТИЧЕСКОГО ОБНОВЛЕНИЯ PWA ──────────────
+const APP_CURRENT_VERSION = '5.1.0';
+const APP_CURRENT_BUILD = 2026102017;
+
 window._waitingServiceWorker = null;
 window._updateAvailable = false;
 window._swRegistration = null;
+window._serverVersionData = null;
 
-window.promptUserForUpdate = (worker) => {
-  if (!worker) return;
-  window._waitingServiceWorker = worker;
+// Отображаем версию на бейдже в настройках
+const badgeEl = document.getElementById('appVersionBadge');
+if (badgeEl) badgeEl.textContent = 'v' + APP_CURRENT_VERSION;
+
+window.promptUserForUpdate = (worker = null, customText = '') => {
+  if (worker) window._waitingServiceWorker = worker;
   window._updateAvailable = true;
+
+  // Текст описания обновления
+  const subtitleEl = document.getElementById('appUpdateSubtitle');
+  if (subtitleEl) {
+    if (customText) {
+      subtitleEl.textContent = customText;
+    } else if (window._serverVersionData && window._serverVersionData.changelog) {
+      subtitleEl.textContent = `Новая версия ${window._serverVersionData.version}: ${window._serverVersionData.changelog}`;
+    } else {
+      subtitleEl.textContent = 'Новая версия готова к установке. Обновление займёт пару секунд.';
+    }
+  }
 
   // 1. Показываем всплывающий баннер
   const promptEl = document.getElementById('appUpdatePrompt');
@@ -7056,14 +7082,14 @@ window.promptUserForUpdate = (worker) => {
     window.showToast('🚀 Доступно обновление приложения!', 'info');
   }
 
-  // 2. Также закрепляем плашку в верхней панели алертов на случай если пользователь нажмёт «Позже»
+  // 2. Также закрепляем плашку в верхней панели алертов
   const bannerEl = document.getElementById('globalAlertBanner');
   if (bannerEl && !document.getElementById('updatePill')) {
     const pill = document.createElement('div');
     pill.id = 'updatePill';
     pill.className = 'global-alert-pill';
     pill.style.cssText = 'background:#241935;border:1px solid #63439b;color:#c4b5fd;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px;margin:8px 12px 4px;border-radius:10px;font-size:12px;';
-    pill.innerHTML = `<span>🚀 Доступна новая версия приложения</span><button type="button" onclick="event.stopPropagation();window.applyAppUpdate()" style="background:#65d48b;color:#000;border:none;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:bold;cursor:pointer;">Обновить</button>`;
+    pill.innerHTML = `<span>🚀 Доступна новая версия ${window._serverVersionData?.version ? 'v' + window._serverVersionData.version : ''}</span><button type="button" onclick="event.stopPropagation();window.applyAppUpdate()" style="background:#65d48b;color:#000;border:none;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:bold;cursor:pointer;">Обновить</button>`;
     pill.onclick = () => window.applyAppUpdate();
     bannerEl.prepend(pill);
   }
@@ -7075,62 +7101,101 @@ window.dismissAppUpdate = () => {
   window.showToast('Обновление отложено. Вы можете обновиться в любой момент через верхнюю плашку или в Настройках.', 'info');
 };
 
-window.applyAppUpdate = () => {
+// Полное применение обновления: очистка кэшей, skipWaiting и перезапуск
+window.applyAppUpdate = async () => {
   const btn = document.getElementById('btnApplyUpdate');
   if (btn) {
     btn.disabled = true;
-    btn.innerHTML = '<span>⏳ Обновляем...</span>';
+    btn.innerHTML = '<span>⏳ Очищаем кэш и обновляем...</span>';
     btn.style.opacity = '0.7';
   }
-  window.showToast('⏳ Применяем обновление...', 'info');
+  window.showToast('⏳ Очищаем старый кэш и загружаем обновление...', 'info');
 
-  if (window._waitingServiceWorker) {
-    // Отправляем сигнал ожидающему сервис-воркеру активироваться
-    window._waitingServiceWorker.postMessage({ action: 'skipWaiting' });
-  } else if (window._swRegistration && window._swRegistration.waiting) {
-    window._swRegistration.waiting.postMessage({ action: 'skipWaiting' });
-  } else {
-    window.location.reload();
+  // 1. Очищаем все кэши браузера CacheStorage
+  if ('caches' in window) {
+    try {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+    } catch(e) { console.warn('Cache purge error:', e); }
   }
 
-  // Запасной перезапуск на случай, если событие controllerchange не сработает
+  // 2. Отправляем сигнал ожидающему сервис-воркеру активироваться
+  if (window._waitingServiceWorker) {
+    try { window._waitingServiceWorker.postMessage({ action: 'skipWaiting' }); } catch(e) {}
+  } else if (window._swRegistration && window._swRegistration.waiting) {
+    try { window._swRegistration.waiting.postMessage({ action: 'skipWaiting' }); } catch(e) {}
+  }
+
+  // 3. Запоминаем версию
+  try { localStorage.setItem('installed_app_version', APP_CURRENT_VERSION); } catch(e) {}
+
+  // 4. Перезагрузка страницы с очисткой параметров URL
   setTimeout(() => {
-    window.location.reload();
-  }, 2000);
+    const cleanUrl = window.location.origin + window.location.pathname;
+    window.location.replace(cleanUrl + '?v=' + Date.now());
+  }, 700);
 };
 
-window.checkForAppUpdates = async (manual = false) => {
-  if (!('serviceWorker' in navigator)) {
-    if (manual) window.showToast('Сервис-воркер не поддерживается данным браузером', 'warn');
-    return;
+// Функция принудительного полного сброса (для второго телефона или проблемного кэша)
+window.forceFullAppReset = async () => {
+  if (!confirm('Выполнить полный сброс кэша приложения и загрузить самую свежую версию с сервера? Все ваши записи в безопасности в Firebase.')) return;
+  window.showToast('🧹 Очистка кэша и сервис-воркера...', 'info');
+  if ('caches' in window) {
+    try {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+    } catch(e) {}
   }
-  try {
-    const reg = window._swRegistration || (await navigator.serviceWorker.getRegistration());
-    if (!reg) {
-      if (manual) window.showToast('Сервис-воркер ещё не активен', 'warn');
-      return;
-    }
-    if (manual) window.showToast('🔄 Проверка обновлений...', 'info');
-    await reg.update();
+  if ('serviceWorker' in navigator) {
+    try {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      for (const r of regs) await r.unregister();
+    } catch(e) {}
+  }
+  const cleanUrl = window.location.origin + window.location.pathname;
+  window.location.replace(cleanUrl + '?reset=' + Date.now());
+};
 
-    if (reg.waiting && navigator.serviceWorker.controller) {
-      window.promptUserForUpdate(reg.waiting);
-    } else if (reg.installing) {
-      reg.installing.addEventListener('statechange', () => {
-        if (reg.installing && reg.installing.state === 'installed' && navigator.serviceWorker.controller) {
-          window.promptUserForUpdate(reg.installing);
-        }
-      });
-    } else if (manual) {
-      setTimeout(() => {
-        if (!window._updateAvailable) {
-          window.showToast('✅ У вас установлена последняя версия', 'success');
-        }
-      }, 1000);
+// Проверка версии через version.json на сервере (работает абсолютно на всех устройствах)
+window.checkServerVersion = async (manual = false) => {
+  try {
+    const res = await fetch('./version.json?_t=' + Date.now(), { cache: 'no-store' });
+    if (!res.ok) return false;
+    const data = await res.json();
+    window._serverVersionData = data;
+    if (data.build && data.build > APP_CURRENT_BUILD) {
+      window.promptUserForUpdate(null, `Вышла версия ${data.version}! ${data.changelog || ''}`);
+      return true;
     }
-  } catch (err) {
-    console.warn('Update check failed:', err);
-    if (manual) window.showToast('Ошибка проверки обновлений: ' + err.message, 'error');
+  } catch(e) {
+    console.warn('checkServerVersion error:', e);
+  }
+  return false;
+};
+
+// Комплексная проверка обновлений (SW + version.json)
+window.checkForAppUpdates = async (manual = false) => {
+  if (manual) window.showToast('🔄 Проверка обновлений на сервере...', 'info');
+
+  let foundNew = await window.checkServerVersion(manual);
+
+  if ('serviceWorker' in navigator) {
+    try {
+      const reg = window._swRegistration || (await navigator.serviceWorker.getRegistration());
+      if (reg) {
+        await reg.update();
+        if (reg.waiting && navigator.serviceWorker.controller) {
+          window.promptUserForUpdate(reg.waiting);
+          foundNew = true;
+        }
+      }
+    } catch(e) { console.warn('SW update check error:', e); }
+  }
+
+  if (manual && !foundNew && !window._updateAvailable) {
+    setTimeout(() => {
+      window.showToast('✅ У вас установлена последняя версия ' + APP_CURRENT_VERSION, 'success');
+    }, 800);
   }
 };
 
@@ -7141,6 +7206,13 @@ if ('serviceWorker' in navigator) {
     if (refreshing) return;
     refreshing = true;
     window.location.reload();
+  });
+
+  navigator.serviceWorker.addEventListener('message', (event) => {
+    if (event.data && event.data.action === 'swActivated') {
+      console.log('[SW] Активирован новый воркер:', event.data.version);
+      window.promptUserForUpdate();
+    }
   });
 
   window.addEventListener('load', async () => {
@@ -7165,25 +7237,33 @@ if ('serviceWorker' in navigator) {
         });
       });
 
-      // 3. Автоматическая проверка при каждом открытии
+      // 3. Автоматическая проверка при старте
       reg.update().catch(() => {});
+      window.checkServerVersion(false);
 
-      // 4. Проверка при возвращении пользователя в приложение (разблокировка/смена вкладки)
+      // 4. Проверка при возвращении пользователя в приложение
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') {
           reg.update().catch(() => {});
+          window.checkServerVersion(false);
         }
       });
 
       // 5. Периодическая фоновая проверка каждые 15 минут
       setInterval(() => {
         reg.update().catch(() => {});
+        window.checkServerVersion(false);
       }, 15 * 60 * 1000);
 
     } catch (e) {
       console.warn('[SW] Ошибка регистрации sw.js:', e.message);
+      // Если SW не поддерживается/заблокирован, всё равно проверяем version.json
+      window.checkServerVersion(false);
     }
   });
+} else {
+  // Браузер без поддержки SW — проверяем версию по сети напрямую
+  window.addEventListener('load', () => window.checkServerVersion(false));
 }
 
 // ── Онлайн / Офлайн индикатор ─────────────────────────────────

@@ -2,6 +2,7 @@
   "name": "Учёт Курьера Pro",
   "short_name": "Курьер",
   "description": "Учёт доходов и расходов курьера",
+  "id": "courier-moneytracker-pwa",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
@@ -13,7 +14,13 @@
       "src": "./icon.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "./icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }
