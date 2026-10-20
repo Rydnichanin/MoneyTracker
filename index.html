@@ -981,11 +981,16 @@
             <span>🔄 Проверить обновления на GitHub</span>
           </button>
           <button type="button" class="btn-main" style="background:#2a1520;color:#ff85a1;border:1px solid #5a2538;padding:10px;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px;" onclick="window.forceFullAppReset()">
-            <span>🧹 Загрузить свежую версию с GitHub (сброс кэша)</span>
+            <span>🧹 Сбросить кэш и обновиться с GitHub</span>
           </button>
-          <a href="https://github.com/rydnichanin/MoneyTracker/releases" target="_blank" rel="noopener" style="text-align:center;color:#6ec6ff;font-size:11px;text-decoration:none;padding:6px;display:block;">
-            📥 Скачать APK файл с GitHub Releases →
-          </a>
+          <div style="display:flex;gap:8px;">
+            <a href="https://github.com/rydnichanin/MoneyTracker/releases/download/v5.1.0/MoneyTracker-v5.1.0.apk" download style="flex:1;text-align:center;color:#65d48b;font-size:12px;font-weight:600;text-decoration:none;padding:10px 8px;background:#0f251a;border:1px solid #1f4a32;border-radius:10px;display:flex;align-items:center;justify-content:center;gap:5px;">
+              <span>📥 Скачать APK (v5.1.0)</span>
+            </a>
+            <a href="https://github.com/rydnichanin/MoneyTracker/releases" target="_blank" rel="noopener" style="flex:1;text-align:center;color:#6ec6ff;font-size:12px;font-weight:600;text-decoration:none;padding:10px 8px;background:#102238;border:1px solid #1a3a60;border-radius:10px;display:flex;align-items:center;justify-content:center;gap:5px;">
+              <span>📂 GitHub Releases</span>
+            </a>
+          </div>
         </div>
       </div>
       <div id="settingsList"></div>
@@ -7039,14 +7044,17 @@
     <div style="flex:1;min-width:0;">
       <div style="font-size:14px;font-weight:700;color:#fff;margin-bottom:3px;">Доступно обновление с GitHub!</div>
       <div id="appUpdateSubtitle" style="font-size:12px;color:#bbb;line-height:1.4;margin-bottom:12px;">Новая версия приложения готова к загрузке из репозитория GitHub.</div>
-      <div style="display:flex;gap:8px;">
-        <button id="btnApplyUpdate" onclick="window.applyAppUpdate()" style="flex:1;background:#65d48b;color:#000;border:none;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;box-shadow:0 3px 12px rgba(101,212,139,0.3);">
-          <span>🔄 Обновить сейчас</span>
+      <div style="display:flex;gap:8px;margin-bottom:8px;">
+        <button id="btnApplyUpdate" onclick="window.applyAppUpdate()" style="flex:1;background:#65d48b;color:#000;border:none;border-radius:10px;padding:10px 12px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;box-shadow:0 3px 12px rgba(101,212,139,0.3);">
+          <span>🔄 Обновить сейчас (1 сек)</span>
         </button>
-        <button onclick="window.dismissAppUpdate()" style="background:#232035;color:#aaa;border:1px solid #3c3456;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:600;cursor:pointer;">
+        <button onclick="window.dismissAppUpdate()" style="background:#232035;color:#aaa;border:1px solid #3c3456;border-radius:10px;padding:10px 12px;font-size:12px;font-weight:600;cursor:pointer;">
           Позже
         </button>
       </div>
+      <button type="button" onclick="window.downloadLatestApk()" style="width:100%;background:#102238;color:#6ec6ff;border:1px solid #1a3a60;border-radius:10px;padding:8px 12px;font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+        <span>📥 Скачать новый APK для переустановки</span>
+      </button>
     </div>
   </div>
 </div>
@@ -7054,7 +7062,7 @@
 <script>
 // ── СИСТЕМА ПОЛНОГО АВТОМАТИЧЕСКОГО ОБНОВЛЕНИЯ C GITHUB ─────────
 const APP_CURRENT_VERSION = '5.1.0';
-const APP_CURRENT_BUILD = 2026102018;
+const APP_CURRENT_BUILD = 2026102019;
 
 window._waitingServiceWorker = null;
 window._updateAvailable = false;
@@ -7064,6 +7072,21 @@ window._serverVersionData = null;
 // Отображаем версию на бейдже в настройках
 const badgeEl = document.getElementById('appVersionBadge');
 if (badgeEl) badgeEl.textContent = 'v' + APP_CURRENT_VERSION;
+
+window.downloadLatestApk = () => {
+  const apkUrl = 'https://github.com/rydnichanin/MoneyTracker/releases/download/v5.1.0/MoneyTracker-v5.1.0.apk';
+  window.showToast('📥 Скачивание APK с GitHub...', 'info');
+  if (window.AndroidBridge && typeof window.AndroidBridge.openBrowser === 'function') {
+    window.AndroidBridge.openBrowser(apkUrl);
+  } else {
+    const a = document.createElement('a');
+    a.href = apkUrl;
+    a.target = '_blank';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+};
 
 window.promptUserForUpdate = (worker = null, customText = '') => {
   if (worker) window._waitingServiceWorker = worker;
@@ -7139,6 +7162,10 @@ window.applyAppUpdate = async () => {
   }
   window.showToast('⏳ Очищаем старый кэш и загружаем обновление с GitHub...', 'info');
 
+  if (window._serverVersionData && window._serverVersionData.sha) {
+    try { localStorage.setItem('app_installed_commit', window._serverVersionData.sha); } catch(e) {}
+  }
+
   // 1. Очищаем все кэши браузера CacheStorage
   if ('caches' in window) {
     try {
@@ -7184,17 +7211,45 @@ window.forceFullAppReset = async () => {
   window.location.replace(cleanUrl + '?reset=' + Date.now());
 };
 
-// Проверка версии через GitHub (GitHub Pages + прямой fallback на raw.githubusercontent.com)
+// Проверка версии через GitHub (коммиты + version.json)
 window.checkServerVersion = async (manual = false) => {
   try {
+    // 1. Проверяем последний коммит на GitHub
+    try {
+      const commitRes = await fetch('https://api.github.com/repos/rydnichanin/MoneyTracker/commits/main', {
+        headers: { 'Accept': 'application/vnd.github.v3+json' },
+        cache: 'no-store'
+      });
+      if (commitRes.ok) {
+        const commitData = await commitRes.json();
+        const latestSha = (commitData.sha || '').slice(0, 7);
+        const installedSha = localStorage.getItem('app_installed_commit');
+        const commitMsg = commitData.commit?.message ? commitData.commit.message.split('\n')[0] : '';
+
+        if (!installedSha) {
+          localStorage.setItem('app_installed_commit', latestSha);
+        } else if (installedSha !== latestSha) {
+          window._serverVersionData = {
+            version: latestSha,
+            changelog: commitMsg,
+            sha: latestSha
+          };
+          window.promptUserForUpdate(null, `Вышло обновление на GitHub (${latestSha}): ${commitMsg}`);
+          return true;
+        }
+      }
+    } catch(e) {
+      console.warn('Commit API check error:', e);
+    }
+
     let data = null;
-    // 1. Проверяем version.json с GitHub Pages
+    // 2. Проверяем version.json с GitHub Pages
     try {
       const res = await fetch('./version.json?_t=' + Date.now(), { cache: 'no-store' });
       if (res.ok) data = await res.json();
     } catch(e) {}
 
-    // 2. Если локальный version.json ещё не обновился на CDN GitHub Pages — проверяем напрямую через raw.githubusercontent.com
+    // 3. Fallback через raw.githubusercontent.com
     if (!data || !data.build || data.build <= APP_CURRENT_BUILD) {
       try {
         const rawRes = await fetch('https://raw.githubusercontent.com/rydnichanin/MoneyTracker/main/version.json?_t=' + Date.now(), { cache: 'no-store' });
