@@ -380,6 +380,37 @@
     .fuel-box { background: #131722; border: 1px solid #1d2b45; border-radius: 12px; padding: 12px; margin-bottom: 10px; }
     .fuel-metric { font-size: 20px; font-weight: bold; color: var(--accent); }
     .fuel-label { font-size: 10px; color: #8899a6; text-transform: uppercase; margin-bottom: 2px; }
+
+    /* ═══ АВТО-ХАБ (ТОПЛИВО, ТО, СТОИМОСТЬ ВЛАДЕНИЯ) ═══ */
+    .car-hub-tabs { display: flex; gap: 6px; margin-bottom: 12px; background: #0c111c; padding: 4px; border-radius: 10px; border: 1px solid #1a273d; }
+    .car-hub-tab-btn { flex: 1; padding: 7px 6px; border-radius: 7px; border: none; background: transparent; color: #8899a6; font-size: 11px; font-weight: 600; cursor: pointer; text-align: center; transition: all 0.2s; white-space: nowrap; }
+    .car-hub-tab-btn.active { background: #182844; color: #6ec6ff; box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
+    .maint-metric-card { background: #121824; border: 1px solid #1e2c44; border-radius: 12px; padding: 12px; margin-bottom: 8px; }
+    .maint-metric-card.warn { border-color: #5c4314; background: #20170a; }
+    .maint-metric-card.alert { border-color: #5c1818; background: #200a0a; }
+    .maint-progress-bg { height: 8px; background: #182233; border-radius: 4px; overflow: hidden; margin: 8px 0 6px; }
+    .maint-progress-fill { height: 100%; border-radius: 4px; transition: width 0.4s; }
+
+    /* ═══ РЕГУЛЯРНЫЕ ЕЖЕМЕСЯЧНЫЕ ПЛАТЕЖИ ═══ */
+    .bill-item { background: #161522; border: 1px solid #28243e; border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+    .bill-title { font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 2px; }
+    .bill-meta { font-size: 11px; color: #888; }
+    .bill-status-badge { font-size: 10px; font-weight: bold; padding: 3px 7px; border-radius: 6px; display: inline-block; }
+
+    /* ═══ СРАВНЕНИЕ МЕСЯЦЕВ ═══ */
+    .month-comp-card { background: #1a1622; border: 1px solid #2d243a; border-radius: 14px; padding: 14px; margin-bottom: 12px; }
+    .comp-cat-row { padding: 9px 0; border-bottom: 1px solid #221c2c; }
+    .comp-bars-wrap { display: flex; flex-direction: column; gap: 3px; margin: 5px 0 2px; }
+    .comp-bar-bg { height: 6px; background: #241d30; border-radius: 3px; overflow: hidden; position: relative; }
+    .comp-bar-fill { height: 100%; border-radius: 3px; transition: width 0.4s; }
+
+    /* ═══ РАЗБИВКА ПО НЕДЕЛЯМ ═══ */
+    .week-breakdown-box { background: #13121d; border: 1px solid #28233a; border-radius: 10px; padding: 10px 12px; margin-top: 8px; }
+    .week-row { padding: 6px 0; border-bottom: 1px solid #1e1b2c; font-size: 12px; }
+    .week-row:last-child { border-bottom: none; }
+
+    /* ═══ ГЛОБАЛЬНЫЙ БАННЕР УВЕДОМЛЕНИЙ ═══ */
+    .global-alert-pill { margin: 8px 12px 4px; padding: 10px 14px; border-radius: 10px; display: flex; align-items: center; justify-content: space-between; font-size: 12px; font-weight: 600; }
   </style>
 
   <script type="module">
@@ -940,6 +971,7 @@
     <div class="topbar-title" id="mainTitle" style="cursor:default;">Учёт Курьера Pro</div>
     <div style="width:38px;"></div>
   </div>
+  <div id="globalAlertBanner"></div>
 
   <!-- ПЕРИОД -->
   <div class="period-row" style="flex-wrap:wrap;">
@@ -1002,18 +1034,18 @@
             <input id="date" type="date" required />
           </div>
           <input id="comment" type="text" placeholder="Примечание" style="margin-bottom:8px;" />
-          <!-- БЛОК ДЛЯ БЕНЗИНА / ОДОМЕТРА -->
+          <!-- БЛОК ДЛЯ БЕНЗИНА / ОДОМЕТРА / ТО -->
           <div id="fuelFieldsWrap" style="display:none;background:#151922;border:1px solid #233554;border-radius:10px;padding:10px;margin-bottom:8px;">
             <div style="font-size:11px;font-weight:600;color:#6ec6ff;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;">
-              <span>⛽ Данные заправки / одометра</span>
+              <span id="fuelBlockTitle">⛽ Данные заправки / одометра</span>
               <span id="fuelPriceHint" style="font-size:10px;color:#8899a6;font-weight:normal;"></span>
             </div>
-            <div class="row2" style="margin-bottom:6px;">
+            <div class="row2" id="fuelInputsRow" style="margin-bottom:6px;">
               <input id="fuelOdometer" type="number" inputmode="numeric" placeholder="Одометр (км)" style="padding:10px;font-size:14px;" />
               <input id="fuelLiters" type="number" step="0.01" inputmode="decimal" placeholder="Литры (напр. 30)" style="padding:10px;font-size:14px;" oninput="window._fuelLitersManuallyEdited = true;" />
             </div>
             <div style="font-size:10px;color:#778899;margin-bottom:6px;" id="fuelCalcNote"></div>
-            <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#ddd;cursor:pointer;">
+            <label id="fuelFullTankLabel" style="display:flex;align-items:center;gap:8px;font-size:13px;color:#ddd;cursor:pointer;">
               <input id="fuelFullTank" type="checkbox" style="width:18px;height:18px;accent-color:#65d48b;cursor:pointer;" />
               <span>Заправка до полного бака</span>
             </label>
@@ -1082,11 +1114,17 @@
 
     <!-- 4. РАСХОДЫ -->
     <div class="tab" id="tab-expense">
-      <!-- Блок топлива и одометра -->
+      <!-- Блок Авто-Хаба: Топливо, ТО, Стоимость владения -->
       <div class="card" id="fuelTrackerCard" style="border-color:#1e355b;display:none;">
         <div class="card-title" style="color:#6ec6ff;display:flex;justify-content:space-between;align-items:center;">
-          <span>⛽ Авто · Расход топлива</span>
+          <span>🚗 Авто · Топливо, ТО и Владение</span>
           <span id="fuelLastOdoBadge" style="font-size:10px;color:#8899a6;font-weight:normal;"></span>
+        </div>
+        <!-- Вкладки Авто-Хаба -->
+        <div class="car-hub-tabs">
+          <button class="car-hub-tab-btn active" id="btnCarHubFuel" onclick="setCarHubTab('fuel')">⛽ Топливо</button>
+          <button class="car-hub-tab-btn" id="btnCarHubOil" onclick="setCarHubTab('oil')">🛢️ Календарь ТО</button>
+          <button class="car-hub-tab-btn" id="btnCarHubCost" onclick="setCarHubTab('cost')">💰 Стоимость</button>
         </div>
         <div id="fuelTrackerContent"></div>
       </div>
@@ -1094,6 +1132,15 @@
       <div class="card">
         <div class="card-title">📉 Расходы по категориям</div>
         <div id="expenseDetails"><div class="muted">Нет расходов</div></div>
+      </div>
+
+      <!-- Блок регулярных ежемесячных платежей -->
+      <div class="card" id="recurringBillsCard" style="border-color:#2a2350;">
+        <div class="card-title" style="color:#a78bfa;display:flex;justify-content:space-between;align-items:center;">
+          <span>📅 Регулярные платежи (ежемесячно)</span>
+          <button onclick="openAddRecurringBillModal()" style="background:#2a2350;border:1px solid #4a3570;border-radius:8px;color:#a78bfa;font-size:11px;font-weight:bold;padding:5px 9px;cursor:pointer;">+ Платёж</button>
+        </div>
+        <div id="recurringBillsContent"></div>
       </div>
       
       <!-- Расширенная аналитика расходов (как у доходов) -->
@@ -1929,6 +1976,42 @@
     window.showToast(`✅ Цена за литр: ${val} ₸ сохранена в Firebase`);
   };
 
+  window.isMaintenanceTx = (t) => {
+    if (!t) return false;
+    const sub = String(t.subcategory || '').toLowerCase();
+    const cat = String(t.categoryName || '').toLowerCase();
+    const com = String(t.comment || '').toLowerCase();
+    const text = `${sub} ${cat} ${com}`;
+    return text.includes('масл') || /(?:^|[\s,._/])то(?:$|[\s,._/0-9])/i.test(text) ||
+           text.includes('техосмотр') || text.includes('страхов') || text.includes('огпо') ||
+           text.includes('каско') || text.includes('ремонт') || text.includes('сервис') ||
+           text.includes('сто ') || text.includes('мойк') || text.includes('штраф') ||
+           text.includes('шин') || text.includes('колес') || text.includes('запчаст') ||
+           text.includes('детал') || text.includes('фильтр') || text.includes('колодк') ||
+           text.includes('аккумулятор') || text.includes('парковк');
+  };
+
+  window.isFuelTransaction = (t) => {
+    if (!t || t.type !== 'expense') return false;
+    const sub = String(t.subcategory || '').toLowerCase();
+    const cat = String(t.categoryName || '').toLowerCase();
+    const com = String(t.comment || '').toLowerCase();
+    const text = `${sub} ${cat} ${com}`;
+    const isMaint = window.isMaintenanceTx(t);
+
+    // Если это замена масла, ТО, ремонт, мойка и т.д. без явного признака полного бака или топлива — это НЕ бензин
+    if (isMaint && !t.fullTank && !(text.includes('бенз') || text.includes('топлив') || text.includes('газ') || text.includes('заправ'))) {
+      return false;
+    }
+
+    if (t.fullTank || (t.liters !== undefined && Number(t.liters) > 0 && !isMaint)) {
+      return true;
+    }
+
+    return text.includes('бенз') || text.includes('топлив') || text.includes('газ') ||
+           text.includes('заправ') || text.includes('гсм');
+  };
+
   window._fuelLitersManuallyEdited = false;
   window.autoCalcFuelLiters = () => {
     const elT = document.getElementById("type");
@@ -1943,7 +2026,9 @@
     const currentCats = (window.DEFAULTS && window.DEFAULTS[elT.value]) || [];
     const catObj = currentCats.find(c => c.id === elC.value);
     const catName = (catObj ? catObj.name : '').toLowerCase();
-    const isFuel = elT.value === 'expense' && (
+    const subName = (elS ? elS.value : '').toLowerCase();
+    const isMaint = window.isMaintenanceTx({ categoryName: catName, subcategory: subName });
+    const isFuel = !isMaint && elT.value === 'expense' && (
       catName.includes('бенз') || subName.includes('бенз') ||
       catName.includes('топлив') || subName.includes('топлив') ||
       catName.includes('газ') || subName.includes('газ') ||
@@ -1958,7 +2043,7 @@
     }
 
     if (!isFuel) {
-      if (noteEl) noteEl.innerHTML = '';
+      if (noteEl && !isMaint) noteEl.innerHTML = '';
       return;
     }
 
@@ -1994,6 +2079,7 @@
     }
     if (name === 'expense') {
       if (window.renderFuelTracker) window.renderFuelTracker();
+      if (window.renderRecurringBills) window.renderRecurringBills();
       if (window._expAnalyticsStale) {
         window._expAnalyticsStale = false;
         if (window.renderExpenseFullAnalytics) window.renderExpenseFullAnalytics();
@@ -2021,6 +2107,37 @@
   let _analyticsMonthsLimit = 6; // сколько месяцев показывать в "Сравнение по месяцам" (0 = все)
   let _weekdayShiftFilter = 'all'; // 'all' (вместе), 'day' (точки), 'night' (ночь)
   let _openWeekdayDetails = null; // wdIdx раскрытого дня недели
+  let _openExpWeekdayDetails = null; // wdIdx расходов
+  let _carHubTab = 'fuel'; // 'fuel', 'oil', 'cost'
+  let _openMonthWeeks = {}; // '2026-10': true
+  let _incomeTimeGroup = 'months'; // 'months' или 'weeks'
+  let _compareMonthA = '';
+  let _compareMonthB = '';
+
+  window.setCarHubTab = (tab) => {
+    _carHubTab = tab;
+    ['Fuel', 'Oil', 'Cost'].forEach(k => {
+      const b = document.getElementById('btnCarHub' + k);
+      if (b) b.classList.toggle('active', k.toLowerCase() === tab);
+    });
+    if (window.renderFuelTracker) window.renderFuelTracker();
+  };
+
+  window.setIncomeTimeGroup = (mode) => {
+    _incomeTimeGroup = mode;
+    if (window.renderAnalytics) window.renderAnalytics();
+  };
+
+  window.toggleMonthWeeks = (mKey) => {
+    _openMonthWeeks[mKey] = !_openMonthWeeks[mKey];
+    if (window.renderAnalytics) window.renderAnalytics();
+  };
+
+  window.setCompareMonths = (mA, mB) => {
+    _compareMonthA = mA;
+    _compareMonthB = mB;
+    if (window.renderExpenseFullAnalytics) window.renderExpenseFullAnalytics();
+  };
 
   window.setWeekdayShiftFilter = (mode) => {
     _weekdayShiftFilter = mode;
@@ -2029,6 +2146,10 @@
   window.toggleWeekdayDetails = (wdIdx) => {
     _openWeekdayDetails = (_openWeekdayDetails === wdIdx) ? null : wdIdx;
     if (window.renderAnalytics) window.renderAnalytics();
+  };
+  window.toggleExpWeekdayDetails = (wdIdx) => {
+    _openExpWeekdayDetails = (_openExpWeekdayDetails === wdIdx) ? null : wdIdx;
+    if (window.renderExpenseFullAnalytics) window.renderExpenseFullAnalytics();
   };
   window.toggleExpCat = function(catId) {
     const det = document.getElementById('expDet_' + catId);
@@ -2433,17 +2554,45 @@
         const catObj = currentCats.find(c=>c.id===elC.value);
         const catName = (catObj ? catObj.name : '').toLowerCase();
         const subName = (elS.value || '').toLowerCase();
-        const isFuel = elT.value === 'expense' && (
+        const isMaint = window.isMaintenanceTx({ categoryName: catName, subcategory: subName });
+        const isFuel = !isMaint && elT.value === 'expense' && (
           catName.includes('бенз') || subName.includes('бенз') ||
           catName.includes('топлив') || subName.includes('топлив') ||
           catName.includes('газ') || subName.includes('газ') ||
           catName.includes('заправ') || subName.includes('заправ') ||
-          catName.includes('гсм') || subName.includes('гсм') ||
-          catName.includes('авто') || catName.includes('машин')
+          catName.includes('гсм') || subName.includes('гсм')
         );
+        const isCarGeneral = elT.value === 'expense' && (catName.includes('авто') || catName.includes('машин') || subName.includes('авто') || subName.includes('машин'));
+        const isAuto = isFuel || isMaint || isCarGeneral;
+
         const fw = document.getElementById("fuelFieldsWrap");
-        if (fw) fw.style.display = isFuel ? 'block' : 'none';
-        if (window.autoCalcFuelLiters) window.autoCalcFuelLiters();
+        const fTitle = document.getElementById("fuelBlockTitle");
+        const fPriceHint = document.getElementById("fuelPriceHint");
+        const fLitInp = document.getElementById("fuelLiters");
+        const fFullLabel = document.getElementById("fuelFullTankLabel");
+        const fCalcNote = document.getElementById("fuelCalcNote");
+
+        if (fw) fw.style.display = isAuto ? 'block' : 'none';
+
+        if (isMaint) {
+          if (fTitle) fTitle.textContent = '🚗 Одометр для ТО и сервиса';
+          if (fPriceHint) fPriceHint.style.display = 'none';
+          if (fLitInp) { fLitInp.style.display = 'none'; fLitInp.value = ''; }
+          if (fFullLabel) { fFullLabel.style.display = 'none'; document.getElementById("fuelFullTank").checked = false; }
+          if (fCalcNote) fCalcNote.innerHTML = '<span style="color:#65d48b;">🔧 Запись ТО / расхода авто (одометр обновит интервал ТО, сумма НЕ попадёт в бензин)</span>';
+        } else if (isFuel) {
+          if (fTitle) fTitle.textContent = '⛽ Данные заправки / одометра';
+          if (fPriceHint) fPriceHint.style.display = 'inline';
+          if (fLitInp) fLitInp.style.display = 'block';
+          if (fFullLabel) fFullLabel.style.display = 'flex';
+          if (window.autoCalcFuelLiters) window.autoCalcFuelLiters();
+        } else if (isAuto) {
+          if (fTitle) fTitle.textContent = '🚗 Данные авто / одометр';
+          if (fPriceHint) fPriceHint.style.display = 'none';
+          if (fLitInp) fLitInp.style.display = 'block';
+          if (fFullLabel) fFullLabel.style.display = 'flex';
+          if (fCalcNote) fCalcNote.innerHTML = '';
+        }
       };
 
       const amtEl = document.getElementById("amount");
@@ -2857,6 +3006,7 @@
     if (window.renderFuelTracker) renderFuelTracker();
     if (document.getElementById('tab-expense')?.classList.contains('active')) {
       if (window.renderExpenseFullAnalytics) renderExpenseFullAnalytics();
+      if (window.renderRecurringBills) window.renderRecurringBills();
     } else {
       window._expAnalyticsStale = true;
     }
@@ -2864,6 +3014,8 @@
     if (document.getElementById('tab-budget')?.classList.contains('active')) {
       if (window.renderBudget) renderBudget();
     }
+
+    if (window.checkCarAndBillsReminders) window.checkCarAndBillsReminders();
   }
 
   window.render = render;
@@ -3108,12 +3260,28 @@
     const allSortedM=Object.entries(byMonth).sort((a,b)=>b[0]>a[0]?1:-1);
     const sortedM=_analyticsMonthsLimit>0?allSortedM.slice(0,_analyticsMonthsLimit):allSortedM;
     const maxInc=Math.max(...sortedM.map(([,d])=>d.inc),1);
-    const monthsFilterHtml=allSortedM.length>3?`<div class="sec-title" style="display:flex;justify-content:space-between;align-items:center;">
-      <span>Сравнение по месяцам</span>
-      <span style="display:flex;gap:4px;">
-        ${[3,6,12,0].map(n=>`<button onclick="setAnalyticsMonthsLimit(${n})" style="padding:4px 8px;border-radius:6px;border:1px solid ${_analyticsMonthsLimit===n?'#a78bfa':'#2a2a2a'};background:${_analyticsMonthsLimit===n?'#2a2350':'#1c1c1e'};color:${_analyticsMonthsLimit===n?'#a78bfa':'#555'};font-size:10px;font-weight:600;cursor:pointer;">${n===0?'Все':n}</button>`).join('')}
-      </span>
-    </div>`:`<div class="sec-title">Сравнение по месяцам</div>`;
+    // ── Детальный учёт дохода по сменам: разделение на обычные точки и ночь ──
+    const isNightTx = (t) => {
+      const sub = (t.subcategory || '').toLowerCase();
+      const cat = (t.categoryName || '').toLowerCase();
+      const com = (t.comment || '').toLowerCase();
+      return sub.includes('ночь') || cat.includes('ночь') || com.includes('ночь');
+    };
+
+    const monthsFilterHtml=`
+      <div class="sec-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
+        <span style="display:flex;align-items:center;gap:6px;">
+          <span>Сравнение по месяцам</span>
+          <span style="display:inline-flex;gap:3px;margin-left:4px;">
+            <button onclick="setIncomeTimeGroup('months')" style="padding:3px 7px;border-radius:6px;border:1px solid ${_incomeTimeGroup==='months'?'#a78bfa':'#2a2a2a'};background:${_incomeTimeGroup==='months'?'#2a2350':'#1c1c1e'};color:${_incomeTimeGroup==='months'?'#a78bfa':'#777'};font-size:10px;font-weight:600;cursor:pointer;">Месяцы</button>
+            <button onclick="setIncomeTimeGroup('weeks')" style="padding:3px 7px;border-radius:6px;border:1px solid ${_incomeTimeGroup==='weeks'?'#6ec6ff':'#2a2a2a'};background:${_incomeTimeGroup==='weeks'?'#11263d':'#1c1c1e'};color:${_incomeTimeGroup==='weeks'?'#6ec6ff':'#777'};font-size:10px;font-weight:600;cursor:pointer;">По неделям</button>
+          </span>
+        </span>
+        <span style="display:flex;gap:4px;">
+          ${[3,6,12,0].map(n=>`<button onclick="setAnalyticsMonthsLimit(${n})" style="padding:3px 7px;border-radius:6px;border:1px solid ${_analyticsMonthsLimit===n?'#a78bfa':'#2a2a2a'};background:${_analyticsMonthsLimit===n?'#2a2350':'#1c1c1e'};color:${_analyticsMonthsLimit===n?'#a78bfa':'#555'};font-size:10px;font-weight:600;cursor:pointer;">${n===0?'Все':n}</button>`).join('')}
+        </span>
+      </div>
+    `;
     const incByMonthMap={}; allSortedM.forEach(([m,d])=>{incByMonthMap[m]=d.inc;});
     const monthHtml=sortedM.length>0?`${monthsFilterHtml}${sortedM.map(([m,d])=>{
       const wd=wdByM[m]?wdByM[m].size:0,avg=wd>0?Math.round(d.inc/wd):0;
@@ -3126,21 +3294,82 @@
       const totalDaysInM=daysInMonthCalc(m), daysPassedInM=(m===currentMonthKey)?dayOfMonth:totalDaysInM;
       const workedDaysInM=(dayByMonth[m]||[]).length, missedDays=Math.max(0,daysPassedInM-workedDaysInM);
       const missedLine=`<div class="month-meta" style="margin-top:2px;">${missedDays>0?`🚫 ${missedDays} дн. без записей`:'✅ без пропусков'}</div>`;
-      return`<div class="month-row"><div class="month-top"><span>${fmtM(m)}</span><span class="pos">${d.inc.toLocaleString()} ₸${momHtml}</span></div><div class="month-bar-bg"><div class="month-bar-fill" style="width:${(d.inc/maxInc*100).toFixed(1)}%"></div></div><div class="month-meta">📅 ${wd} дн. · ≈ ${avg.toLocaleString()} ₸/день</div>${bwLine}${expLine}${missedLine}</div>`;
+
+      // Расчёт разбивки по неделям для данного месяца
+      const isMonthOpen = Boolean(_openMonthWeeks[m]) || _incomeTimeGroup === 'weeks';
+      let weeksHtml = '';
+      if (isMonthOpen) {
+        const [yNum, moNum] = m.split('-').map(Number);
+        const totalDaysInMonth = daysInMonthCalc(m);
+        const weeks = [];
+        let curStart = 1;
+        let wNum = 1;
+        while (curStart <= totalDaysInMonth) {
+          const curEnd = Math.min(curStart + 6, totalDaysInMonth);
+          const startStr = `${m}-${String(curStart).padStart(2,'0')}`;
+          const endStr = `${m}-${String(curEnd).padStart(2,'0')}`;
+          let wInc = 0, wExp = 0, wDays = new Set(), wDayInc = 0, wNightInc = 0;
+          allTx.forEach(t => {
+            if (isDepTransfer(t) || !t.date || t.date < startStr || t.date > endStr) return;
+            const amt = Number(t.amount) || 0;
+            if (t.type === 'income') {
+              wInc += amt;
+              wDays.add(t.date);
+              if (isNightTx(t)) wNightInc += amt; else wDayInc += amt;
+            } else if (t.type === 'expense') {
+              wExp += amt;
+            }
+          });
+          const wAvg = wDays.size > 0 ? Math.round(wInc / wDays.size) : 0;
+          weeks.push({
+            label: `Неделя ${wNum} (${String(curStart).padStart(2,'0')}.${String(moNum).padStart(2,'0')} – ${String(curEnd).padStart(2,'0')}.${String(moNum).padStart(2,'0')})`,
+            inc: wInc, exp: wExp, net: wInc - wExp, days: wDays.size, avg: wAvg,
+            dayInc: wDayInc, nightInc: wNightInc
+          });
+          curStart = curEnd + 1;
+          wNum++;
+        }
+        const maxWInc = Math.max(...weeks.map(w => w.inc), 1);
+        weeksHtml = `
+          <div class="week-breakdown-box">
+            <div style="font-size:11px;font-weight:bold;color:#a78bfa;margin-bottom:6px;display:flex;justify-content:space-between;">
+              <span>📅 Доход по неделям (${fmtM(m)}):</span>
+              <span style="font-size:10px;color:#777;">5 недель</span>
+            </div>
+            ${weeks.map(wk => {
+              const wkPct = ((wk.inc / maxWInc) * 100).toFixed(1);
+              return `
+                <div class="week-row">
+                  <div style="display:flex;justify-content:space-between;align-items:center;font-weight:600;">
+                    <span style="color:#ddd;">${wk.label}</span>
+                    <span class="pos" style="font-size:12px;">${wk.inc.toLocaleString()} ₸</span>
+                  </div>
+                  <div class="comp-bar-bg" style="margin:4px 0 3px;height:4px;">
+                    <div class="comp-bar-fill" style="width:${wkPct}%;background:#a78bfa;"></div>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;font-size:10px;color:#777;flex-wrap:wrap;gap:4px;">
+                    <span>📅 ${wk.days} дн. · ≈ ${wk.avg.toLocaleString()} ₸/день</span>
+                    <span>чистыми: <b style="color:${wk.net>=0?'#65d48b':'#ff6b6b'};">${wk.net.toLocaleString()} ₸</b></span>
+                    <span>🚴 ${wk.dayInc.toLocaleString()} · 🌙 ${wk.nightInc.toLocaleString()} ₸</span>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `;
+      }
+
+      const weekToggleBtn = `<button onclick="event.stopPropagation(); toggleMonthWeeks('${m}');" style="background:#1c1b26;border:1px solid #332d48;border-radius:6px;color:#a78bfa;font-size:10px;font-weight:600;padding:2px 7px;cursor:pointer;">📅 По неделям ${isMonthOpen?'▲':'▼'}</button>`;
+
+      return `<div class="month-row"><div class="month-top"><span style="display:flex;align-items:center;gap:6px;"><span>${fmtM(m)}</span>${weekToggleBtn}</span><span class="pos">${d.inc.toLocaleString()} ₸${momHtml}</span></div><div class="month-bar-bg"><div class="month-bar-fill" style="width:${(d.inc/maxInc*100).toFixed(1)}%"></div></div><div class="month-meta">📅 ${wd} дн. · ≈ ${avg.toLocaleString()} ₸/день</div>${bwLine}${expLine}${missedLine}${weeksHtml}</div>`;
     }).join('')}`:'';
+
     const delivByMonth={};
     allTx.forEach(t=>{if(t.type==='income'&&DELIVERY_POINTS.includes(t.subcategory)){const m=(t.date||'').slice(0,7);if(!delivByMonth[m])delivByMonth[m]={sum:0,days:new Set()};delivByMonth[m].sum+=t.amount;delivByMonth[m].days.add(t.date);}});
     const allSortedDeliv=Object.entries(delivByMonth).sort((a,b)=>b[0]>a[0]?1:-1);
     const sortedDeliv=_analyticsMonthsLimit>0?allSortedDeliv.slice(0,_analyticsMonthsLimit):allSortedDeliv;
     const maxDeliv=Math.max(...sortedDeliv.map(([,d])=>d.sum),1);
     const delivHtml=sortedDeliv.length>0?`<div class="sec-title" style="margin-top:18px;color:#ffd166;">🚴 По точкам (F1·F2·F3·ALLEY·Ночь)</div>${sortedDeliv.map(([m,d])=>{const days=d.days.size,avg=days>0?Math.round(d.sum/days):0;return`<div class="month-row"><div class="month-top"><span>${fmtM(m)}</span><span style="color:#ffd166;font-weight:bold;">${d.sum.toLocaleString()} ₸</span></div><div class="month-bar-bg"><div class="month-bar-fill" style="width:${(d.sum/maxDeliv*100).toFixed(1)}%;background:#ffd166;"></div></div><div class="month-meta">📅 ${days} дн. · ≈ ${avg.toLocaleString()} ₸/день</div></div>`;}).join('')}`:'';
-    // ── Детальный учёт дохода по сменам: разделение на обычные точки и ночь ──
-    const isNightTx = (t) => {
-      const sub = (t.subcategory || '').toLowerCase();
-      const cat = (t.categoryName || '').toLowerCase();
-      const com = (t.comment || '').toLowerCase();
-      return sub.includes('ночь') || cat.includes('ночь') || com.includes('ночь');
-    };
 
     const dayShiftMap = {};
     let totalNightIncomeAllTime = 0, totalDayIncomeAllTime = 0;
@@ -4256,21 +4485,10 @@
   window.calculateFuelStats = () => {
     const odoMode = localStorage.getItem('fuel_odo_mode') || 'auto'; // 'auto', 'total', 'trip'
 
-    // Собираем все транзакции расходов на авто / топливо
+    // Собираем строго транзакции топлива (ТО, замена масла и ремонты исключены!)
     const fuelTxs = (window.allTx || []).filter(t => {
       if (t.type !== 'expense') return false;
-      // Если есть явные атрибуты топлива/одометра
-      if (t.fullTank || (t.odometer !== undefined && t.odometer !== null && Number(t.odometer) > 0) || (t.liters !== undefined && Number(t.liters) > 0)) {
-        return true;
-      }
-      const sub = String(t.subcategory || '').toLowerCase();
-      const cat = String(t.categoryName || '').toLowerCase();
-      const com = String(t.comment || '').toLowerCase();
-      return sub.includes('бенз') || cat.includes('бенз') || com.includes('бенз') ||
-             sub.includes('топлив') || cat.includes('топлив') || com.includes('топлив') ||
-             sub.includes('газ') || cat.includes('газ') || com.includes('газ') ||
-             sub.includes('заправ') || cat.includes('заправ') || com.includes('заправ') ||
-             sub.includes('гсм') || cat.includes('гсм');
+      return window.isFuelTransaction(t);
     }).sort((a,b) => {
       if (a.date !== b.date) return a.date > b.date ? 1 : -1;
       if (a.odometer && b.odometer) return Number(a.odometer) - Number(b.odometer);
@@ -4439,6 +4657,209 @@
     };
   };
 
+  window.getCarMaintenanceStatus = () => {
+    let latestOdo = 0;
+    let autoTxCount = 0;
+    let lastOilTx = null;
+
+    (window.allTx || []).forEach(t => {
+      const odo = Number(t.odometer);
+      if (odo && odo > latestOdo) latestOdo = odo;
+      const isMaint = window.isMaintenanceTx(t);
+      const isFuel = window.isFuelTransaction(t);
+      const sub = String(t.subcategory || '').toLowerCase();
+      const cat = String(t.categoryName || '').toLowerCase();
+      const com = String(t.comment || '').toLowerCase();
+      const text = `${sub} ${cat} ${com}`;
+      if (isMaint || isFuel || text.includes('авто') || text.includes('машин')) autoTxCount++;
+
+      if (text.includes('масл') && odo > 0) {
+        if (!lastOilTx || (t.date > lastOilTx.date) || (t.date === lastOilTx.date && odo > Number(lastOilTx.odometer))) {
+          lastOilTx = t;
+        }
+      }
+    });
+
+    const interval = Number(localStorage.getItem('car_oil_interval')) || 5000;
+    let lastOilOdo = Number(localStorage.getItem('car_oil_last_odo')) || 0;
+    if (lastOilTx && (!lastOilOdo || Number(lastOilTx.odometer) > lastOilOdo)) {
+      lastOilOdo = Number(lastOilTx.odometer);
+    }
+
+    const distanceSinceOil = (latestOdo > 0 && lastOilOdo > 0 && latestOdo >= lastOilOdo)
+      ? (latestOdo - lastOilOdo)
+      : 0;
+    const remainingKm = interval - distanceSinceOil;
+    const oilPct = Math.min(100, Math.round((distanceSinceOil / interval) * 100));
+
+    let oilStatus = 'ok';
+    let oilStatusText = `В норме (осталось ${remainingKm.toLocaleString()} км)`;
+    if (remainingKm < 0) {
+      oilStatus = 'alert';
+      oilStatusText = `🚨 Перепробег на ${Math.abs(remainingKm).toLocaleString()} км! Срочно замените масло!`;
+    } else if (remainingKm <= 500) {
+      oilStatus = 'warn';
+      oilStatusText = `⚠️ Скоро замена! Осталось всего ${remainingKm.toLocaleString()} км`;
+    }
+
+    const insDate = localStorage.getItem('car_insurance_date') || '';
+    const inspDate = localStorage.getItem('car_inspection_date') || '';
+    const today = new Date().toISOString().split('T')[0];
+
+    let insDays = null, insStatus = 'none', insText = 'Не задана';
+    if (insDate) {
+      const diffTime = new Date(insDate + 'T00:00:00') - new Date(today + 'T00:00:00');
+      insDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      if (insDays < 0) {
+        insStatus = 'alert';
+        insText = `🚨 Просрочена на ${Math.abs(insDays)} дн.!`;
+      } else if (insDays <= 14) {
+        insStatus = 'warn';
+        insText = `⚠️ Истекает через ${insDays} дн.`;
+      } else {
+        insStatus = 'ok';
+        insText = `✅ Активна (осталось ${insDays} дн.)`;
+      }
+    }
+
+    let inspDays = null, inspStatus = 'none', inspText = 'Не задан';
+    if (inspDate) {
+      const diffTime = new Date(inspDate + 'T00:00:00') - new Date(today + 'T00:00:00');
+      inspDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      if (inspDays < 0) {
+        inspStatus = 'alert';
+        inspText = `🚨 Просрочен на ${Math.abs(inspDays)} дн.!`;
+      } else if (inspDays <= 14) {
+        inspStatus = 'warn';
+        inspText = `⚠️ Истекает через ${inspDays} дн.`;
+      } else {
+        inspStatus = 'ok';
+        inspText = `✅ Пройден (осталось ${inspDays} дн.)`;
+      }
+    }
+
+    return {
+      latestOdo, autoTxCount, interval, lastOilOdo, distanceSinceOil,
+      remainingKm, oilPct, oilStatus, oilStatusText, insDate, insDays,
+      insStatus, insText, inspDate, inspDays, inspStatus, inspText
+    };
+  };
+
+  window.recordOilChange = () => {
+    const maint = window.getCarMaintenanceStatus();
+    const curOdo = maint.latestOdo || '';
+    const val = prompt('Введите показания одометра при замене масла (км):', curOdo);
+    if (!val) return;
+    const n = Number(val);
+    if (!n || n <= 0) { window.showToast('Некорректный одометр', 'error'); return; }
+    localStorage.setItem('car_oil_last_odo', String(n));
+    window.showToast(`✅ Замена масла зафиксирована на ${n.toLocaleString()} км!`);
+    window.renderFuelTracker();
+    if (window.checkCarAndBillsReminders) window.checkCarAndBillsReminders();
+  };
+
+  window.editOilInterval = () => {
+    const cur = Number(localStorage.getItem('car_oil_interval')) || 5000;
+    const val = prompt('Интервал замены масла (км):', cur);
+    if (!val) return;
+    const n = Number(val);
+    if (!n || n <= 0) { window.showToast('Некорректный интервал', 'error'); return; }
+    localStorage.setItem('car_oil_interval', String(n));
+    window.showToast(`✅ Интервал сохранен: ${n.toLocaleString()} км`);
+    window.renderFuelTracker();
+  };
+
+  window.setCarDate = (type) => {
+    const key = type === 'insurance' ? 'car_insurance_date' : 'car_inspection_date';
+    const label = type === 'insurance' ? 'страховки (ОГПО/КАСКО)' : 'техосмотра';
+    const cur = localStorage.getItem(key) || '';
+    const val = prompt(`Введите дату окончания ${label} (ГГГГ-ММ-ДД):`, cur);
+    if (val === null) return;
+    if (val === '') {
+      localStorage.removeItem(key);
+      window.showToast(`Дата ${label} сброшена`);
+    } else if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+      localStorage.setItem(key, val);
+      window.showToast(`✅ Дата ${label} сохранена: ${val}`);
+    } else {
+      window.showToast('Неверный формат даты (требуется ГГГГ-ММ-ДД)', 'error');
+      return;
+    }
+    window.renderFuelTracker();
+    if (window.checkCarAndBillsReminders) window.checkCarAndBillsReminders();
+  };
+
+  window.getCarOwnershipStats = (fuelStats) => {
+    const isDepTransfer = t => t.subcategory && (t.subcategory.startsWith('← ') || t.subcategory.startsWith('→ '));
+    const autoBreakdown = {
+      fuel: { label: '⛽ Топливо', sum: 0, count: 0, color: '#6ec6ff' },
+      oil: { label: '🛢️ Масло и ТО', sum: 0, count: 0, color: '#ffd166' },
+      repair: { label: '🔧 Ремонт и запчасти', sum: 0, count: 0, color: '#ff6b6b' },
+      wash: { label: '🧽 Мойка и уход', sum: 0, count: 0, color: '#00d2d3' },
+      insurance: { label: '🛡️ Страховка / техосмотр', sum: 0, count: 0, color: '#a78bfa' },
+      fines: { label: '🚨 Штрафы', sum: 0, count: 0, color: '#ff4757' },
+      other: { label: '🅿️ Прочее авто', sum: 0, count: 0, color: '#8899a6' }
+    };
+
+    let totalAutoCost = 0;
+    const autoMonths = {};
+    const todayMonth = new Date().toISOString().slice(0, 7);
+    let curMonthAutoCost = 0;
+
+    (window.allTx || []).forEach(t => {
+      if (t.type !== 'expense' || isDepTransfer(t)) return;
+      const sub = String(t.subcategory || '').toLowerCase();
+      const cat = String(t.categoryName || '').toLowerCase();
+      const com = String(t.comment || '').toLowerCase();
+      const text = `${sub} ${cat} ${com}`;
+
+      const isFuel = window.isFuelTransaction(t);
+      const isOil = text.includes('масл') || /(?:^|[\s,._/])то(?:$|[\s,._/0-9])/i.test(text) || text.includes('фильтр') || text.includes('расходник');
+      const isRepair = text.includes('ремонт') || text.includes('сервис') || text.includes('сто ') || text.includes('запчаст') || text.includes('детал') || text.includes('шин') || text.includes('колес') || text.includes('аккумулятор');
+      const isWash = text.includes('мойк') || text.includes('химчист') || text.includes('полиров');
+      const isIns = text.includes('страхов') || text.includes('техосмотр') || text.includes('налог');
+      const isFine = text.includes('штраф');
+      const isCarGeneral = cat.includes('авто') || cat.includes('машин') || sub.includes('авто') || sub.includes('машин');
+
+      if (!isFuel && !isOil && !isRepair && !isWash && !isIns && !isFine && !isCarGeneral && !t.odometer) {
+        return;
+      }
+
+      const amt = Number(t.amount) || 0;
+      totalAutoCost += amt;
+      const m = (t.date || '').slice(0, 7);
+      if (m) {
+        autoMonths[m] = (autoMonths[m] || 0) + amt;
+        if (m === todayMonth) curMonthAutoCost += amt;
+      }
+
+      if (isFine) {
+        autoBreakdown.fines.sum += amt; autoBreakdown.fines.count++;
+      } else if (isIns) {
+        autoBreakdown.insurance.sum += amt; autoBreakdown.insurance.count++;
+      } else if (isOil && !isFuel) {
+        autoBreakdown.oil.sum += amt; autoBreakdown.oil.count++;
+      } else if (isRepair) {
+        autoBreakdown.repair.sum += amt; autoBreakdown.repair.count++;
+      } else if (isWash) {
+        autoBreakdown.wash.sum += amt; autoBreakdown.wash.count++;
+      } else if (isFuel) {
+        autoBreakdown.fuel.sum += amt; autoBreakdown.fuel.count++;
+      } else {
+        autoBreakdown.other.sum += amt; autoBreakdown.other.count++;
+      }
+    });
+
+    const mCount = Math.max(Object.keys(autoMonths).length, 1);
+    const avgMonthCost = Math.round(totalAutoCost / mCount);
+    const avgDayCost = Math.round(avgMonthCost / 30);
+    const trackedDistance = (fuelStats && fuelStats.totalDistanceAllTime > 0) ? fuelStats.totalDistanceAllTime : 0;
+    const costPerKm = trackedDistance > 0 ? (totalAutoCost / trackedDistance).toFixed(1) : null;
+    const fuelCostPerKm = trackedDistance > 0 ? (autoBreakdown.fuel.sum / trackedDistance).toFixed(1) : null;
+
+    return { totalAutoCost, curMonthAutoCost, avgMonthCost, avgDayCost, costPerKm, fuelCostPerKm, trackedDistance, autoBreakdown, mCount };
+  };
+
   window.renderFuelTracker = () => {
     const card = document.getElementById('fuelTrackerCard');
     const content = document.getElementById('fuelTrackerContent');
@@ -4446,76 +4867,190 @@
     if (!card || !content) return;
 
     const stats = calculateFuelStats();
-    if (!stats || stats.totalTxs === 0) {
+    const maint = window.getCarMaintenanceStatus();
+    const ownership = window.getCarOwnershipStats(stats);
+
+    if ((!stats || stats.totalTxs === 0) && maint.autoTxCount === 0 && !maint.latestOdo) {
       card.style.display = 'none';
       return;
     }
 
     card.style.display = 'block';
-    card.style.cursor = 'pointer';
-    card.onclick = (e) => {
-      if (!e.target.closest('button')) window.openFuelDetailsModal();
-    };
 
-    if (badge && stats.lastOdometer) {
-      badge.textContent = `Текущий одометр: ${Number(stats.lastOdometer).toLocaleString()} км`;
+    const curOdoDisplay = maint.latestOdo || (stats ? stats.lastOdometer : null);
+    if (badge && curOdoDisplay) {
+      badge.textContent = `Одометр: ${Number(curOdoDisplay).toLocaleString()} км`;
     }
 
-    const { avgConsumption, totalDistanceAllTime, totalFuelCost, lastInterval, intervals } = stats;
-    const consText = avgConsumption > 0 ? `${avgConsumption} л / 100 км` : 'Мало данных';
-    const lastConsText = lastInterval ? `${lastInterval.consumption} л / 100 км (${lastInterval.distance} км)` : '—';
+    // Синхронизируем класс активной вкладки
+    ['Fuel', 'Oil', 'Cost'].forEach(k => {
+      const b = document.getElementById('btnCarHub' + k);
+      if (b) b.classList.toggle('active', k.toLowerCase() === _carHubTab);
+    });
 
-    let historyHtml = '';
-    if (intervals.length > 0) {
-      historyHtml = `
-        <div style="margin-top:10px;border-top:1px solid #1a2a40;padding-top:8px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-            <div style="font-size:11px;font-weight:600;color:#6ec6ff;">Последние замеры расхода:</div>
-            <span style="font-size:10px;color:#8899a6;">(нажмите для деталей)</span>
-          </div>
-          ${intervals.slice(-3).reverse().map(inv => `
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #142032;font-size:12px;">
-              <div>
-                <span style="font-weight:600;color:#ffd166;">${inv.consumption} л/100км</span>
-                <span style="color:#778899;font-size:10px;margin-left:6px;">(${inv.distance} км · ${inv.liters.toFixed(1)} л)</span>
-                ${inv.isExact ? '<span style="color:#65d48b;font-size:9px;background:#0d2613;border:1px solid #1e4526;padding:1px 4px;border-radius:4px;margin-left:4px;">полный бак</span>' : ''}
+    if (_carHubTab === 'oil') {
+      // ════ Вкладка: КАЛЕНДАРЬ ТО ════
+      const oilBarColor = maint.oilStatus === 'alert' ? '#ff4757' : (maint.oilStatus === 'warn' ? '#ffd166' : '#65d48b');
+      content.innerHTML = `
+        <!-- Масло -->
+        <div class="maint-metric-card ${maint.oilStatus}">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <span style="font-size:13px;font-weight:bold;color:#ffd166;">🛢️ Замена масла (каждые ${maint.interval.toLocaleString()} км)</span>
+              <div style="font-size:11px;color:#aaa;margin-top:2px;">
+                ${maint.lastOilOdo > 0 ? `Прошлая замена: <b>${maint.lastOilOdo.toLocaleString()} км</b>` : 'Прошлая замена не записана'}
               </div>
-              <span style="color:#65d48b;font-weight:bold;">${inv.cost.toLocaleString()} ₸</span>
             </div>
-          `).join('')}
+            <button onclick="editOilInterval()" style="background:none;border:1px solid #333;border-radius:6px;color:#aaa;font-size:10px;padding:3px 7px;cursor:pointer;">⚙️ ${maint.interval} км</button>
+          </div>
+          <div class="maint-progress-bg">
+            <div class="maint-progress-fill" style="width:${maint.oilPct}%;background:${oilBarColor};"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;">
+            <span style="color:${oilBarColor};font-weight:600;">${maint.oilStatusText}</span>
+            <span style="color:#888;">${maint.distanceSinceOil.toLocaleString()} из ${maint.interval.toLocaleString()} км</span>
+          </div>
+          <div style="margin-top:8px;display:flex;gap:6px;">
+            <button onclick="recordOilChange()" style="flex:1;padding:8px;border-radius:8px;border:1px solid #2a4025;background:#102414;color:#65d48b;font-size:11px;font-weight:bold;cursor:pointer;">
+              🛢️ Записал замену масла
+            </button>
+          </div>
         </div>
+
+        <!-- Страховка и техосмотр -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+          <div class="maint-metric-card ${maint.insStatus}" style="margin-bottom:0;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+              <span style="font-size:11px;font-weight:bold;color:#a78bfa;">🛡️ Страховка</span>
+              <button onclick="setCarDate('insurance')" style="background:none;border:none;color:#a78bfa;cursor:pointer;font-size:12px;padding:0;">✏️</button>
+            </div>
+            <div style="font-size:12px;font-weight:bold;color:#fff;">${maint.insText}</div>
+            <div style="font-size:10px;color:#777;margin-top:2px;">${maint.insDate ? `до ${maint.insDate}` : 'нажмите ✏️ для ввода даты'}</div>
+          </div>
+          <div class="maint-metric-card ${maint.inspStatus}" style="margin-bottom:0;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+              <span style="font-size:11px;font-weight:bold;color:#6ec6ff;">📋 Техосмотр</span>
+              <button onclick="setCarDate('inspection')" style="background:none;border:none;color:#6ec6ff;cursor:pointer;font-size:12px;padding:0;">✏️</button>
+            </div>
+            <div style="font-size:12px;font-weight:bold;color:#fff;">${maint.inspText}</div>
+            <div style="font-size:10px;color:#777;margin-top:2px;">${maint.inspDate ? `до ${maint.inspDate}` : 'нажмите ✏️ для ввода даты'}</div>
+          </div>
+        </div>
+
+        <button onclick="requestPushPermission()" style="width:100%;margin-top:4px;padding:9px;border-radius:8px;border:1px solid #233550;background:#0d1828;color:#6ec6ff;font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+          <span>🔔 Включить push-напоминания о ТО и замене масла</span>
+        </button>
+      `;
+    } else if (_carHubTab === 'cost') {
+      // ════ Вкладка: СТОИМОСТЬ ВЛАДЕНИЯ ════
+      const { totalAutoCost, curMonthAutoCost, avgMonthCost, avgDayCost, costPerKm, fuelCostPerKm, trackedDistance, autoBreakdown } = ownership;
+      const bList = Object.values(autoBreakdown).filter(b => b.sum > 0).sort((a,b) => b.sum - a.sum);
+
+      content.innerHTML = `
+        <div style="background:#101926;border:1px solid #1a2f4c;border-radius:12px;padding:12px;margin-bottom:10px;text-align:center;">
+          <div style="font-size:11px;color:#8899a6;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px;">Машина обходится тебе</div>
+          <div style="font-size:22px;font-weight:bold;color:#6ec6ff;margin-bottom:2px;">≈ ${avgMonthCost.toLocaleString()} ₸ / месяц</div>
+          <div style="font-size:12px;color:#ffd166;font-weight:600;">≈ ${avgDayCost.toLocaleString()} ₸ в день · за этот месяц: ${curMonthAutoCost.toLocaleString()} ₸</div>
+          <div style="font-size:10px;color:#777;margin-top:4px;">Всего расходов на авто: ${totalAutoCost.toLocaleString()} ₸</div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+          <div class="fuel-box" style="margin-bottom:0;">
+            <div class="fuel-label">Полная цена 1 км</div>
+            <div class="fuel-metric" style="color:#ffd166;">${costPerKm ? `${costPerKm} ₸/км` : '—'}</div>
+            <div style="font-size:10px;color:#8899a6;margin-top:2px;">все расходы авто ÷ км</div>
+          </div>
+          <div class="fuel-box" style="margin-bottom:0;">
+            <div class="fuel-label">Только бензин</div>
+            <div class="fuel-metric" style="color:#6ec6ff;">${fuelCostPerKm ? `${fuelCostPerKm} ₸/км` : '—'}</div>
+            <div style="font-size:10px;color:#8899a6;margin-top:2px;">топливо ÷ км</div>
+          </div>
+        </div>
+
+        <div style="font-size:11px;font-weight:bold;color:#aaa;margin-bottom:6px;">Структура расходов на авто:</div>
+        ${bList.length > 0 ? `
+          <div class="comp-bar-bg" style="display:flex;height:8px;border-radius:4px;overflow:hidden;margin-bottom:8px;">
+            ${bList.map(b => `<div style="height:100%;width:${(b.sum / totalAutoCost * 100).toFixed(1)}%;background:${b.color};" title="${b.label}: ${b.sum.toLocaleString()} ₸"></div>`).join('')}
+          </div>
+          <div style="display:flex;flex-direction:column;gap:5px;">
+            ${bList.map(b => {
+              const pct = totalAutoCost > 0 ? Math.round(b.sum / totalAutoCost * 100) : 0;
+              return `
+                <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:3px 0;border-bottom:1px solid #141c29;">
+                  <span style="display:flex;align-items:center;gap:6px;">
+                    <span style="width:8px;height:8px;border-radius:2px;background:${b.color};display:inline-block;"></span>
+                    <span>${b.label}</span>
+                  </span>
+                  <span style="font-weight:600;color:#fff;">${b.sum.toLocaleString()} ₸ <small style="color:#777;font-weight:normal;">(${pct}%)</small></span>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        ` : '<div class="muted" style="font-size:11px;">Нет расходов на автомобиль</div>'}
       `;
     } else {
-      historyHtml = `
-        <div style="font-size:11px;color:#8899a6;margin-top:8px;background:#0d1522;padding:8px 10px;border-radius:8px;border:1px solid #1b283d;line-height:1.4;">
-          💡 Для точного расчёта расхода на 100 км заправляйте <b>полный бак</b> с указанием показания <b>одометра</b>. Промежуточные заправки будут учтены автоматически при следующем полном баке.
+      // ════ Вкладка: ТОПЛИВО ════
+      if (!stats || stats.totalTxs === 0) {
+        content.innerHTML = `<div class="muted" style="padding:10px 0;">Нет записанных заправок топлива. Добавьте расход с отметкой «Полный бак» или указанием литров.</div>`;
+        return;
+      }
+
+      const { avgConsumption, totalDistanceAllTime, totalFuelCost, lastInterval, intervals } = stats;
+      const consText = avgConsumption > 0 ? `${avgConsumption} л / 100 км` : 'Мало данных';
+      const lastConsText = lastInterval ? `${lastInterval.consumption} л / 100 км (${lastInterval.distance} км)` : '—';
+
+      let historyHtml = '';
+      if (intervals.length > 0) {
+        historyHtml = `
+          <div style="margin-top:10px;border-top:1px solid #1a2a40;padding-top:8px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <div style="font-size:11px;font-weight:600;color:#6ec6ff;">Последние замеры расхода:</div>
+              <span style="font-size:10px;color:#8899a6;">(нажмите для формул)</span>
+            </div>
+            ${intervals.slice(-3).reverse().map(inv => `
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #142032;font-size:12px;">
+                <div>
+                  <span style="font-weight:600;color:#ffd166;">${inv.consumption} л/100км</span>
+                  <span style="color:#778899;font-size:10px;margin-left:6px;">(${inv.distance} км · ${inv.liters.toFixed(1)} л)</span>
+                  ${inv.isExact ? '<span style="color:#65d48b;font-size:9px;background:#0d2613;border:1px solid #1e4526;padding:1px 4px;border-radius:4px;margin-left:4px;">полный бак</span>' : ''}
+                </div>
+                <span style="color:#65d48b;font-weight:bold;">${inv.cost.toLocaleString()} ₸</span>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      } else {
+        historyHtml = `
+          <div style="font-size:11px;color:#8899a6;margin-top:8px;background:#0d1522;padding:8px 10px;border-radius:8px;border:1px solid #1b283d;line-height:1.4;">
+            💡 Для точного расчёта расхода на 100 км заправляйте <b>полный бак</b> с указанием показания <b>одометра</b>. Замена масла или ТО с одометром не затронет расход топлива.
+          </div>
+        `;
+      }
+
+      content.innerHTML = `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px;">
+          <div class="fuel-box">
+            <div class="fuel-label">Средний расход</div>
+            <div class="fuel-metric">${consText}</div>
+            <div style="font-size:10px;color:#778899;margin-top:3px;">за всё время</div>
+          </div>
+          <div class="fuel-box">
+            <div class="fuel-label">Последний замер</div>
+            <div class="fuel-metric" style="color:#6ec6ff;">${lastConsText}</div>
+            <div style="font-size:10px;color:#778899;margin-top:3px;">${lastInterval ? (lastInterval.isExact ? (lastInterval.partialCount > 0 ? `+${lastInterval.partialCount} неполн. заправок` : 'от полного до полного') : 'по одометру') : 'нет замеров'}</div>
+          </div>
         </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:6px 2px;color:#aaa;">
+          <span>Пробег: <b style="color:#fff;">${totalDistanceAllTime > 0 ? totalDistanceAllTime.toLocaleString() + ' км' : '—'}</b></span>
+          <span>Потрачено на бензин: <b style="color:#ff6b6b;">${totalFuelCost.toLocaleString()} ₸</b></span>
+        </div>
+        ${historyHtml}
+        <button type="button" onclick="window.openFuelDetailsModal()" style="width:100%;margin-top:10px;padding:10px;border-radius:10px;border:1px solid #1e3552;background:linear-gradient(135deg, #101c2e, #162a45);color:#6ec6ff;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+          <span>📊 Подробная статистика заправок и формулы</span>
+          <span style="font-size:14px;">➔</span>
+        </button>
       `;
     }
-
-    content.innerHTML = `
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px;">
-        <div class="fuel-box">
-          <div class="fuel-label">Средний расход</div>
-          <div class="fuel-metric">${consText}</div>
-          <div style="font-size:10px;color:#778899;margin-top:3px;">за всё время</div>
-        </div>
-        <div class="fuel-box">
-          <div class="fuel-label">Последний замер</div>
-          <div class="fuel-metric" style="color:#6ec6ff;">${lastConsText}</div>
-          <div style="font-size:10px;color:#778899;margin-top:3px;">${lastInterval ? (lastInterval.isExact ? (lastInterval.partialCount > 0 ? `+${lastInterval.partialCount} неполн. заправок` : 'от полного до полного') : 'по одометру') : 'нет замеров'}</div>
-        </div>
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:6px 2px;color:#aaa;">
-        <span>Пробег: <b style="color:#fff;">${totalDistanceAllTime > 0 ? totalDistanceAllTime.toLocaleString() + ' км' : '—'}</b></span>
-        <span>Потрачено: <b style="color:#ff6b6b;">${totalFuelCost.toLocaleString()} ₸</b></span>
-      </div>
-      ${historyHtml}
-      <button type="button" onclick="window.openFuelDetailsModal()" style="width:100%;margin-top:10px;padding:10px;border-radius:10px;border:1px solid #1e3552;background:linear-gradient(135deg, #101c2e, #162a45);color:#6ec6ff;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
-        <span>📊 Подробная статистика заправок и формулы</span>
-        <span style="font-size:14px;">➔</span>
-      </button>
-    `;
   };
 
   window.openFuelDetailsModal = () => {
@@ -4686,7 +5221,6 @@
   // ══ 3. ПОЛНАЯ АНАЛИТИКА РАСХОДОВ (ПО АНАЛОГИИ С ДОХОДАМИ) ═══════
   // ════════════════════════════════════════════════════════════════
   let _expAnalyticsMonthsLimit = 6;
-  let _openExpWeekdayDetails = null;
 
   window.setExpAnalyticsMonthsLimit = (n) => {
     _expAnalyticsMonthsLimit = n;
@@ -4922,7 +5456,132 @@
       <div class="heatmap-legend"><span>меньше</span><div class="heatmap-cell" style="background:#161616;"></div><div class="heatmap-cell" style="background:#631d1d;"></div><div class="heatmap-cell" style="background:#c0392b;"></div><div class="heatmap-cell" style="background:#ff6b6b;"></div><div class="heatmap-cell" style="background:#ff4757;"></div><span>больше</span></div>
     ` : '';
 
-    el.innerHTML = chartHtml + bwHtml + forecastHtml + expGoalHtml + weekdayExpHtml + heatmapHtml || '<div class="muted">Недостаточно данных для аналитики</div>';
+    // ── Сравнение месяцев по категориям ──
+    const allExpMonths = Object.keys(expByMonth).sort().reverse();
+    let monthComparisonHtml = '';
+    if (allExpMonths.length >= 2) {
+      let mA = _compareMonthA || allExpMonths[0];
+      let mB = _compareMonthB || (allExpMonths[1] || allExpMonths[0]);
+      if (!allExpMonths.includes(mA)) mA = allExpMonths[0];
+      if (!allExpMonths.includes(mB)) mB = allExpMonths[1] || allExpMonths[0];
+
+      const catsA = {}, catsB = {};
+      let totA = 0, totB = 0;
+
+      allTx.forEach(t => {
+        if (t.type !== 'expense' || isDepTransfer(t) || !t.date) return;
+        const m = t.date.slice(0, 7);
+        const cat = t.categoryName || 'Без категории';
+        const amt = Number(t.amount) || 0;
+        if (m === mA) { catsA[cat] = (catsA[cat] || 0) + amt; totA += amt; }
+        if (m === mB) { catsB[cat] = (catsB[cat] || 0) + amt; totB += amt; }
+      });
+
+      const totDiff = totA - totB;
+      const totPct = totB > 0 ? Math.round((totDiff / totB) * 100) : 0;
+      const isTotUp = totDiff >= 0;
+
+      const catNames = Array.from(new Set([...Object.keys(catsA), ...Object.keys(catsB)]));
+      const catDiffs = catNames.map(c => {
+        const a = catsA[c] || 0;
+        const b = catsB[c] || 0;
+        const diff = a - b;
+        const pct = b > 0 ? Math.round((diff / b) * 100) : (a > 0 ? 100 : 0);
+        return { c, a, b, diff, pct };
+      }).sort((x, y) => Math.abs(y.diff) - Math.abs(x.diff));
+
+      const maxCatAmt = Math.max(...catDiffs.map(d => Math.max(d.a, d.b)), 1);
+      const biggestGrowth = catDiffs.find(d => d.diff > 0);
+      const biggestSaving = catDiffs.slice().reverse().find(d => d.diff < 0);
+
+      monthComparisonHtml = `
+        <div class="sec-title" style="margin-top:20px;color:#ff6b6b;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
+          <span>📊 Сравнение месяцев по категориям</span>
+          <span style="display:flex;gap:4px;">
+            ${allExpMonths.length >= 2 ? `<button onclick="setCompareMonths('${allExpMonths[0]}','${allExpMonths[1]}')" style="padding:3px 7px;border-radius:6px;border:1px solid #3d2222;background:#1e1416;color:#ff8a8a;font-size:10px;cursor:pointer;">Этот vs Прошлый</button>` : ''}
+            ${allExpMonths.length >= 3 ? `<button onclick="setCompareMonths('${allExpMonths[1]}','${allExpMonths[2]}')" style="padding:3px 7px;border-radius:6px;border:1px solid #2a2a2a;background:#1c1c1e;color:#888;font-size:10px;cursor:pointer;">Прошлый vs Позапрошлый</button>` : ''}
+          </span>
+        </div>
+
+        <div class="month-comp-card">
+          <!-- Селекторы двух месяцев -->
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px;">
+            <div style="flex:1;">
+              <span style="font-size:10px;color:#888;display:block;margin-bottom:3px;">Месяц А:</span>
+              <select onchange="setCompareMonths(this.value, '${mB}')" style="width:100%;padding:6px;border-radius:8px;border:1px solid #3d243a;background:#231a2c;color:#ff8a8a;font-size:12px;font-weight:bold;">
+                ${allExpMonths.map(m => `<option value="${m}" ${m===mA?'selected':''}>${fmtM(m)}</option>`).join('')}
+              </select>
+            </div>
+            <div style="font-size:14px;color:#888;padding-top:14px;">vs</div>
+            <div style="flex:1;">
+              <span style="font-size:10px;color:#8899a6;display:block;margin-bottom:3px;">Месяц Б:</span>
+              <select onchange="setCompareMonths('${mA}', this.value)" style="width:100%;padding:6px;border-radius:8px;border:1px solid #28243e;background:#181628;color:#a78bfa;font-size:12px;font-weight:bold;">
+                ${allExpMonths.map(m => `<option value="${m}" ${m===mB?'selected':''}>${fmtM(m)}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+
+          <!-- Общий итог сравнения -->
+          <div style="background:#14101c;border:1px solid #261a30;border-radius:10px;padding:10px 12px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <div style="font-size:10px;color:#888;">Всего расходов:</div>
+              <div style="font-size:13px;font-weight:bold;margin-top:2px;">
+                <span style="color:#ff8a8a;">${totA.toLocaleString()} ₸</span> vs <span style="color:#a78bfa;">${totB.toLocaleString()} ₸</span>
+              </div>
+            </div>
+            <div style="text-align:right;">
+              <span style="font-size:13px;font-weight:bold;color:${isTotUp?'#ff4757':'#65d48b'};">
+                ${isTotUp ? '↑ +' : '↓ '}${Math.abs(totPct)}%
+              </span>
+              <div style="font-size:10px;color:#888;">${isTotUp ? `+${totDiff.toLocaleString()} ₸ больше` : `-${Math.abs(totDiff).toLocaleString()} ₸ сэкономил`}</div>
+            </div>
+          </div>
+
+          <!-- Текстовый инсайт -->
+          ${biggestGrowth ? `
+            <div style="background:#281216;border:1px solid #4a1f28;border-radius:8px;padding:8px 10px;margin-bottom:12px;font-size:11px;color:#ff9b9b;line-height:1.4;">
+              💡 В <b>${fmtM(mA)}</b> потрачено на «<b>${biggestGrowth.c}</b>» на <b>${biggestGrowth.pct}%</b> больше, чем в <b>${fmtM(mB)}</b> (+${biggestGrowth.diff.toLocaleString()} ₸).
+              ${biggestSaving ? `<br>🎉 Зато удалось сэкономить на «<b>${biggestSaving.c}</b>»: −${Math.abs(biggestSaving.diff).toLocaleString()} ₸ (${Math.abs(biggestSaving.pct)}%).` : ''}
+            </div>
+          ` : ''}
+
+          <!-- Список категорий со сравнением -->
+          <div style="font-size:11px;font-weight:bold;color:#aaa;margin-bottom:8px;">Детализация по категориям:</div>
+          <div>
+            ${catDiffs.map(d => {
+              const barWA = ((d.a / maxCatAmt) * 100).toFixed(1);
+              const barWB = ((d.b / maxCatAmt) * 100).toFixed(1);
+              const isUp = d.diff >= 0;
+              return `
+                <div class="comp-cat-row">
+                  <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:600;">
+                    <span style="color:#ddd;">${esc(d.c)}</span>
+                    <span style="color:${isUp?'#ff4757':'#65d48b'};font-size:11px;font-weight:bold;">
+                      ${isUp ? `+${d.pct}% ↑` : `${d.pct}% ↓`} <small style="color:#888;font-weight:normal;">(${isUp?'+':''}${d.diff.toLocaleString()} ₸)</small>
+                    </span>
+                  </div>
+                  <div class="comp-bars-wrap">
+                    <div style="display:flex;align-items:center;gap:6px;font-size:10px;">
+                      <span style="width:24px;color:#ff8a8a;font-size:9px;">${mA.slice(5)}:</span>
+                      <div class="comp-bar-bg" style="flex:1;"><div class="comp-bar-fill" style="width:${barWA}%;background:#ff6b6b;"></div></div>
+                      <span style="width:65px;text-align:right;color:#ff8a8a;font-weight:600;">${d.a.toLocaleString()} ₸</span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:6px;font-size:10px;">
+                      <span style="width:24px;color:#a78bfa;font-size:9px;">${mB.slice(5)}:</span>
+                      <div class="comp-bar-bg" style="flex:1;"><div class="comp-bar-fill" style="width:${barWB}%;background:#a78bfa;"></div></div>
+                      <span style="width:65px;text-align:right;color:#a78bfa;font-weight:600;">${d.b.toLocaleString()} ₸</span>
+                    </div>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    el.innerHTML = chartHtml + bwHtml + forecastHtml + expGoalHtml + monthComparisonHtml + weekdayExpHtml + heatmapHtml || '<div class="muted">Недостаточно данных для аналитики</div>';
+    if (window.renderRecurringBills) window.renderRecurringBills();
 
     // Сохраняем сводку для кнопки "Поделиться"
     window._expAnalyticsSummary = {
@@ -4993,6 +5652,314 @@
       try { await navigator.share({ title: 'Сводка по расходам', text }); } catch(e) {}
     } else {
       try { await navigator.clipboard.writeText(text); window.showToast('📋 Сводка скопирована'); } catch(e) { window.showToast('Не удалось скопировать', 'warn'); }
+    }
+  };
+
+  // ════════════════════════════════════════════════════════════════
+  // ══ 4. РЕГУЛЯРНЫЕ ЕЖЕМЕСЯЧНЫЕ ПЛАТЕЖИ И PUSH-НАПОМИНАНИЯ ═══════
+  // ════════════════════════════════════════════════════════════════
+  const RECURRING_BILLS_KEY = 'recurring_bills_v1';
+  window.getRecurringBills = () => {
+    let list = null;
+    try { list = JSON.parse(localStorage.getItem(RECURRING_BILLS_KEY) || 'null'); } catch(e) {}
+    if (!list || !Array.isArray(list) || !list.length) {
+      list = [
+        { id: 'rb_rent', title: 'Квартплата / Аренда', amount: 35000, dayOfMonth: 5, categoryName: 'Жильё', paidMonths: [] },
+        { id: 'rb_inet', title: 'Интернет', amount: 6500, dayOfMonth: 10, categoryName: 'Связь', paidMonths: [] },
+        { id: 'rb_phone', title: 'Мобильная связь', amount: 3500, dayOfMonth: 15, categoryName: 'Связь', paidMonths: [] },
+        { id: 'rb_credit', title: 'Кредит / Рассрочка', amount: 25000, dayOfMonth: 20, categoryName: 'Кредит', paidMonths: [] },
+        { id: 'rb_sub', title: 'Подписки / Сервисы', amount: 2000, dayOfMonth: 25, categoryName: 'Подписки', paidMonths: [] }
+      ];
+      try { localStorage.setItem(RECURRING_BILLS_KEY, JSON.stringify(list)); } catch(e) {}
+    }
+    return list;
+  };
+
+  window.saveRecurringBills = (list) => {
+    try { localStorage.setItem(RECURRING_BILLS_KEY, JSON.stringify(list)); } catch(e) {}
+    if (window.renderRecurringBills) window.renderRecurringBills();
+    if (window.checkCarAndBillsReminders) window.checkCarAndBillsReminders();
+  };
+
+  window.renderRecurringBills = () => {
+    const el = document.getElementById("recurringBillsContent");
+    if (!el) return;
+
+    const bills = window.getRecurringBills();
+    const today = new Date();
+    if (today.getHours() < 3) today.setDate(today.getDate() - 1);
+    const todayStr = today.toISOString().split('T')[0];
+    const curMonthKey = todayStr.slice(0, 7);
+    const curDay = today.getDate();
+
+    const items = bills.map(bill => {
+      // Проверяем факт оплаты
+      const isPaidInTx = (window.allTx || []).some(t => {
+        if (t.type !== 'expense' || !t.date || !t.date.startsWith(curMonthKey)) return false;
+        const sub = (t.subcategory || '').toLowerCase();
+        const cat = (t.categoryName || '').toLowerCase();
+        const com = (t.comment || '').toLowerCase();
+        const title = bill.title.toLowerCase();
+        return sub.includes(title) || com.includes(title) || (cat.includes(title) && Math.abs(t.amount - bill.amount) < 100);
+      });
+      const isMarkedPaid = Array.isArray(bill.paidMonths) && bill.paidMonths.includes(curMonthKey);
+      const isPaid = isPaidInTx || isMarkedPaid;
+
+      let statusBadge = '', canPay = false;
+      if (isPaid) {
+        statusBadge = `<span class="bill-status-badge" style="background:#0d2613;color:#65d48b;border:1px solid #1e4526;">✅ Оплачено</span>`;
+      } else if (curDay === bill.dayOfMonth) {
+        statusBadge = `<span class="bill-status-badge" style="background:#3d1414;color:#ff4757;border:1px solid #6b1f24;">🚨 Оплата СЕГОДНЯ!</span>`;
+        canPay = true;
+      } else if (curDay < bill.dayOfMonth) {
+        const diff = bill.dayOfMonth - curDay;
+        const color = diff <= 3 ? '#ffd166' : '#8899a6';
+        const bg = diff <= 3 ? '#2d220a' : '#1a1c24';
+        statusBadge = `<span class="bill-status-badge" style="background:${bg};color:${color};border:1px solid #333;">⏳ ${diff <= 3 ? `Через ${diff} дн.` : `${bill.dayOfMonth} числа`}</span>`;
+        canPay = true;
+      } else {
+        const diff = curDay - bill.dayOfMonth;
+        statusBadge = `<span class="bill-status-badge" style="background:#3d1414;color:#ff4757;border:1px solid #6b1f24;">⚠️ Просрочено (${diff} дн.)</span>`;
+        canPay = true;
+      }
+
+      return `
+        <div class="bill-item">
+          <div>
+            <div class="bill-title">${esc(bill.title)}</div>
+            <div class="bill-meta">
+              <b style="color:#fff;font-size:13px;">${bill.amount.toLocaleString()} ₸</b> · каждое ${bill.dayOfMonth}-е число
+            </div>
+            <div style="margin-top:4px;">${statusBadge}</div>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center;">
+            ${canPay ? `
+              <button onclick="payRecurringBill('${bill.id}')" style="padding:7px 10px;border-radius:8px;border:1px solid #2a4025;background:#102414;color:#65d48b;font-size:11px;font-weight:bold;cursor:pointer;">
+                Оплатить
+              </button>
+            ` : ''}
+            <button onclick="deleteRecurringBill('${bill.id}')" style="background:none;border:none;color:#555;font-size:14px;cursor:pointer;padding:4px;">✕</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    el.innerHTML = `
+      ${items || '<div class="muted">Нет регулярных платежей</div>'}
+      <div style="margin-top:8px;">
+        <button onclick="requestPushPermission()" style="width:100%;padding:9px;border-radius:8px;border:1px solid #3b2854;background:#181226;color:#a78bfa;font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+          <span>🔔 Включить push-напоминания о платежах раз в месяц</span>
+        </button>
+      </div>
+    `;
+  };
+
+  window.payRecurringBill = async (billId) => {
+    const bills = window.getRecurringBills();
+    const bill = bills.find(b => b.id === billId);
+    if (!bill) return;
+
+    const today = new Date().toISOString().split('T')[0];
+    const curMonthKey = today.slice(0, 7);
+
+    if (!confirm(`Записать расход "${bill.title}" на сумму ${bill.amount.toLocaleString()} ₸?`)) return;
+
+    if (!Array.isArray(bill.paidMonths)) bill.paidMonths = [];
+    if (!bill.paidMonths.includes(curMonthKey)) bill.paidMonths.push(curMonthKey);
+    window.saveRecurringBills(bills);
+
+    const txData = {
+      type: 'expense',
+      amount: bill.amount,
+      categoryName: bill.categoryName || 'Платежи',
+      subcategory: bill.title,
+      account: (window.ACCOUNTS && window.ACCOUNTS.length) ? window.ACCOUNTS[0].name : '',
+      date: today,
+      time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
+      createdAt: Date.now(),
+      comment: 'Регулярный платёж: ' + bill.title
+    };
+
+    try {
+      const { fbDB, fbMethods, fbUser } = window;
+      if (fbDB && fbUser && fbUser.uid) {
+        await fbMethods.addDoc(fbMethods.collection(fbDB, 'users', fbUser.uid, 'transactions'), txData);
+      }
+    } catch(e) { console.warn('payRecurringBill Firestore error:', e.message); }
+
+    window.showToast(`✅ Оплачен платёж "${bill.title}" (${bill.amount.toLocaleString()} ₸)`);
+    if (window.render) window.render();
+  };
+
+  window.openAddRecurringBillModal = () => {
+    const old = document.getElementById('_addBillModal');
+    if (old) old.remove();
+
+    const modal = document.createElement('div');
+    modal.id = '_addBillModal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;padding:16px;';
+    modal.innerHTML = `
+      <div style="background:#181622;border:1px solid #362947;border-radius:16px;padding:20px;width:100%;max-width:340px;box-sizing:border-box;">
+        <div style="font-size:15px;font-weight:bold;color:#a78bfa;margin-bottom:12px;">+ Новый стабильный платёж</div>
+        <div style="margin-bottom:8px;">
+          <label style="font-size:11px;color:#888;display:block;margin-bottom:3px;">Название (напр. Интернет, Аренда, Кредит):</label>
+          <input id="_newBillTitle" type="text" placeholder="Интернет" style="width:100%;padding:9px;border-radius:8px;border:1px solid #333;background:#242030;color:#fff;font-size:14px;box-sizing:border-box;" />
+        </div>
+        <div style="margin-bottom:8px;">
+          <label style="font-size:11px;color:#888;display:block;margin-bottom:3px;">Сумма (₸):</label>
+          <input id="_newBillAmount" type="number" inputmode="numeric" placeholder="6500" style="width:100%;padding:9px;border-radius:8px;border:1px solid #333;background:#242030;color:#fff;font-size:14px;box-sizing:border-box;" />
+        </div>
+        <div style="margin-bottom:12px;">
+          <label style="font-size:11px;color:#888;display:block;margin-bottom:3px;">День месяца для оплаты (1–31):</label>
+          <input id="_newBillDay" type="number" min="1" max="31" placeholder="15" value="15" style="width:100%;padding:9px;border-radius:8px;border:1px solid #333;background:#242030;color:#fff;font-size:14px;box-sizing:border-box;" />
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button onclick="document.getElementById('_addBillModal').remove()" style="flex:1;padding:11px;border-radius:10px;border:1px solid #333;background:none;color:#888;font-size:13px;cursor:pointer;">Отмена</button>
+          <button onclick="saveNewRecurringBillModal()" style="flex:1;padding:11px;border-radius:10px;border:none;background:#a78bfa;color:#000;font-size:13px;font-weight:bold;cursor:pointer;">Добавить</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+    setTimeout(() => { const inp = document.getElementById('_newBillTitle'); if (inp) inp.focus(); }, 100);
+  };
+
+  window.saveNewRecurringBillModal = () => {
+    const title = (document.getElementById('_newBillTitle').value || '').trim();
+    const amount = Number(document.getElementById('_newBillAmount').value);
+    const day = Number(document.getElementById('_newBillDay').value);
+    if (!title || !amount || amount <= 0 || !day || day < 1 || day > 31) {
+      window.showToast('Заполните название, сумму и день месяца (1-31)', 'error');
+      return;
+    }
+    const bills = window.getRecurringBills();
+    bills.push({
+      id: 'rb_' + Date.now(),
+      title,
+      amount,
+      dayOfMonth: day,
+      categoryName: 'Платежи',
+      paidMonths: []
+    });
+    window.saveRecurringBills(bills);
+    document.getElementById('_addBillModal').remove();
+    window.showToast(`✅ Платёж "${title}" добавлен`);
+  };
+
+  window.deleteRecurringBill = (billId) => {
+    if (!confirm('Удалить этот регулярный платёж?')) return;
+    let bills = window.getRecurringBills();
+    bills = bills.filter(b => b.id !== billId);
+    window.saveRecurringBills(bills);
+    window.showToast('Платёж удалён');
+  };
+
+  // ════════════════════════════════════════════════════════════════
+  // ══ 5. СИСТЕМА PUSH-НАПОМИНАНИЙ И ПРОВЕРКИ АЛЕРТОВ ═════════════
+  // ════════════════════════════════════════════════════════════════
+  window.requestPushPermission = async () => {
+    if (!('Notification' in window)) {
+      window.showToast('Уведомления не поддерживаются в этом браузере', 'error');
+      return;
+    }
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') {
+      window.showToast('✅ Push-уведомления включены!');
+      window.checkCarAndBillsReminders(true);
+    } else {
+      window.showToast('Уведомления отклонены в настройках браузера', 'error');
+    }
+  };
+
+  window.checkCarAndBillsReminders = (forcePush = false) => {
+    const alerts = [];
+    const today = new Date();
+    if (today.getHours() < 3) today.setDate(today.getDate() - 1);
+    const todayStr = today.toISOString().split('T')[0];
+    const curMonthKey = todayStr.slice(0, 7);
+    const curDay = today.getDate();
+
+    // 1. Проверяем ТО и масло
+    const maint = window.getCarMaintenanceStatus ? window.getCarMaintenanceStatus() : null;
+    if (maint) {
+      if (maint.oilStatus === 'alert') {
+        alerts.push({ key: 'oil_overdue', text: `🚨 Перепробег масла на ${Math.abs(maint.remainingKm).toLocaleString()} км! Срочно замените масло.` });
+      } else if (maint.oilStatus === 'warn') {
+        alerts.push({ key: 'oil_soon', text: `⚠️ Скоро замена масла! Осталось всего ${maint.remainingKm.toLocaleString()} км.` });
+      }
+      if (maint.insStatus === 'alert') {
+        alerts.push({ key: 'ins_alert', text: `🚨 Страховка авто просрочена на ${Math.abs(maint.insDays)} дн.!` });
+      } else if (maint.insStatus === 'warn') {
+        alerts.push({ key: 'ins_soon', text: `⚠️ Страховка авто истекает через ${maint.insDays} дн.` });
+      }
+      if (maint.inspStatus === 'alert') {
+        alerts.push({ key: 'insp_alert', text: `🚨 Техосмотр авто просрочен на ${Math.abs(maint.inspDays)} дн.!` });
+      } else if (maint.inspStatus === 'warn') {
+        alerts.push({ key: 'insp_soon', text: `⚠️ Техосмотр авто истекает через ${maint.inspDays} дн.` });
+      }
+    }
+
+    // 2. Проверяем стабильные платежи
+    if (window.getRecurringBills) {
+      const bills = window.getRecurringBills();
+      bills.forEach(bill => {
+        const isPaidInTx = (window.allTx || []).some(t => {
+          if (t.type !== 'expense' || !t.date || !t.date.startsWith(curMonthKey)) return false;
+          const sub = (t.subcategory || '').toLowerCase();
+          const cat = (t.categoryName || '').toLowerCase();
+          const com = (t.comment || '').toLowerCase();
+          const title = bill.title.toLowerCase();
+          return sub.includes(title) || com.includes(title) || (cat.includes(title) && Math.abs(t.amount - bill.amount) < 100);
+        });
+        const isMarkedPaid = Array.isArray(bill.paidMonths) && bill.paidMonths.includes(curMonthKey);
+        if (isPaidInTx || isMarkedPaid) return;
+
+        if (curDay === bill.dayOfMonth) {
+          alerts.push({ key: `bill_${bill.id}_today`, text: `🔔 Сегодня срок оплаты: "${bill.title}" (${bill.amount.toLocaleString()} ₸)` });
+        } else if (curDay < bill.dayOfMonth && (bill.dayOfMonth - curDay) <= 2) {
+          alerts.push({ key: `bill_${bill.id}_soon`, text: `⏳ Через ${bill.dayOfMonth - curDay} дн. оплата: "${bill.title}" (${bill.amount.toLocaleString()} ₸)` });
+        } else if (curDay > bill.dayOfMonth) {
+          alerts.push({ key: `bill_${bill.id}_overdue`, text: `⚠️ Просрочен платёж: "${bill.title}" на ${curDay - bill.dayOfMonth} дн.! (${bill.amount.toLocaleString()} ₸)` });
+        }
+      });
+    }
+
+    // In-app alert banner
+    const bannerEl = document.getElementById("globalAlertBanner");
+    if (bannerEl) {
+      if (alerts.length > 0 && !window._dismissedAlerts) {
+        const topAlert = alerts[0];
+        bannerEl.innerHTML = `
+          <div class="global-alert-pill" style="background:#2a1a12;border:1px solid #5a331a;color:#ffd166;">
+            <span>${topAlert.text}</span>
+            <button onclick="window._dismissedAlerts=true; document.getElementById('globalAlertBanner').innerHTML='';" style="background:none;border:none;color:#888;font-size:16px;cursor:pointer;line-height:1;padding:0 4px;">✕</button>
+          </div>
+        `;
+      } else if (!alerts.length) {
+        bannerEl.innerHTML = '';
+      }
+    }
+
+    // Native Push notification
+    if ('Notification' in window && Notification.permission === 'granted' && alerts.length > 0) {
+      alerts.forEach(al => {
+        const lastSent = localStorage.getItem('push_sent_' + al.key);
+        if (forcePush || lastSent !== todayStr) {
+          try {
+            if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+              navigator.serviceWorker.ready.then(reg => {
+                reg.showNotification('MoneyTracker Напоминание', {
+                  body: al.text,
+                  icon: './icons/icon-192.png',
+                  badge: './icons/icon-192.png'
+                });
+              });
+            } else {
+              new Notification('MoneyTracker Напоминание', { body: al.text });
+            }
+            localStorage.setItem('push_sent_' + al.key, todayStr);
+          } catch(e) { console.warn('Push dispatch error:', e); }
+        }
+      });
     }
   };
 

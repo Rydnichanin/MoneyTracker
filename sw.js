@@ -2,7 +2,7 @@
 // Кэшируем оболочку приложения и статику.
 // Firebase/Firestore запросы не кэшируем — это живые данные.
 
-const CACHE_NAME = 'courier-app-v3';
+const CACHE_NAME = 'courier-app-v4';
 const APP_SHELL = [
   './',
   './index.html',
@@ -25,6 +25,19 @@ self.addEventListener('activate', (event) => {
     ))
   );
   self.clients.claim();
+});
+
+// Обработка клика по push-уведомлению (переход в приложение)
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if ('focus' in client) return client.focus();
+      }
+      if (clients.openWindow) return clients.openWindow('./');
+    })
+  );
 });
 
 self.addEventListener('fetch', (event) => {
