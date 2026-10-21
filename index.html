@@ -966,6 +966,22 @@
         </div>
       </div>
 
+      <div class="card" style="border-color:#1e3d2f;">
+        <div class="card-title" style="color:#65d48b;display:flex;justify-content:space-between;align-items:center;">
+          <span>📲 Авто-приём заказов из WhatsApp</span>
+          <label style="cursor:pointer;display:flex;align-items:center;gap:6px;font-size:12px;color:#fff;">
+            <input type="checkbox" id="chkWaAuto" checked onchange="toggleWaAutoSave(this.checked)" style="width:18px;height:18px;accent-color:#65d48b;cursor:pointer;">
+            <span>Авто</span>
+          </label>
+        </div>
+        <div style="font-size:12px;color:#aaa;line-height:1.4;margin-bottom:10px;">
+          Когда на телефон приходит уведомление из WhatsApp с точкой (F1, F2, F3) и адресом, приложение само рассчитает сумму (подъезд 150 ₸ / квартира 300 ₸) и внесёт доставку в баланс.
+        </div>
+        <button type="button" class="btn-main" style="background:#0f251a;color:#65d48b;border:1px solid #1f4a32;padding:10px;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px;margin:0;" onclick="openAndroidNotificationSettings()">
+          <span>⚙️ Разрешить доступ к уведомлениям в Android</span>
+        </button>
+      </div>
+
       <div id="settingsList"></div>
     </div>
   </div>
@@ -6562,9 +6578,138 @@
     btn.disabled = false;
   };
 
-  // Обработка уведомлений от банков (вызывается из NotificationService -> MainActivity)
+  // ── АВТОМАТИЧЕСКИЙ ПЕРЕХВАТ УВЕДОМЛЕНИЙ WHATSAPP НА ТЕЛЕФОНЕ ───────────
+  window.handleIncomingNotification = async function(payload) {
+    try {
+      if (!payload) return;
+      const data = typeof payload === 'string' ? JSON.parse(payload) : payload;
+      await processWhatsAppNotification(data.title || '', data.text || '', data.app || 'whatsapp');
+    } catch (e) {
+      console.warn('handleIncomingNotification error:', e);
+    }
+  };
+
   window.onNotificationReceived = function(title, text, app) {
-    console.log("Уведомление перехвачено:", title, text, app);
+    processWhatsAppNotification(title, text, app);
+  };
+
+  async function processWhatsAppNotification(title, text, app) {
+    try {
+      if (!app || (!app.includes('whatsapp') && app !== 'com.whatsapp' && app !== 'com.whatsapp.w4b')) {
+        return;
+      }
+
+      // Проверяем настройку вкл/выкл
+      if (localStorage.getItem('wa_auto_save') === 'false') return;
+      if (!window.fbUser || !window.fbDB || !window.fbMethods) return;
+
+      const rawFull = (title ? (title + '\n') : '') + (text || '');
+      if (!rawFull || rawFull.length < 3) return;
+
+      console.log('[WA Auto] Получено уведомление WhatsApp:', title, text);
+
+      // Извлекаем точку (F1, F2, F3, ALLEY PUB)
+      let point = null;
+      if (/ALLEY|АЛЕЙ/i.test(rawFull)) point = 'ALLEY PUB';
+      else if (/F\s*3|Ф\s*3/i.test(rawFull)) point = 'F3';
+      else if (/F\s*2|Ф\s*2/i.test(rawFull)) point = 'F2';
+      else if (/F\s*1|Ф\s*1/i.test(rawFull)) point = 'F1';
+
+      if (!point) return; // Не заказ доставки
+
+      // Очистка от номера телефона
+      const stripPhone = s => String(s || '')
+        .replace(/(?<![0-9])(\+7|8)[\s\-]?\(?\d{3}\)?[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}/g, '')
+        .replace(/(?<![0-9])\+77\d{9}/g, '')
+        .replace(/(?<![0-9])87\d{9}/g, '')
+        .replace(/(?<![0-9])77\d{9}/g, '')
+        .replace(/,\s*$/, '')
+        .trim();
+
+      const lines = String(text || '').split('\n').map(l => l.trim()).filter(Boolean);
+      let address = '';
+
+      for (const line of lines) {
+        let clean = line.replace(/^.*?(?:ALLEY\s*PUB|F\s*[123]|Ф\s*[123])\s*[:\-\s]/i, '').trim();
+        clean = stripPhone(clean);
+        if (!clean || clean.length < 2) continue;
+        const cleanedDigits = clean.replace(/[\s\-\(\)]/g, '');
+        if (/^(\+7|8|7)\d{10}$/.test(cleanedDigits) || /^\d{11}$/.test(cleanedDigits)) continue;
+        if (/^(ок|принял|ок спс|спасибо|выезжаю|готово|да|нет|\+)\.?$/i.test(clean)) continue;
+        address = clean;
+        break;
+      }
+
+      if (!address) return;
+
+      const POINTS = {
+        'F1':        { under: 150, flat: 300 },
+        'F2':        { under: 150, flat: 300 },
+        'F3':        { under: 150, flat: 300 },
+        'ALLEY PUB': { under: 600, flat: 900 }
+      };
+
+      const customAddrs = typeof loadCustomAddressesAsync === 'function' ? await loadCustomAddressesAsync() : [];
+      const prices = POINTS[point] || { under: 150, flat: 300 };
+      const detected = typeof detectAddressType === 'function' ? detectAddressType(address, prices, customAddrs) : { amount: 150, type: 'до подъезда' };
+
+      const now = new Date();
+      if (now.getHours() < 3) now.setDate(now.getDate() - 1);
+      const today = new Date(now - now.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+      const timeStr = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+
+      // Защита от дублей: проверяем среди сегодняшних записей
+      const isDuplicate = (window.allTx || []).some(t =>
+        t.date === today &&
+        t.categoryName === 'Доставка' &&
+        t.subcategory === point &&
+        String(t.comment || '').trim().toLowerCase() === address.toLowerCase()
+      );
+
+      if (isDuplicate) {
+        console.log('[WA Auto] Заказ уже записан, дубль пропущен:', point, address);
+        return;
+      }
+
+      const txRef = window.fbMethods.collection(window.fbDB, 'users', window.fbUser.uid, 'transactions');
+      await window.fbMethods.addDoc(txRef, {
+        type: 'income',
+        amount: Number(detected.amount),
+        categoryName: 'Доставка',
+        subcategory: point,
+        account: 'Наличные',
+        date: today,
+        time: timeStr,
+        comment: address,
+        waTime: timeStr,
+        createdAt: Date.now(),
+        source: 'android-notification'
+      });
+
+      // Звук / вибрация
+      if ('vibrate' in navigator) {
+        try { navigator.vibrate([100, 50, 100]); } catch(e) {}
+      }
+
+      window.showToast(`🚚 WhatsApp: [${point}] ${address} (+${detected.amount} ₸) записан!`, 'success');
+
+      if (window.render) window.render();
+    } catch(err) {
+      console.warn('[WA Auto] Ошибка:', err);
+    }
+  }
+
+  window.toggleWaAutoSave = function(enabled) {
+    localStorage.setItem('wa_auto_save', enabled ? 'true' : 'false');
+    window.showToast(enabled ? '✅ Авто-запись из WhatsApp включена' : '⏸ Авто-запись из WhatsApp отключена', 'info');
+  };
+
+  window.openAndroidNotificationSettings = function() {
+    if (window.AndroidBridge && typeof window.AndroidBridge.openNotificationSettings === 'function') {
+      window.AndroidBridge.openNotificationSettings();
+    } else {
+      window.showToast('В настройках Android откройте: Приложения ➔ Специальный доступ ➔ Доступ к уведомлениям ➔ Учёт Курьера', 'info');
+    }
   };
 
   // ── БАЗА КЛИЕНТОВ ──────────────────────────────────────────────

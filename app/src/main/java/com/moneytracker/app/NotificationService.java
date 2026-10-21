@@ -33,7 +33,22 @@ public class NotificationService extends NotificationListenerService {
         String bigText = extras.getString(Notification.EXTRA_BIG_TEXT, "");
 
         // Берём длинный текст если есть
-        String fullText = bigText.length() > text.length() ? bigText : text;
+        String fullText = bigText != null && bigText.length() > text.length() ? bigText : (text != null ? text : "");
+
+        // Проверяем сгруппированные строки WhatsApp (несколько сообщений подряд)
+        CharSequence[] textLines = extras.getCharSequenceArray(Notification.EXTRA_TEXT_LINES);
+        if (textLines != null && textLines.length > 0) {
+            StringBuilder sb = new StringBuilder();
+            for (CharSequence line : textLines) {
+                if (line != null && line.length() > 0) {
+                    if (sb.length() > 0) sb.append("\n");
+                    sb.append(line);
+                }
+            }
+            if (sb.length() > fullText.length()) {
+                fullText = sb.toString();
+            }
+        }
 
         if (fullText.isEmpty()) return;
 

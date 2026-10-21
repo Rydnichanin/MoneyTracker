@@ -37,6 +37,30 @@ public class MainActivity extends Activity {
         }
     };
 
+    private final BroadcastReceiver notificationReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (intent == null || webView == null) return;
+            String app = intent.getStringExtra("app");
+            String title = intent.getStringExtra("title");
+            String text = intent.getStringExtra("text");
+            if (text == null || text.isEmpty()) return;
+            webView.post(() -> {
+                if (webView == null || !webView.isAttachedToWindow()) return;
+                try {
+                    org.json.JSONObject payload = new org.json.JSONObject();
+                    payload.put("app", app != null ? app : "");
+                    payload.put("title", title != null ? title : "");
+                    payload.put("text", text);
+                    String js = "if (typeof handleIncomingNotification === 'function') handleIncomingNotification(" + payload.toString() + ");";
+                    webView.evaluateJavascript(js, null);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            });
+        }
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -98,6 +122,7 @@ public class MainActivity extends Activity {
         super.onResume();
         if (!receiverRegistered) {
             registerReceiver(gpsReceiver, new IntentFilter("GPS_UPDATE"), Context.RECEIVER_NOT_EXPORTED);
+            registerReceiver(notificationReceiver, new IntentFilter("com.moneytracker.NOTIFICATION"), Context.RECEIVER_NOT_EXPORTED);
             receiverRegistered = true;
         }
     }
@@ -106,6 +131,7 @@ public class MainActivity extends Activity {
     protected void onPause() {
         if (receiverRegistered) {
             unregisterReceiver(gpsReceiver);
+            unregisterReceiver(notificationReceiver);
             receiverRegistered = false;
         }
         super.onPause();
@@ -151,6 +177,37 @@ public class MainActivity extends Activity {
             } catch (Exception e) {
                 e.printStackTrace();
             }
+        }
+
+        @JavascriptInterface
+        public void openNotificationSettings() {
+            try {
+                Intent intent = new Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS");
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(intent);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        @JavascriptInterface
+        public boolean isNotificationAccessGranted() {
+            try {
+                String pkgName = getPackageName();
+                final String flat = android.provider.Settings.Secure.getString(getContentResolver(), "enabled_notification_listeners");
+                if (flat != null && !flat.isEmpty()) {
+                    final String[] names = flat.split(":");
+                    for (String name : names) {
+                        final android.content.ComponentName cn = android.content.ComponentName.unflattenFromString(name);
+                        if (cn != null && android.text.TextUtils.equals(pkgName, cn.getPackageName())) {
+                            return true;
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            return false;
         }
     }
 
