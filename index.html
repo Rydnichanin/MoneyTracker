@@ -7155,44 +7155,24 @@
   });
 </script>
 
-<!-- БАННЕР ПРЕДЛОЖЕНИЯ ОБНОВЛЕНИЯ -->
-<div id="appUpdatePrompt" style="display:none;position:fixed;bottom:calc(var(--nav-h) + 12px);left:12px;right:12px;max-width:440px;margin:0 auto;z-index:9999;background:linear-gradient(135deg,#1c192b 0%,#12131d 100%);border:1.5px solid #63439b;border-radius:16px;padding:16px;box-shadow:0 12px 32px rgba(0,0,0,0.85);box-sizing:border-box;">
-  <div style="display:flex;align-items:flex-start;gap:12px;">
-    <div style="font-size:26px;line-height:1;filter:drop-shadow(0 0 8px rgba(167,139,250,0.6));">🚀</div>
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:14px;font-weight:700;color:#fff;margin-bottom:3px;">Доступно обновление с GitHub!</div>
-      <div id="appUpdateSubtitle" style="font-size:12px;color:#bbb;line-height:1.4;margin-bottom:12px;">Новая версия приложения готова к загрузке из репозитория GitHub.</div>
-      <div style="display:flex;gap:8px;margin-bottom:8px;">
-        <button id="btnApplyUpdate" onclick="window.applyAppUpdate()" style="flex:1;background:#65d48b;color:#000;border:none;border-radius:10px;padding:10px 12px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;box-shadow:0 3px 12px rgba(101,212,139,0.3);">
-          <span>🔄 Обновить сейчас (1 сек)</span>
-        </button>
-        <button onclick="window.dismissAppUpdate()" style="background:#232035;color:#aaa;border:1px solid #3c3456;border-radius:10px;padding:10px 12px;font-size:12px;font-weight:600;cursor:pointer;">
-          Позже
-        </button>
-      </div>
-      <button type="button" onclick="window.downloadLatestApk()" style="width:100%;background:#102238;color:#6ec6ff;border:1px solid #1a3a60;border-radius:10px;padding:8px 12px;font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
-        <span>📥 Скачать новый APK для переустановки</span>
-      </button>
-    </div>
-  </div>
-</div>
+
 
 <script>
-// ── СИСТЕМА ПОЛНОГО АВТОМАТИЧЕСКОГО ОБНОВЛЕНИЯ C GITHUB ─────────
-const APP_CURRENT_VERSION = '5.1.0';
-const APP_CURRENT_BUILD = 2026102019;
+// ── СИСТЕМА БЕСШОВНОГО АВТОМАТИЧЕСКОГО ОБНОВЛЕНИЯ (БЕЗ ВСПЛЫВАЮЩИХ ОКОН) ─────────
+const APP_CURRENT_VERSION = '5.2.0';
+const APP_CURRENT_BUILD = 2026102301;
 
 window._waitingServiceWorker = null;
 window._updateAvailable = false;
 window._swRegistration = null;
 window._serverVersionData = null;
 
-// Отображаем версию на бейдже в настройках
+// Отображаем версию на бейдже в настройках если он есть
 const badgeEl = document.getElementById('appVersionBadge');
 if (badgeEl) badgeEl.textContent = 'v' + APP_CURRENT_VERSION;
 
 window.downloadLatestApk = () => {
-  const apkUrl = 'https://github.com/rydnichanin/MoneyTracker/releases/download/v5.1.0/MoneyTracker-v5.1.0.apk';
+  const apkUrl = 'https://github.com/rydnichanin/MoneyTracker/releases/download/v5.2.0/MoneyTracker-v5.2.0.apk';
   window.showToast('📥 Скачивание APK с GitHub...', 'info');
   if (window.AndroidBridge && typeof window.AndroidBridge.openBrowser === 'function') {
     window.AndroidBridge.openBrowser(apkUrl);
@@ -7206,113 +7186,17 @@ window.downloadLatestApk = () => {
   }
 };
 
-window.promptUserForUpdate = (worker = null, customText = '') => {
-  if (worker) window._waitingServiceWorker = worker;
-  window._updateAvailable = true;
-
-  // Текст описания обновления
-  const subtitleEl = document.getElementById('appUpdateSubtitle');
-  if (subtitleEl) {
-    if (customText) {
-      subtitleEl.textContent = customText;
-    } else if (window._serverVersionData && window._serverVersionData.changelog) {
-      subtitleEl.textContent = `Новая версия ${window._serverVersionData.version}: ${window._serverVersionData.changelog}`;
-    } else {
-      subtitleEl.textContent = 'Новая версия готова к установке из GitHub. Обновление займёт пару секунд.';
-    }
-  }
-
-  // 1. Показываем всплывающий баннер
-  const promptEl = document.getElementById('appUpdatePrompt');
-  if (promptEl) {
-    promptEl.style.display = 'block';
-  } else {
-    window.showToast('🚀 Доступно обновление с GitHub!', 'info');
-  }
-
-  // 2. Также закрепляем плашку в верхней панели алертов
-  const bannerEl = document.getElementById('globalAlertBanner');
-  if (bannerEl && !document.getElementById('updatePill')) {
-    const pill = document.createElement('div');
-    pill.id = 'updatePill';
-    pill.className = 'global-alert-pill';
-    pill.style.cssText = 'background:#241935;border:1px solid #63439b;color:#c4b5fd;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px;margin:8px 12px 4px;border-radius:10px;font-size:12px;';
-    pill.innerHTML = `<span>🚀 Доступна новая версия с GitHub ${window._serverVersionData?.version ? 'v' + window._serverVersionData.version : ''}</span><button type="button" onclick="event.stopPropagation();window.applyAppUpdate()" style="background:#65d48b;color:#000;border:none;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:bold;cursor:pointer;">Обновить</button>`;
-    pill.onclick = () => window.applyAppUpdate();
-    bannerEl.prepend(pill);
+// Все всплывающие предложения и баннеры обновлений полностью отключены
+window.promptUserForUpdate = (worker = null) => {
+  if (worker && typeof worker.postMessage === 'function') {
+    try { worker.postMessage({ action: 'skipWaiting' }); } catch(e) {}
   }
 };
+window.dismissAppUpdate = () => {};
 
-window.dismissAppUpdate = () => {
-  const promptEl = document.getElementById('appUpdatePrompt');
-  if (promptEl) promptEl.style.display = 'none';
-  window.showToast('Обновление отложено. Вы можете обновиться в любой момент через верхнюю плашку или в Настройках.', 'info');
-};
-
-// Получение информации о последнем коммите с GitHub API
-window.fetchGitHubCommitInfo = async () => {
-  const el = document.getElementById('githubCommitInfo');
-  if (!el) return;
-  try {
-    const res = await fetch('https://api.github.com/repos/rydnichanin/MoneyTracker/commits/main', {
-      headers: { 'Accept': 'application/vnd.github.v3+json' }
-    });
-    if (!res.ok) return;
-    const data = await res.json();
-    const sha = (data.sha || '').slice(0, 7);
-    const date = data.commit?.author?.date ? new Date(data.commit.author.date).toLocaleString('ru-RU') : '';
-    const msg = data.commit?.message ? data.commit.message.split('\n')[0] : '';
-    el.innerHTML = `
-      <div style="color:#a78bfa;font-weight:600;margin-bottom:3px;">📦 Последний коммит на GitHub:</div>
-      <div style="color:#eee;font-weight:500;">${esc(msg)}</div>
-      <div style="color:#777;font-size:10px;margin-top:2px;">Хеш: <code style="color:#65d48b;">${sha}</code> · ${date}</div>
-    `;
-  } catch(e) {}
-};
-
-// Полное применение обновления: очистка кэшей, skipWaiting и перезапуск
-window.applyAppUpdate = async () => {
-  const btn = document.getElementById('btnApplyUpdate');
-  if (btn) {
-    btn.disabled = true;
-    btn.innerHTML = '<span>⏳ Очищаем кэш и загружаем...</span>';
-    btn.style.opacity = '0.7';
-  }
-  window.showToast('⏳ Очищаем старый кэш и загружаем обновление с GitHub...', 'info');
-
-  if (window._serverVersionData && window._serverVersionData.sha) {
-    try { localStorage.setItem('app_installed_commit', window._serverVersionData.sha); } catch(e) {}
-  }
-
-  // 1. Очищаем все кэши браузера CacheStorage
-  if ('caches' in window) {
-    try {
-      const keys = await caches.keys();
-      await Promise.all(keys.map(k => caches.delete(k)));
-    } catch(e) { console.warn('Cache purge error:', e); }
-  }
-
-  // 2. Отправляем сигнал ожидающему сервис-воркеру активироваться
-  if (window._waitingServiceWorker) {
-    try { window._waitingServiceWorker.postMessage({ action: 'skipWaiting' }); } catch(e) {}
-  } else if (window._swRegistration && window._swRegistration.waiting) {
-    try { window._swRegistration.waiting.postMessage({ action: 'skipWaiting' }); } catch(e) {}
-  }
-
-  // 3. Запоминаем версию
-  try { localStorage.setItem('installed_app_version', APP_CURRENT_VERSION); } catch(e) {}
-
-  // 4. Перезагрузка страницы с очисткой параметров URL
-  setTimeout(() => {
-    const cleanUrl = window.location.origin + window.location.pathname;
-    window.location.replace(cleanUrl + '?v=' + Date.now());
-  }, 700);
-};
-
-// Функция принудительного полного сброса (для второго телефона или проблемного кэша)
+// Принудительный сброс кэша по запросу (если когда-то понадобится)
 window.forceFullAppReset = async () => {
-  if (!confirm('Выполнить полный сброс кэша приложения и загрузить самую свежую версию с GitHub? Все ваши записи в безопасности в Firebase.')) return;
-  window.showToast('🧹 Очистка кэша и сервис-воркера...', 'info');
+  if (!confirm('Выполнить полный сброс кэша приложения? Все ваши записи в безопасности в Firebase.')) return;
   if ('caches' in window) {
     try {
       const keys = await caches.keys();
@@ -7329,96 +7213,16 @@ window.forceFullAppReset = async () => {
   window.location.replace(cleanUrl + '?reset=' + Date.now());
 };
 
-// Проверка версии через GitHub (коммиты + version.json)
-window.checkServerVersion = async (manual = false) => {
-  try {
-    // 1. Проверяем последний коммит на GitHub
-    try {
-      const commitRes = await fetch('https://api.github.com/repos/rydnichanin/MoneyTracker/commits/main', {
-        headers: { 'Accept': 'application/vnd.github.v3+json' },
-        cache: 'no-store'
-      });
-      if (commitRes.ok) {
-        const commitData = await commitRes.json();
-        const latestSha = (commitData.sha || '').slice(0, 7);
-        const installedSha = localStorage.getItem('app_installed_commit');
-        const commitMsg = commitData.commit?.message ? commitData.commit.message.split('\n')[0] : '';
-
-        if (!installedSha) {
-          localStorage.setItem('app_installed_commit', latestSha);
-        } else if (installedSha !== latestSha) {
-          window._serverVersionData = {
-            version: latestSha,
-            changelog: commitMsg,
-            sha: latestSha
-          };
-          window.promptUserForUpdate(null, `Вышло обновление на GitHub (${latestSha}): ${commitMsg}`);
-          return true;
-        }
-      }
-    } catch(e) {
-      console.warn('Commit API check error:', e);
-    }
-
-    let data = null;
-    // 2. Проверяем version.json с GitHub Pages
-    try {
-      const res = await fetch('./version.json?_t=' + Date.now(), { cache: 'no-store' });
-      if (res.ok) data = await res.json();
-    } catch(e) {}
-
-    // 3. Fallback через raw.githubusercontent.com
-    if (!data || !data.build || data.build <= APP_CURRENT_BUILD) {
-      try {
-        const rawRes = await fetch('https://raw.githubusercontent.com/rydnichanin/MoneyTracker/main/version.json?_t=' + Date.now(), { cache: 'no-store' });
-        if (rawRes.ok) {
-          const rawData = await rawRes.json();
-          if (rawData && rawData.build && rawData.build > (data?.build || APP_CURRENT_BUILD)) {
-            data = rawData;
-          }
-        }
-      } catch(e) {}
-    }
-
-    if (data && data.build && data.build > APP_CURRENT_BUILD) {
-      window._serverVersionData = data;
-      window.promptUserForUpdate(null, `Вышла новая версия с GitHub ${data.version}! ${data.changelog || ''}`);
-      return true;
-    }
-  } catch(e) {
-    console.warn('checkServerVersion error:', e);
-  }
-  return false;
-};
-
-// Комплексная проверка обновлений (GitHub + SW)
-window.checkForAppUpdates = async (manual = false) => {
-  if (manual) window.showToast('🔄 Проверка обновлений на GitHub...', 'info');
-
-  let foundNew = await window.checkServerVersion(manual);
-  window.fetchGitHubCommitInfo();
-
+window.checkServerVersion = async () => false;
+window.checkForAppUpdates = async () => {
   if ('serviceWorker' in navigator) {
-    try {
-      const reg = window._swRegistration || (await navigator.serviceWorker.getRegistration());
-      if (reg) {
-        await reg.update();
-        if (reg.waiting && navigator.serviceWorker.controller) {
-          window.promptUserForUpdate(reg.waiting);
-          foundNew = true;
-        }
-      }
-    } catch(e) { console.warn('SW update check error:', e); }
+    const reg = window._swRegistration || (await navigator.serviceWorker.getRegistration());
+    if (reg) await reg.update().catch(() => {});
   }
-
-  if (manual && !foundNew && !window._updateAvailable) {
-    setTimeout(() => {
-      window.showToast('✅ У вас установлена последняя версия с GitHub (' + APP_CURRENT_VERSION + ')', 'success');
-    }, 800);
-  }
+  window.showToast('✅ Установлена актуальная версия (' + APP_CURRENT_VERSION + ')', 'success');
 };
 
-// Регистрация Service Worker и настройка слушателей жизненного цикла
+// Регистрация Service Worker — автоматическое тихое обновление в фоне
 if ('serviceWorker' in navigator) {
   let refreshing = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
@@ -7427,64 +7231,34 @@ if ('serviceWorker' in navigator) {
     window.location.reload();
   });
 
-  navigator.serviceWorker.addEventListener('message', (event) => {
-    if (event.data && event.data.action === 'swActivated') {
-      console.log('[SW] Активирован новый воркер:', event.data.version);
-      window.promptUserForUpdate();
-    }
-  });
-
   window.addEventListener('load', async () => {
     try {
       const reg = await navigator.serviceWorker.register('./sw.js');
       window._swRegistration = reg;
       console.log('[SW] Зарегистрирован, scope:', reg.scope);
 
-      // 1. Проверяем, есть ли уже ожидающий воркер (скачанный ранее)
-      if (reg.waiting && navigator.serviceWorker.controller) {
-        window.promptUserForUpdate(reg.waiting);
+      // Если новый воркер уже ждет — тихо активируем
+      if (reg.waiting) {
+        try { reg.waiting.postMessage({ action: 'skipWaiting' }); } catch(e) {}
       }
 
-      // 2. Слушаем появление нового сервис-воркера
       reg.addEventListener('updatefound', () => {
         const nw = reg.installing;
         if (!nw) return;
         nw.addEventListener('statechange', () => {
           if (nw.state === 'installed' && navigator.serviceWorker.controller) {
-            window.promptUserForUpdate(nw);
+            try { nw.postMessage({ action: 'skipWaiting' }); } catch(e) {}
           }
         });
       });
 
-      // 3. Автоматическая проверка при старте
+      // Фоновое обновление без всплывающих окон
       reg.update().catch(() => {});
-      window.checkServerVersion(false);
-
-      // 4. Проверка при возвращении пользователя в приложение
-      document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') {
-          reg.update().catch(() => {});
-          window.checkServerVersion(false);
-        }
-      });
-
-      // 5. Периодическая фоновая проверка каждые 15 минут
-      setInterval(() => {
-        reg.update().catch(() => {});
-        window.checkServerVersion(false);
-      }, 15 * 60 * 1000);
-
     } catch (e) {
       console.warn('[SW] Ошибка регистрации sw.js:', e.message);
-      // Если SW не поддерживается/заблокирован, всё равно проверяем version.json
-      window.checkServerVersion(false);
     }
   });
-} else {
-  // Браузер без поддержки SW — проверяем версию по сети напрямую
-  window.addEventListener('load', () => window.checkServerVersion(false));
 }
-
 // ── Онлайн / Офлайн индикатор ─────────────────────────────────
 window.addEventListener('online', () => {
   window.showToast('✅ Подключение восстановлено');
