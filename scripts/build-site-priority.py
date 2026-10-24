@@ -94,7 +94,7 @@ def patch_priority_loading(body: str) -> str:
     }, (error) => {
       window.mtStartupProfiler?.stamp('TODAY_SNAPSHOT_ERROR', error.message);
       console.error('[Priority] Today data failed to load:', error);
-      window.showToast('⚠️ Не удалось загрузить данные из Firebase: ' + error.message, 'error');
+      window.showToast('⚠️ ' + (window.firebaseErrorRu ? window.firebaseErrorRu(error) : 'Firebase не выполнил запрос. Проверьте интернет и попробуйте ещё раз.'), 'error');
     });'''
     body=body[:start] + replacement + "\n\n" + body[end:]
     old='''      } else { f.value=""; t.value=""; dateRow.style.display='none'; }

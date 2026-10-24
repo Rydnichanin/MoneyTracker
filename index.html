@@ -463,10 +463,28 @@
       el.style.cssText = `position:fixed;bottom:80px;left:50%;transform:translateX(-50%);
         background:${type==='error'?'#ff6b6b':type==='warn'?'#ffd166':'#65d48b'};
         color:#000;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:600;
-        z-index:9999;white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,0.5);`;
+        z-index:9999;width:max-content;max-width:90vw;white-space:normal;text-align:center;line-height:1.4;
+        box-shadow:0 4px 20px rgba(0,0,0,0.5);`;
       el.textContent = msg;
       document.body.appendChild(el);
       setTimeout(() => el.remove(), 2500);
+    };
+
+    // Не показываем пользователю сырые английские сообщения Firebase.
+    // Технические подробности остаются в консоли для диагностики.
+    window.firebaseErrorRu = (error) => {
+      const code = String(error?.code || '').toLowerCase();
+      if (code.includes('permission-denied') || code.includes('missing-or-insufficient-permissions'))
+        return 'Firebase отказал в доступе. Проверьте вход в нужный аккаунт и правила доступа Firestore.';
+      if (code.includes('unauthenticated') || code.includes('user-token-expired'))
+        return 'Сеанс входа истёк. Выйдите из аккаунта и войдите снова.';
+      if (code.includes('unavailable') || code.includes('deadline-exceeded') || code.includes('network-request-failed'))
+        return 'Не удалось связаться с Firebase. Проверьте интернет и попробуйте ещё раз.';
+      if (code.includes('failed-precondition'))
+        return 'Firebase не выполнил запрос. Проверьте настройки базы данных и необходимые индексы.';
+      if (code.includes('not-found'))
+        return 'База данных Firebase не найдена или настроена неверно.';
+      return 'Firebase не выполнил запрос. Проверьте интернет и попробуйте ещё раз.';
     };
 
     // ── Запуск приложения ──────────────────────────────────────────
@@ -2406,7 +2424,7 @@
       // Обработчик ошибок onSnapshot — без него слушатель молча "умирает"
       // при проблемах с доступом/сетью, и экран навсегда останется в состоянии загрузки.
       console.error('Ошибка загрузки настроек из Firebase:', err);
-      window.showToast('⚠️ Не удалось загрузить настройки: ' + err.message, 'error');
+      window.showToast('⚠️ ' + window.firebaseErrorRu(err), 'error');
     });
 
     window.addCategory = async () => {
@@ -2712,7 +2730,7 @@
       // Обработчик ошибок onSnapshot — без него слушатель молча "умирает"
       // при проблемах с доступом/сетью, и список навсегда останется на skeleton-заглушке.
       console.error('Ошибка загрузки записей из Firebase:', err);
-      window.showToast('⚠️ Не удалось загрузить историю: ' + err.message, 'error');
+      window.showToast('⚠️ ' + window.firebaseErrorRu(err), 'error');
       const listEl = document.getElementById('list');
       if (listEl && listEl.querySelector('.skeleton-row')) {
         listEl.innerHTML = `<div class="muted" style="padding:10px 0;">
@@ -2784,7 +2802,7 @@
         pendingTx = pendingTx.filter(p => p.id !== tempEntry.id);
         allTx = allTx.filter(t => t.id !== tempEntry.id); window.allTx = allTx;
         safeRender();
-        window.showToast('Ошибка сохранения — запись отменена: ' + err.message, 'error');
+        window.showToast('⚠️ Не удалось сохранить запись. ' + window.firebaseErrorRu(err), 'error');
       }
     };
   }
@@ -2805,7 +2823,7 @@
       document.getElementById("transferAmount").value="";
       window.showToast(`Переведено ${amt.toLocaleString()} ₸`);
     } catch(e) {
-      window.showToast('Ошибка перевода: ' + e.message, 'error');
+      window.showToast('⚠️ Не удалось выполнить перевод. ' + window.firebaseErrorRu(e), 'error');
     }
   };
 
