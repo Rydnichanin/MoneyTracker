@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#000000" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -24,7 +24,7 @@
   <meta http-equiv="X-Content-Type-Options" content="nosniff" />
   <meta http-equiv="X-Frame-Options" content="DENY" />
   <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin" />
-  <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()" />
+  <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(self)" />
   <meta http-equiv="Content-Security-Policy" content="
     default-src 'self';
     script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://accounts.google.com;
@@ -288,9 +288,10 @@
 
     /* ═══ DESKTOP / TABLET ADAPTATION ═══ */
     @media (min-width: 768px) {
-      .page-wrap { max-width: 900px; padding: 20px 24px calc(var(--nav-h) + 16px); }
+      .page-wrap { max-width: 900px; padding: 112px 24px calc(var(--nav-h) + 16px); }
       .nav-bar { max-width: 900px; border-radius: 16px 16px 0 0; }
       .topbar { max-width: 900px; margin: 0 auto; left: 0; right: 0; border-radius: 0 0 16px 16px; }
+      .period-row { max-width: 900px; margin: 0 auto; left: 0; right: 0; }
       .balance-block { padding: 20px; }
       .bal-main { font-size: 32px; }
       .card { padding: 18px; }
@@ -311,18 +312,19 @@
     }
 
     @media (min-width: 1024px) {
-      .page-wrap { max-width: 1100px; padding: 20px 30px calc(var(--nav-h) + 16px); }
+      .page-wrap { max-width: 1100px; padding: 112px 30px calc(var(--nav-h) + 16px); }
       .nav-bar { max-width: 1100px; }
       .topbar { max-width: 1100px; }
-      #tab-record { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+      .period-row { max-width: 1100px; }
+      #tab-record.tab.active { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
       #tab-record .balance-block { grid-column: 1 / -1; }
-      #tab-income { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+      #tab-income.tab.active { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
       #tab-income > .card:last-child { grid-column: 1 / -1; }
-      #tab-expense { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+      #tab-expense.tab.active { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
       #tab-expense > .card:first-child { grid-column: 1 / -1; }
-      #tab-budget { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+      #tab-budget.tab.active { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
       #tab-budget > .card:first-child { grid-column: 1 / -1; }
-      #tab-wa { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+      #tab-wa.tab.active { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
       .history-sheet, .prices-screen { max-width: 720px; }
     }
 
