@@ -27,7 +27,7 @@
   <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()" />
   <meta http-equiv="Content-Security-Policy" content="
     default-src 'self';
-    script-src 'self' 'unsafe-inline' https://www.gstatic.com;
+    script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://accounts.google.com;
     style-src 'self' 'unsafe-inline';
     img-src 'self' data: https://*.googleusercontent.com https://*.gstatic.com;
     connect-src 'self'
@@ -39,7 +39,7 @@
       https://firestore.googleapis.com
       https://identitytoolkit.googleapis.com
       https://securetoken.googleapis.com;
-    frame-src 'self' https://*.firebaseapp.com https://accounts.google.com;
+    frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://apis.google.com;
     object-src 'none';
     base-uri 'self';
   " />
@@ -889,6 +889,7 @@
       <div style="flex:1;height:1px;background:#1c1c1c;"></div>
     </div>
 
+    <div id="googleBtnContainer" style="width:100%;display:flex;justify-content:center;margin-bottom:8px;min-height:44px;"></div>
     <button id="googleSignInBtn" type="button" onclick="fbSignIn()"
       style="width:100%;padding:14px;border-radius:12px;border:1px solid #282828;background:#141414;color:#fff;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;box-sizing:border-box;">
       <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#4285F4" d="M44.5 20H24v8.5h11.8C34.7 33.9 29.8 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 5.1 29.6 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21c10.5 0 20-7.6 20-21 0-1.4-.1-2.7-.5-4z"/></svg>
