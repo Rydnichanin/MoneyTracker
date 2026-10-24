@@ -1537,6 +1537,7 @@
   // ══════════════════════════════════════════════
 
   // XSS защита — экранируем все данные из Firebase перед вставкой в HTML
+  function esc(str) { return window.esc(str); }
   window.esc = function(str) {
     if (str == null) return '';
     return String(str)
@@ -2010,23 +2011,41 @@
 
   window.isFuelTransaction = (t) => {
     if (!t || t.type !== 'expense') return false;
+    if (t.isDeleted || t.deletedAt) return false;
     const sub = String(t.subcategory || '').toLowerCase();
     const cat = String(t.categoryName || '').toLowerCase();
     const com = String(t.comment || '').toLowerCase();
     const text = `${sub} ${cat} ${com}`;
     const isMaint = window.isMaintenanceTx(t);
 
-    // Если это замена масла, ТО, ремонт, мойка и т.д. без явного признака полного бака или топлива — это НЕ бензин
-    if (isMaint && !t.fullTank && !(text.includes('бенз') || text.includes('топлив') || text.includes('газ') || text.includes('заправ'))) {
+    // Если это замена масла, ТО, ремонт, мойка и т.д. без явного признака топлива — это НЕ бензин
+    const hasFuelWord = text.includes('бенз') || text.includes('топлив') || text.includes('газ') ||
+                        text.includes('заправ') || text.includes('гсм') || text.includes('дизель') ||
+                        text.includes('солярк') || text.includes('lpg') || text.includes('cng');
+
+    if (isMaint && !hasFuelWord && !t.fullTank) {
       return false;
     }
 
-    if (t.fullTank || (t.liters !== undefined && Number(t.liters) > 0 && !isMaint)) {
+    // Полный бак явно указывает на заправку
+    if (t.fullTank) return true;
+
+    // Ключевое топливное слово
+    if (hasFuelWord) return true;
+
+    // Защита от ошибочных категорий авто: "прочее", "парковка", "штраф", "мойка", "ремонт", "страховка"
+    // НЕ должны считаться бензином, даже если случайно записались литры
+    const nonFuelKeywords = ['прочее', 'парковк', 'штраф', 'страхов', 'налог', 'мойк', 'ремонт', 'сто '];
+    if (nonFuelKeywords.some(w => text.includes(w))) {
+      return false;
+    }
+
+    // Если указаны литры и это не ТО/ремонт
+    if (t.liters !== undefined && t.liters !== null && Number(t.liters) > 0 && !isMaint) {
       return true;
     }
 
-    return text.includes('бенз') || text.includes('топлив') || text.includes('газ') ||
-           text.includes('заправ') || text.includes('гсм');
+    return false;
   };
 
   window._fuelLitersManuallyEdited = false;
@@ -2051,7 +2070,8 @@
       catName.includes('газ') || subName.includes('газ') ||
       catName.includes('заправ') || subName.includes('заправ') ||
       catName.includes('гсм') || subName.includes('гсм') ||
-      catName.includes('авто') || catName.includes('машин')
+      catName.includes('дизель') || subName.includes('дизель') ||
+      catName.includes('солярк') || subName.includes('солярк')
     );
 
     const fp = Number(localStorage.getItem('fuelPrice')) || 0;
@@ -2060,6 +2080,9 @@
     }
 
     if (!isFuel) {
+      if (!window._fuelLitersManuallyEdited) {
+        litEl.value = '';
+      }
       if (noteEl && !isMaint) noteEl.innerHTML = '';
       return;
     }
@@ -2118,7 +2141,7 @@
 </script>
 
 <script>
-  let DEFAULTS = { income: [], expense: [] };
+  let DEFAULTS = { income: [], expense: [] }; window.DEFAULTS = DEFAULTS;
   let ACCOUNTS = []; window.ACCOUNTS = ACCOUNTS;
   let allTx = []; window.allTx = allTx;
   let _txRenderLimit = 60; // пагинация списка транзакций — рендерим порциями. Объявлена
@@ -2199,7 +2222,7 @@
     try {
       const s = JSON.parse(localStorage.getItem(CACHE_SETTINGS_KEY) || 'null');
       if (s && s.DEFAULTS) {
-        DEFAULTS = s.DEFAULTS;
+        DEFAULTS = s.DEFAULTS; window.DEFAULTS = DEFAULTS;
         ACCOUNTS = Array.isArray(s.ACCOUNTS) ? s.ACCOUNTS : [];
         window.ACCOUNTS = ACCOUNTS;
         loaded = true;
@@ -2324,7 +2347,7 @@
     fbMethods.onSnapshot(setRef, (snap) => {
       window._fbDataArrived = true;
       try {
-        DEFAULTS = { income: [], expense: [] }; ACCOUNTS = [];
+        DEFAULTS = { income: [], expense: [] }; window.DEFAULTS = DEFAULTS; ACCOUNTS = [];
         let setHtml = "";
         snap.forEach(d => {
           const data = d.data();
@@ -2348,6 +2371,7 @@
             </div>`;
           }
         });
+        window.DEFAULTS = DEFAULTS;
         document.getElementById("settingsList").innerHTML = setHtml || '<div class="muted" style="font-size:13px;padding:8px 0;">Нет настроек</div>';
         updateUI(true);
         cacheSettingsToLocal();
@@ -2607,10 +2631,10 @@
           if (fFullLabel) fFullLabel.style.display = 'flex';
           if (window.autoCalcFuelLiters) window.autoCalcFuelLiters();
         } else if (isAuto) {
-          if (fTitle) fTitle.textContent = '🚗 Данные авто / одометр';
+          if (fTitle) fTitle.textContent = '🚗 Одометр авто (необязательно)';
           if (fPriceHint) fPriceHint.style.display = 'none';
-          if (fLitInp) fLitInp.style.display = 'block';
-          if (fFullLabel) fFullLabel.style.display = 'flex';
+          if (fLitInp) { fLitInp.style.display = 'none'; fLitInp.value = ''; }
+          if (fFullLabel) { fFullLabel.style.display = 'none'; document.getElementById("fuelFullTank").checked = false; }
           if (fCalcNote) fCalcNote.innerHTML = '';
         }
       };
@@ -2639,7 +2663,7 @@
       _renderTimer = setTimeout(() => { render(); _renderTimer = null; }, 80);
     };
 
-    let pendingTx = []; // оптимистичные записи, ещё не подтверждённые Firebase
+    let pendingTx = []; window.pendingTx = pendingTx; // оптимистичные записи, ещё не подтверждённые Firebase
 
     fbMethods.onSnapshot(fbMethods.query(txRef, fbMethods.orderBy("date","desc")), (snap) => {
       window._fbDataArrived = true;
@@ -2652,8 +2676,10 @@
         const now = Date.now();
         pendingTx = pendingTx.filter(p => !serverTx.some(s => s.createdAt === p.createdAt) && (now - p.createdAt) < 15000);
         allTx = [...pendingTx, ...serverTx]; window.allTx = allTx;
-        if (!document.getElementById("fromDate").value) setRange('today'); else debouncedRender();
+        if (!document.getElementById("fromDate").value) setRange('today'); else safeRender();
         if (document.getElementById('historySheet')?.classList.contains('open')) renderHistorySheet();
+        if (window.renderDeletedTx) window.renderDeletedTx();
+        if (window.renderFuelTracker) window.renderFuelTracker();
         cacheTxToLocal();
       } catch(err) {
         console.error('Ошибка обработки транзакций:', err);
@@ -2682,6 +2708,17 @@
       const odoVal = document.getElementById("fuelOdometer").value;
       const litVal = document.getElementById("fuelLiters").value;
       const fullTankVal = document.getElementById("fuelFullTank").checked;
+      const catLower = (catObj ? catObj.name : '').toLowerCase();
+      const subLower = (document.getElementById("subcategory").value || '').toLowerCase();
+      const isMaintForm = window.isMaintenanceTx({ categoryName: catLower, subcategory: subLower });
+      const isFuelForm = !isMaintForm && type === 'expense' && (
+        catLower.includes('бенз') || subLower.includes('бенз') ||
+        catLower.includes('топлив') || subLower.includes('топлив') ||
+        catLower.includes('газ') || subLower.includes('газ') ||
+        catLower.includes('заправ') || subLower.includes('заправ') ||
+        catLower.includes('гсм') || subLower.includes('гсм') ||
+        catLower.includes('дизель') || subLower.includes('дизель')
+      );
 
       const txData = {
         type, amount: amt,
@@ -2694,8 +2731,8 @@
         comment: document.getElementById("comment").value
       };
       if (odoVal !== '') txData.odometer = Number(odoVal);
-      if (litVal !== '') txData.liters = Number(litVal);
-      if (fullTankVal) txData.fullTank = true;
+      if (litVal !== '' && (isFuelForm || fullTankVal)) txData.liters = Number(litVal);
+      if (fullTankVal && isFuelForm) txData.fullTank = true;
 
       // Валидация перед сохранением
       const errors = window.validateTx(txData);
@@ -2713,7 +2750,7 @@
       window._fuelLitersManuallyEdited = false;
       const fNote = document.getElementById("fuelCalcNote"); if (fNote) fNote.innerHTML = "";
       setToday();
-      debouncedRender();
+      safeRender();
       window.showToast(`${type==='income'?'+':'−'}${amt.toLocaleString()} ₸ записано`);
 
       try {
@@ -2723,7 +2760,7 @@
         // Откатываем оптимистичную запись при ошибке сохранения
         pendingTx = pendingTx.filter(p => p.id !== tempEntry.id);
         allTx = allTx.filter(t => t.id !== tempEntry.id); window.allTx = allTx;
-        debouncedRender();
+        safeRender();
         window.showToast('Ошибка сохранения — запись отменена: ' + err.message, 'error');
       }
     };
@@ -2749,6 +2786,7 @@
     }
   };
 
+  window.render = function() { return render(); };
   function render() {
     const from=document.getElementById("fromDate").value, to=document.getElementById("toDate").value;
     const filtered=allTx.filter(t=>{
@@ -3025,7 +3063,7 @@
       window._analyticsStale = true;
     }
 
-    if (window.renderFuelTracker) renderFuelTracker();
+    if (window.renderFuelTracker) window.renderFuelTracker();
     if (document.getElementById('tab-expense')?.classList.contains('active')) {
       if (window.renderExpenseFullAnalytics) renderExpenseFullAnalytics();
       if (window.renderRecurringBills) window.renderRecurringBills();
@@ -3038,7 +3076,7 @@
     }
 
     if (window.checkCarAndBillsReminders) window.checkCarAndBillsReminders();
-    if (window.renderDeletedTx) renderDeletedTx();
+    if (window.renderDeletedTx) window.renderDeletedTx();
   }
 
   window.render = render;
@@ -3177,16 +3215,17 @@
     const isDepTransfer=t=>t.subcategory&&(t.subcategory.startsWith('← ')||t.subcategory.startsWith('→ '));
     // byDay = весь доход за день (кроме переводов)
     allTx.forEach(t=>{
-      if(t.type!=='income'||isDepTransfer(t))return;
+      if(t.isDeleted||t.deletedAt||t.type!=='income'||isDepTransfer(t))return;
       const d=t.date||'',m=d.slice(0,7);
       if(!byDay[d])byDay[d]=0;
       byDay[d]+=t.amount;
       if(!byMonth[m])byMonth[m]={inc:0,exp:0};
       byMonth[m].inc+=t.amount;
     });
-    allTx.forEach(t=>{if(t.type!=='expense'||isDepTransfer(t))return;const m=(t.date||'').slice(0,7);if(!byMonth[m])byMonth[m]={inc:0,exp:0};byMonth[m].exp+=t.amount;});
+    allTx.forEach(t=>{if(t.isDeleted||t.deletedAt||t.type!=='expense'||isDepTransfer(t))return;const m=(t.date||'').slice(0,7);if(!byMonth[m])byMonth[m]={inc:0,exp:0};byMonth[m].exp+=t.amount;});
     // byDayDeliv = только точки F1/F2/F3/ALLEY/Ночь за день
     allTx.forEach(t=>{
+      if(t.isDeleted||t.deletedAt)return;
       if(t.type==='income'&&DELIVERY_POINTS_BW.includes(t.subcategory)){
         if(!byDayDeliv[t.date])byDayDeliv[t.date]=0;
         byDayDeliv[t.date]+=t.amount;
@@ -4505,12 +4544,13 @@
     if (document.getElementById('_fuelDetailsModal')) window.openFuelDetailsModal();
   };
 
+  function calculateFuelStats() { return window.calculateFuelStats(); }
   window.calculateFuelStats = () => {
     const odoMode = localStorage.getItem('fuel_odo_mode') || 'auto'; // 'auto', 'total', 'trip'
 
-    // Собираем строго транзакции топлива (ТО, замена масла и ремонты исключены!)
+    // Собираем строго активные транзакции топлива (удалённые, ТО и ремонты исключены!)
     const fuelTxs = (window.allTx || []).filter(t => {
-      if (t.type !== 'expense') return false;
+      if (t.type !== 'expense' || t.isDeleted || t.deletedAt) return false;
       return window.isFuelTransaction(t);
     }).sort((a,b) => {
       if (a.date !== b.date) return a.date > b.date ? 1 : -1;
@@ -4686,6 +4726,7 @@
     let lastOilTx = null;
 
     (window.allTx || []).forEach(t => {
+      if (t.isDeleted || t.deletedAt) return;
       const odo = Number(t.odometer);
       if (odo && odo > latestOdo) latestOdo = odo;
       const isMaint = window.isMaintenanceTx(t);
@@ -4830,7 +4871,7 @@
     let curMonthAutoCost = 0;
 
     (window.allTx || []).forEach(t => {
-      if (t.type !== 'expense' || isDepTransfer(t)) return;
+      if (t.isDeleted || t.deletedAt || t.type !== 'expense' || isDepTransfer(t)) return;
       const sub = String(t.subcategory || '').toLowerCase();
       const cat = String(t.categoryName || '').toLowerCase();
       const com = String(t.comment || '').toLowerCase();
@@ -5301,7 +5342,7 @@
     const expByDay = {}, expByMonth = {};
 
     allTx.forEach(t => {
-      if (t.type !== 'expense' || isDepTransfer(t)) return;
+      if (t.isDeleted || t.deletedAt || t.type !== 'expense' || isDepTransfer(t)) return;
       const d = t.date || '', m = d.slice(0,7);
       if (!expByDay[d]) expByDay[d] = 0;
       expByDay[d] += t.amount;
@@ -5412,7 +5453,7 @@
     weekdayOrder.forEach(idx => { expWeekdayData[idx] = { total: 0, count: 0, txs: 0 }; });
 
     allTx.forEach(t => {
-      if (t.type !== 'expense' || isDepTransfer(t) || !t.date) return;
+      if (t.isDeleted || t.deletedAt || t.type !== 'expense' || isDepTransfer(t) || !t.date) return;
       const dt = new Date(t.date + 'T00:00:00');
       const wd = dt.getDay();
       if (!expWeekdayData[wd]) return;
@@ -5492,7 +5533,7 @@
       let totA = 0, totB = 0;
 
       allTx.forEach(t => {
-        if (t.type !== 'expense' || isDepTransfer(t) || !t.date) return;
+        if (t.isDeleted || t.deletedAt || t.type !== 'expense' || isDepTransfer(t) || !t.date) return;
         const m = t.date.slice(0, 7);
         const cat = t.categoryName || 'Без категории';
         const amt = Number(t.amount) || 0;
@@ -5986,119 +6027,281 @@
     }
   };
 
+  const safeRender = () => { if (window.debouncedRender) window.safeRender(); else if (window.render) window.render(); };
   window.deleteTx = (id) => {
-    if (String(id).startsWith('tmp_')) { window.showToast('Запись ещё сохраняется — подожди секунду', 'warn'); return; }
+    if (!id) return;
     showConfirm('Переместить запись в удалённые?', async () => {
+      const now = Date.now();
+      const target = (window.allTx || []).find(x => x.id === id);
+      if (target) {
+        target.isDeleted = true;
+        target.deletedAt = now;
+      }
+      if (String(id).startsWith('tmp_')) {
+        pendingTx = pendingTx.filter(p => p.id !== id);
+      }
+      safeRender();
+      if (window.renderFuelTracker) window.renderFuelTracker();
+      if (window.renderDeletedTx) window.renderDeletedTx();
+      if (document.getElementById('historySheet')?.classList.contains('open')) renderHistorySheet();
+      cacheTxToLocal();
+
+      if (String(id).startsWith('tmp_')) {
+        window.showToast('Запись удалена');
+        return;
+      }
+
       try {
-        await window.fbMethods.updateDoc(window.fbMethods.doc(window.fbDB, 'users', window.fbUser.uid, 'transactions', id), { isDeleted: true, deletedAt: Date.now() });
+        await window.fbMethods.updateDoc(
+          window.fbMethods.doc(window.fbDB, 'users', window.fbUser.uid, 'transactions', id),
+          { isDeleted: true, deletedAt: now }
+        );
         window.showToast('Запись перемещена в удалённые');
       } catch(e) {
-        window.showToast('Ошибка удаления', 'error');
+        if (target) {
+          target.isDeleted = false;
+          delete target.deletedAt;
+        }
+        safeRender();
+        if (window.renderFuelTracker) window.renderFuelTracker();
+        if (window.renderDeletedTx) window.renderDeletedTx();
+        window.showToast('Ошибка удаления: ' + (e.message || e), 'error');
         console.error('deleteTx:', e);
       }
     });
   };
 
   window.editTx = (id) => {
-    if (String(id).startsWith('tmp_')) { window.showToast('Запись ещё сохраняется — подожди секунду', 'warn'); return; }
-    const t = (window.allTx||[]).find(tx => tx.id === id);
-    if (!t || t.type === 'transfer') return;
+    const t = (window.allTx || []).find(tx => tx.id === id);
+    if (!t) return;
+    if (t.type === 'transfer') {
+      window.showToast('Редактирование переводов пока не поддерживается', 'info');
+      return;
+    }
 
     const old = document.getElementById('_editDialog');
     if (old) old.remove();
 
-    const accOpts = (window.ACCOUNTS||[]).map(a => `<option value="${a.name}" ${a.name===t.account?'selected':''}>${a.name}</option>`).join('');
-    const cats = [...(window.DEFAULTS?.income||[]), ...(window.DEFAULTS?.expense||[])];
-    const currentCat = cats.find(c => c.name === t.categoryName);
-    const catOpts = cats.map(c => `<option value="${c.name}" ${c.name===t.categoryName?'selected':''}>${c.name}</option>`).join('');
-    const subOpts = currentCat?.sub?.length
-      ? '<select id="_editSub" style="width:100%;padding:11px;border-radius:10px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:15px;outline:none;box-sizing:border-box;">' +
-        currentCat.sub.map(s=>`<option value="${s}" ${s===t.subcategory?'selected':''}>${s}</option>`).join('') + '</select>'
-      : `<input id="_editSub" type="text" value="${t.subcategory||''}" placeholder="Подкатегория" style="width:100%;padding:11px;border-radius:10px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:15px;outline:none;box-sizing:border-box;">`;
+    const accOpts = (window.ACCOUNTS || []).map(a =>
+      `<option value="${esc(a.name)}" ${a.name === t.account ? 'selected' : ''}>${esc(a.name)}</option>`
+    ).join('');
 
     const div = document.createElement('div');
     div.id = '_editDialog';
     div.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.9);display:flex;align-items:flex-end;justify-content:center;padding:0;box-sizing:border-box;';
     div.innerHTML = `
-      <div style="background:#1c1c1e;border-radius:20px 20px 0 0;padding:20px;width:100%;max-width:500px;border-top:1px solid #2a2a2a;max-height:90vh;overflow-y:auto;">
+      <div style="background:#1c1c1e;border-radius:20px 20px 0 0;padding:20px;width:100%;max-width:500px;border-top:1px solid #2a2a2a;max-height:90vh;overflow-y:auto;box-sizing:border-box;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-          <div style="font-size:15px;font-weight:700;color:#ffd166;">✏️ Редактировать запись</div>
-          <button onclick="document.getElementById('_editDialog').remove()" style="background:none;border:none;color:#555;font-size:22px;cursor:pointer;padding:4px 8px;">✕</button>
+          <div style="font-size:16px;font-weight:700;color:#ffd166;">✏️ Редактировать запись</div>
+          <button type="button" onclick="document.getElementById('_editDialog').remove()" style="background:none;border:none;color:#888;font-size:22px;cursor:pointer;padding:4px 8px;">✕</button>
         </div>
         <div style="display:flex;gap:8px;margin-bottom:10px;">
           <select id="_editType" style="flex:1;padding:11px;border-radius:10px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:15px;outline:none;">
-            <option value="income" ${t.type==='income'?'selected':''}>Приход</option>
-            <option value="expense" ${t.type==='expense'?'selected':''}>Расход</option>
+            <option value="expense" ${t.type === 'expense' ? 'selected' : ''}>Расход</option>
+            <option value="income" ${t.type === 'income' ? 'selected' : ''}>Приход</option>
           </select>
           <input id="_editAmt" type="number" inputmode="decimal" value="${t.amount}"
             style="flex:1;padding:11px;border-radius:10px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:15px;outline:none;">
         </div>
         <div style="display:flex;gap:8px;margin-bottom:10px;">
-          <select id="_editCat" style="flex:1;padding:11px;border-radius:10px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:15px;outline:none;">${catOpts}</select>
+          <select id="_editCat" style="flex:1;padding:11px;border-radius:10px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:15px;outline:none;"></select>
           <select id="_editAcc" style="flex:1;padding:11px;border-radius:10px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:15px;outline:none;">${accOpts}</select>
         </div>
-        <div style="margin-bottom:10px;">${subOpts}</div>
+        <div id="_editSubContainer" style="margin-bottom:10px;"></div>
         <div style="display:flex;gap:8px;margin-bottom:10px;">
-          <input id="_editDate" type="date" value="${t.date||''}"
+          <input id="_editDate" type="date" value="${t.date || ''}"
             style="flex:1;padding:11px;border-radius:10px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:15px;outline:none;">
-          <input id="_editTime" type="time" value="${t.time||''}"
+          <input id="_editTime" type="time" value="${t.time || ''}"
             style="flex:1;padding:11px;border-radius:10px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:15px;outline:none;">
         </div>
-        <input id="_editComment" type="text" value="${t.comment||''}" placeholder="Примечание"
+        <input id="_editComment" type="text" value="${esc(t.comment || '')}" placeholder="Примечание"
           style="width:100%;padding:11px;border-radius:10px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:15px;outline:none;box-sizing:border-box;margin-bottom:10px;">
-        <div style="background:#151922;border:1px solid #233554;border-radius:10px;padding:10px;margin-bottom:14px;">
-          <div style="font-size:11px;font-weight:600;color:#6ec6ff;margin-bottom:6px;">⛽ Данные заправки / одометра</div>
+
+        <div id="_editFuelBlock" style="background:#151922;border:1px solid #233554;border-radius:10px;padding:10px;margin-bottom:14px;">
+          <div id="_editFuelTitle" style="font-size:11px;font-weight:600;color:#6ec6ff;margin-bottom:6px;">⛽ Данные заправки / одометра</div>
           <div style="display:flex;gap:8px;margin-bottom:6px;">
-            <input id="_editOdo" type="number" inputmode="numeric" value="${t.odometer!==undefined?t.odometer:''}" placeholder="Одометр (км)"
+            <input id="_editOdo" type="number" inputmode="numeric" value="${(t.odometer !== undefined && t.odometer !== null) ? t.odometer : ''}" placeholder="Одометр (км)"
               style="flex:1;padding:9px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:14px;outline:none;">
-            <input id="_editLiters" type="number" step="0.01" inputmode="decimal" value="${t.liters!==undefined?t.liters:''}" placeholder="Литры"
+            <input id="_editLiters" type="number" step="0.01" inputmode="decimal" value="${(t.liters !== undefined && t.liters !== null) ? t.liters : ''}" placeholder="Литры"
               style="flex:1;padding:9px;border-radius:8px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:14px;outline:none;">
           </div>
-          <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#ddd;cursor:pointer;">
-            <input id="_editFullTank" type="checkbox" ${t.fullTank?'checked':''} style="width:18px;height:18px;accent-color:#65d48b;cursor:pointer;">
+          <label id="_editFullTankLabel" style="display:flex;align-items:center;gap:8px;font-size:13px;color:#ddd;cursor:pointer;">
+            <input id="_editFullTank" type="checkbox" ${t.fullTank ? 'checked' : ''} style="width:18px;height:18px;accent-color:#65d48b;cursor:pointer;">
             <span>Полный бак</span>
           </label>
         </div>
-        <div style="display:flex;gap:10px;">
-          <button onclick="document.getElementById('_editDialog').remove()"
-            style="flex:1;padding:13px;border-radius:10px;border:1px solid #333;background:none;color:#888;font-size:14px;cursor:pointer;">Отмена</button>
-          <button onclick="confirmEditTx('${id}')"
-            style="flex:1;padding:13px;border-radius:10px;border:none;background:#ffd166;color:#000;font-size:14px;font-weight:bold;cursor:pointer;">Сохранить</button>
+
+        <div style="display:flex;gap:10px;margin-bottom:10px;">
+          <button type="button" onclick="document.getElementById('_editDialog').remove()"
+            style="flex:1;padding:12px;border-radius:10px;border:1px solid #333;background:none;color:#888;font-size:14px;cursor:pointer;">Отмена</button>
+          <button type="button" onclick="confirmEditTx('${id}')"
+            style="flex:1;padding:12px;border-radius:10px;border:none;background:#ffd166;color:#000;font-size:14px;font-weight:bold;cursor:pointer;">Сохранить</button>
         </div>
+        <button type="button" onclick="document.getElementById('_editDialog').remove(); deleteTx('${id}');"
+          style="width:100%;padding:10px;border-radius:10px;border:1px solid #4a1c1c;background:#200c0c;color:#ff6b6b;font-size:13px;cursor:pointer;">
+          🗑️ Переместить запись в удалённые
+        </button>
       </div>`;
     document.body.appendChild(div);
+
+    const selType = document.getElementById('_editType');
+    const selCat = document.getElementById('_editCat');
+    const subContainer = document.getElementById('_editSubContainer');
+
+    function populateCategories(typeVal, selectedCatName) {
+      const cats = (window.DEFAULTS && window.DEFAULTS[typeVal]) || [];
+      if (!cats.length) {
+        selCat.innerHTML = `<option value="${esc(selectedCatName || '')}">${esc(selectedCatName || 'Без категории')}</option>`;
+      } else {
+        selCat.innerHTML = cats.map(c =>
+          `<option value="${esc(c.name)}" ${c.name === selectedCatName ? 'selected' : ''}>${esc(c.name)}</option>`
+        ).join('');
+      }
+      const actualCatName = selCat.value || selectedCatName || (cats[0] ? cats[0].name : '');
+      populateSubcategories(actualCatName, t.subcategory);
+    }
+
+    function populateSubcategories(catName, selectedSubName) {
+      const typeVal = selType.value;
+      const cats = (window.DEFAULTS && window.DEFAULTS[typeVal]) || [];
+      const cat = cats.find(c => c.name === catName);
+      if (cat && Array.isArray(cat.sub) && cat.sub.length > 0) {
+        let opts = cat.sub.map(s =>
+          `<option value="${esc(s)}" ${s === selectedSubName ? 'selected' : ''}>${esc(s)}</option>`
+        ).join('');
+        if (selectedSubName && !cat.sub.includes(selectedSubName)) {
+          opts = `<option value="${esc(selectedSubName)}" selected>${esc(selectedSubName)}</option>` + opts;
+        }
+        subContainer.innerHTML = `<select id="_editSub" style="width:100%;padding:11px;border-radius:10px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:15px;outline:none;box-sizing:border-box;">${opts}</select>`;
+      } else {
+        subContainer.innerHTML = `<input id="_editSub" type="text" value="${esc(selectedSubName || '')}" placeholder="Подкатегория" style="width:100%;padding:11px;border-radius:10px;border:1px solid #2a2a2a;background:#2c2c2e;color:#fff;font-size:15px;outline:none;box-sizing:border-box;">`;
+      }
+      const subEl = document.getElementById('_editSub');
+      if (subEl) subEl.onchange = updateFuelInputsVisibility;
+      updateFuelInputsVisibility();
+    }
+
+    function updateFuelInputsVisibility() {
+      const catName = (selCat.value || '').toLowerCase();
+      const subEl = document.getElementById('_editSub');
+      const subName = (subEl ? subEl.value : '').toLowerCase();
+      const isMaint = window.isMaintenanceTx({ categoryName: catName, subcategory: subName });
+      const isFuel = !isMaint && selType.value === 'expense' && (
+        catName.includes('бенз') || subName.includes('бенз') ||
+        catName.includes('топлив') || subName.includes('топлив') ||
+        catName.includes('газ') || subName.includes('газ') ||
+        catName.includes('заправ') || subName.includes('заправ') ||
+        catName.includes('гсм') || subName.includes('гсм') ||
+        catName.includes('дизель') || subName.includes('дизель')
+      );
+      const isCar = selType.value === 'expense' && (
+        catName.includes('авто') || catName.includes('машин') ||
+        subName.includes('авто') || subName.includes('машин') || isMaint
+      );
+
+      const fuelBlock = document.getElementById('_editFuelBlock');
+      const fuelTitle = document.getElementById('_editFuelTitle');
+      const litInp = document.getElementById('_editLiters');
+      const fullLabel = document.getElementById('_editFullTankLabel');
+
+      if (!isFuel && !isCar && !isMaint) {
+        const hasExisting = Boolean(t.odometer || t.liters || t.fullTank);
+        fuelBlock.style.display = hasExisting ? 'block' : 'none';
+      } else {
+        fuelBlock.style.display = 'block';
+      }
+
+      if (isMaint || (!isFuel && isCar)) {
+        if (fuelTitle) fuelTitle.textContent = isMaint ? '🚗 Одометр для ТО и сервиса' : '🚗 Одометр авто (необязательно)';
+        if (litInp) litInp.style.display = 'none';
+        if (fullLabel) fullLabel.style.display = 'none';
+      } else {
+        if (fuelTitle) fuelTitle.textContent = '⛽ Данные заправки / одометра';
+        if (litInp) litInp.style.display = 'block';
+        if (fullLabel) fullLabel.style.display = 'flex';
+      }
+    }
+
+    selType.onchange = () => {
+      populateCategories(selType.value, '');
+    };
+    selCat.onchange = () => {
+      populateSubcategories(selCat.value, '');
+    };
+
+    populateCategories(t.type || 'expense', t.categoryName);
   };
 
   window.confirmEditTx = async (id) => {
     const amt = Number(document.getElementById('_editAmt').value);
-    if (!amt) { document.getElementById('_editAmt').style.borderColor='#ff6b6b'; return; }
-    const catName = document.getElementById('_editCat').value;
-    const sub = document.getElementById('_editSub').value;
-    const odoVal = document.getElementById('_editOdo').value;
-    const litVal = document.getElementById('_editLiters').value;
-    const fullTankVal = document.getElementById('_editFullTank').checked;
+    if (!amt || amt <= 0) {
+      document.getElementById('_editAmt').style.borderColor = '#ff6b6b';
+      window.showToast('Введите корректную сумму', 'error');
+      return;
+    }
+    const catName = document.getElementById('_editCat').value || 'Без категории';
+    const sub = (document.getElementById('_editSub') ? document.getElementById('_editSub').value : '') || '';
+    const odoVal = document.getElementById('_editOdo') ? document.getElementById('_editOdo').value : '';
+    const litVal = document.getElementById('_editLiters') ? document.getElementById('_editLiters').value : '';
+    const fullTankVal = document.getElementById('_editFullTank') ? document.getElementById('_editFullTank').checked : false;
+
+    const type = document.getElementById('_editType').value;
+    const catLower = catName.toLowerCase();
+    const subLower = sub.toLowerCase();
+    const isMaint = window.isMaintenanceTx({ categoryName: catLower, subcategory: subLower });
+    const isFuel = !isMaint && type === 'expense' && (
+      catLower.includes('бенз') || subLower.includes('бенз') ||
+      catLower.includes('топлив') || subLower.includes('топлив') ||
+      catLower.includes('газ') || subLower.includes('газ') ||
+      catLower.includes('заправ') || subLower.includes('заправ') ||
+      catLower.includes('гсм') || subLower.includes('гсм') ||
+      catLower.includes('дизель') || subLower.includes('дизель')
+    );
 
     const upd = {
-      type: document.getElementById('_editType').value,
+      type,
       amount: amt,
       categoryName: catName,
-      subcategory: sub || '',
+      subcategory: sub,
       account: document.getElementById('_editAcc').value,
       date: document.getElementById('_editDate').value,
       time: document.getElementById('_editTime').value,
-      comment: document.getElementById('_editComment').value,
-      odometer: odoVal !== '' ? Number(odoVal) : null,
-      liters: litVal !== '' ? Number(litVal) : null,
-      fullTank: fullTankVal
+      comment: document.getElementById('_editComment').value
     };
+
+    if (odoVal !== '') upd.odometer = Number(odoVal);
+    else upd.odometer = null;
+
+    if (litVal !== '' && (isFuel || fullTankVal)) upd.liters = Number(litVal);
+    else upd.liters = null;
+
+    upd.fullTank = Boolean(fullTankVal && isFuel);
+
     document.getElementById('_editDialog').remove();
+
+    // Optimistically update in-memory
+    const target = (window.allTx || []).find(tx => tx.id === id);
+    if (target) {
+      Object.assign(target, upd);
+    }
+    safeRender();
+    if (window.renderFuelTracker) window.renderFuelTracker();
+    if (window.renderDeletedTx) window.renderDeletedTx();
+    if (document.getElementById('historySheet')?.classList.contains('open')) renderHistorySheet();
+    cacheTxToLocal();
+
     try {
+      if (String(id).startsWith('tmp_')) {
+        window.showToast('✅ Изменено локально');
+        return;
+      }
       await window.fbMethods.updateDoc(
-        window.fbMethods.doc(window.fbDB, "users", window.fbUser.uid, "transactions", id), upd
+        window.fbMethods.doc(window.fbDB, "users", window.fbUser.uid, "transactions", id),
+        upd
       );
-      window.showToast('✅ Изменено');
+      window.showToast('✅ Изменения сохранены');
     } catch(e) {
-      window.showToast('Ошибка сохранения', 'error');
+      window.showToast('Ошибка сохранения на сервере: ' + (e.message || e), 'error');
       console.error('editTx save:', e);
     }
   };
@@ -7063,39 +7266,88 @@
   };
 
   // ══ УДАЛЁННЫЕ ЗАПИСИ — рендер и восстановление ═══════════════
+  function renderDeletedTx() { if (window.renderDeletedTx) window.renderDeletedTx(); }
   window.renderDeletedTx = () => {
     const list = document.getElementById('deletedList');
     const count = document.getElementById('deletedCount');
     if (!list || !count) return;
     const queryText = (document.getElementById('deletedSearch')?.value || '').trim().toLowerCase();
-    const deleted = allTx.filter(t => t.isDeleted || t.deletedAt).sort((a,b) => Number(b.deletedAt || 0) - Number(a.deletedAt || 0));
+    const deleted = (window.allTx || []).filter(t => t.isDeleted || t.deletedAt).sort((a,b) => Number(b.deletedAt || 0) - Number(a.deletedAt || 0));
     count.textContent = String(deleted.length);
     const filtered = deleted.filter(t => [t.amount,t.type,t.categoryName,t.subcategory,t.comment,t.account,t.fromAccount,t.toAccount,t.date].map(v => String(v ?? '')).join(' ').toLowerCase().includes(queryText));
+
     list.innerHTML = filtered.map(t => {
       const amount = Number(t.amount || 0).toLocaleString('ru-RU');
       const typeLabel = t.type === 'income' ? 'Доход' : t.type === 'expense' ? 'Расход' : 'Перевод';
-      const date = [t.date,t.time].filter(Boolean).map(esc).join(' ');
+      const date = [t.date, t.time].filter(Boolean).map(esc).join(' ');
       const title = t.type === 'transfer' ? esc(t.fromAccount || '') + ' → ' + esc(t.toAccount || '') : esc(t.subcategory || t.categoryName || 'Без категории');
       const comment = t.comment ? '<div style="font-size:11px;color:#888;margin-top:4px;">📝 ' + esc(t.comment) + '</div>' : '';
       const deletedDate = t.deletedAt ? new Date(Number(t.deletedAt)).toLocaleString('ru-RU') : '';
       return '<div class="hist-item"><div style="min-width:0;flex:1;"><b class="' + (t.type === 'income' ? 'pos' : t.type === 'expense' ? 'neg' : '') + '">' + amount + ' ₸</b>' +
         '<span style="font-size:11px;color:#777;"> · ' + typeLabel + '</span><div style="font-size:13px;margin-top:3px;word-break:break-word;">' + title + '</div>' +
         '<div class="stat-sub">' + date + (t.account ? ' · ' + esc(t.account) : '') + '</div>' + comment +
-        '<div style="font-size:10px;color:#555;margin-top:4px;">Удалено: ' + esc(deletedDate || 'дата неизвестна') + '</div></div>' +
-        '<button onclick="restoreTx(\'' + esc(t.id) + '\')" style="background:#0a1f10;border:1px solid #245b35;border-radius:8px;color:#65d48b;padding:8px 10px;cursor:pointer;flex-shrink:0;">↩ Вернуть</button></div>';
+        '<div style="font-size:10px;color:#555;margin-top:4px;">Удалено: ' + esc(deletedDate || 'недавно') + '</div></div>' +
+        '<div style="display:flex;gap:6px;flex-shrink:0;">' +
+          '<button type="button" onclick="restoreTx(\'' + esc(t.id) + '\')" style="background:#0a1f10;border:1px solid #245b35;border-radius:8px;color:#65d48b;padding:8px 10px;cursor:pointer;font-size:12px;font-weight:600;">↩ Вернуть</button>' +
+          '<button type="button" onclick="hardDeleteTx(\'' + esc(t.id) + '\')" style="background:#220a0a;border:1px solid #5b2424;border-radius:8px;color:#ff6b6b;padding:8px 10px;cursor:pointer;font-size:12px;font-weight:600;">✕</button>' +
+        '</div></div>';
     }).join('') || '<div class="muted" style="padding:12px 0;">' + (deleted.length ? 'Ничего не найдено' : 'Удалённых записей пока нет') + '</div>';
   };
 
   window.restoreTx = async (id) => {
-    if (!id || String(id).startsWith('tmp_')) return;
+    if (!id) return;
+    const target = (window.allTx || []).find(tx => tx.id === id);
+    if (target) {
+      target.isDeleted = false;
+      target.deletedAt = null;
+    }
+    safeRender();
+    if (window.renderFuelTracker) window.renderFuelTracker();
+    if (window.renderDeletedTx) window.renderDeletedTx();
+    if (document.getElementById('historySheet')?.classList.contains('open')) renderHistorySheet();
+    cacheTxToLocal();
+
     try {
-      await window.fbMethods.updateDoc(window.fbMethods.doc(window.fbDB, 'users', window.fbUser.uid, 'transactions', id), { isDeleted: false, deletedAt: null });
-      window.showToast('Запись восстановлена');
-      window.renderDeletedTx();
+      await window.fbMethods.updateDoc(
+        window.fbMethods.doc(window.fbDB, 'users', window.fbUser.uid, 'transactions', id),
+        { isDeleted: false, deletedAt: null }
+      );
+      window.showToast('✅ Запись восстановлена');
     } catch(e) {
-      window.showToast('Не удалось восстановить запись', 'error');
+      if (target) {
+        target.isDeleted = true;
+      }
+      safeRender();
+      if (window.renderFuelTracker) window.renderFuelTracker();
+      if (window.renderDeletedTx) window.renderDeletedTx();
+      window.showToast('Не удалось восстановить запись: ' + (e.message || e), 'error');
       console.error('restoreTx:', e);
     }
+  };
+
+  window.hardDeleteTx = (id) => {
+    if (!id) return;
+    showConfirm('Удалить эту запись навсегда без возможности восстановления?', async () => {
+      allTx = (window.allTx || []).filter(tx => tx.id !== id);
+      window.allTx = allTx;
+      safeRender();
+      if (window.renderFuelTracker) window.renderFuelTracker();
+      if (window.renderDeletedTx) window.renderDeletedTx();
+      if (document.getElementById('historySheet')?.classList.contains('open')) renderHistorySheet();
+      cacheTxToLocal();
+
+      try {
+        if (!String(id).startsWith('tmp_')) {
+          await window.fbMethods.deleteDoc(
+            window.fbMethods.doc(window.fbDB, 'users', window.fbUser.uid, 'transactions', id)
+          );
+        }
+        window.showToast('Запись удалена навсегда');
+      } catch(e) {
+        window.showToast('Ошибка удаления: ' + (e.message || e), 'error');
+        console.error('hardDeleteTx:', e);
+      }
+    });
   };
 </script>
 <script>
