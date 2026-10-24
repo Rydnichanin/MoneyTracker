@@ -526,6 +526,8 @@
         'auth/user-disabled': 'Учётная запись отключена',
         'auth/too-many-requests': 'Слишком много попыток. Подождите 1–2 минуты или восстановите пароль',
         'auth/network-request-failed': 'Ошибка сети. Проверьте подключение к интернету',
+        'auth/internal-error': 'Внутренняя ошибка Google Auth. Убедитесь, что в Firebase Console в Authentication -> Settings добавлен авторизованный домен: rydnichanin.github.io, а в провайдере Google выбран Project support email.',
+        'auth/unauthorized-domain': 'Домен rydnichanin.github.io не добавлен в список авторизованных доменов в Firebase Console -> Authentication -> Settings -> Authorized domains.',
         'auth/popup-blocked': 'Всплывающее окно заблокировано браузером',
         'auth/popup-closed-by-user': 'Окно авторизации было закрыто',
         'auth/cancelled-popup-request': 'Запрос авторизации отменён',
@@ -652,12 +654,23 @@
         }
       } catch(e) {
         console.warn("signInWithPopup error:", e);
-        if (e?.code === 'auth/popup-blocked' || e?.code === 'auth/operation-not-supported-in-this-environment' || (isAndroid && !isWebView)) {
+        // При блокировке popup, cookie или auth/internal-error автоматически переключаемся на redirect:
+        if (e?.code === 'auth/popup-blocked' ||
+            e?.code === 'auth/internal-error' ||
+            e?.code === 'auth/operation-not-supported-in-this-environment' ||
+            (isAndroid && !isWebView)) {
           try {
+            console.log("signInWithPopup failed, attempting signInWithRedirect...");
             await signInWithRedirect(auth, provider);
             return;
           } catch(re) {
-            showError(getAuthErrorMessage(re));
+            console.warn("signInWithRedirect failed, trying fallback to auth.html:", re);
+            try {
+              window.location.href = "./auth.html";
+              return;
+            } catch(fe) {
+              showError(getAuthErrorMessage(re || e));
+            }
           }
         } else if (e?.code !== 'auth/popup-closed-by-user' && e?.code !== 'auth/cancelled-popup-request') {
           showError(getAuthErrorMessage(e));
