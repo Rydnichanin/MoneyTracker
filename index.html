@@ -2828,7 +2828,20 @@
   };
 
   window.render = function() { return render(); };
+  let _transactionRenderInProgress = false;
   function render() {
+    // Некоторые обновления UI могут запросить повторный рендер изнутри рендера.
+    // Не даём такому вложенному вызову бесконечно накапливать стек вызовов.
+    if (_transactionRenderInProgress) return;
+    _transactionRenderInProgress = true;
+    try {
+      renderTransactionView();
+    } finally {
+      _transactionRenderInProgress = false;
+    }
+  }
+
+  function renderTransactionView() {
     const from=document.getElementById("fromDate").value, to=document.getElementById("toDate").value;
     const filtered=allTx.filter(t=>{
       if (t.isDeleted || t.deletedAt) return false;
@@ -6068,7 +6081,10 @@
     }
   };
 
-  const safeRender = () => { if (window.debouncedRender) window.safeRender(); else if (window.render) window.render(); };
+  const safeRender = () => {
+    if (typeof window.debouncedRender === 'function') window.debouncedRender();
+    else if (typeof window.render === 'function') window.render();
+  };
   window.deleteTx = (id) => {
     if (!id) return;
     showConfirm('Переместить запись в удалённые?', async () => {

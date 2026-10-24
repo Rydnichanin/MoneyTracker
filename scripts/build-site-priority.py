@@ -129,9 +129,13 @@ def validate_priority_artifact() -> None:
         'where("date", "==", todayForPriority)',
         "TODAY_SNAPSHOT_ERROR",
         "loadDateRange",
+        "_transactionRenderInProgress",
+        "function renderTransactionView()",
     )
     if any(marker not in transaction_module for marker in required):
         raise ValueError("Production priority transaction loading is incomplete")
+    if "window.safeRender()" in transaction_module:
+        raise ValueError("Production artifact contains a recursive safe-render call")
     if 'fbMethods.onSnapshot(fbMethods.query(txRef, fbMethods.orderBy("date","desc"))' in transaction_module:
         raise ValueError("Production artifact contains the obsolete full-history listener")
 
