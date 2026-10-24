@@ -74,7 +74,11 @@
     .nav-icon { font-size: 22px; line-height: 1; }
     .nav-label { font-size: 10px; font-weight: 600; }
     .nav-item .nav-label { white-space: nowrap; }
-    @media (max-width: 380px) { .nav-label { font-size: 9px; } .nav-icon { font-size: 19px; } .nav-item { gap: 2px; } }
+    @media (max-width: 380px) {
+      .nav-label { font-size: 8px; }
+      .nav-icon { font-size: 17px; }
+      .nav-item { gap: 2px; min-width: 0; padding-left: 0; padding-right: 0; }
+    }
 
     /* ВКЛАДКИ */
     .tab { display: none; }
@@ -231,9 +235,9 @@
     .history-sheet {
       position: fixed; inset: 0; z-index: 400; background: #000;
       transform: translateY(100%); transition: transform 0.3s ease;
-      display: flex; flex-direction: column;
+      display: flex; flex-direction: column; pointer-events: none;
     }
-    .history-sheet.open { transform: translateY(0); }
+    .history-sheet.open { transform: translateY(0); pointer-events: auto; }
     .history-topbar {
       background: #000; padding: 14px 14px 0;
       border-bottom: 1px solid #111; flex-shrink: 0;
@@ -265,9 +269,9 @@
     .prices-screen {
       position: fixed; inset: 0; z-index: 400; background: #000;
       transform: translateY(100%); transition: transform 0.3s ease;
-      overflow-y: auto; padding: 0 0 40px;
+      overflow-y: auto; padding: 0 0 40px; pointer-events: none;
     }
-    .prices-screen.open { transform: translateY(0); }
+    .prices-screen.open { transform: translateY(0); pointer-events: auto; }
     .prices-topbar {
       position: sticky; top: 0; background: #000; padding: 14px 14px 10px;
       display: flex; align-items: center; gap: 10px;

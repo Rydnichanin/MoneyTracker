@@ -10,9 +10,28 @@ def extract_blocks(text: str, pattern: str):
     return list(re.finditer(pattern, text, flags=re.I | re.S))
 
 def patch_firebase_module(body: str) -> str:
-    body = body.replace("collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc, setDoc, arrayUnion, getDoc, initializeFirestore", "collection, addDoc, onSnapshot, query, where, orderBy, getDocs, deleteDoc, doc, updateDoc, setDoc, arrayUnion, getDoc, initializeFirestore")
-    body = body.replace("window.fbMethods = { collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc, setDoc, arrayUnion, getDoc };", "window.fbMethods = { collection, addDoc, onSnapshot, query, where, orderBy, getDocs, deleteDoc, doc, updateDoc, setDoc, arrayUnion, getDoc };")
-    return body
+    import_pattern = r'(import\s*\{)([^}]*)(\}\s*from\s*["\'][^"\']*firebase-firestore\.js["\'])'
+    import_match = re.search(import_pattern, body)
+    if not import_match:
+        raise ValueError("Firebase Firestore import was not found in the production module")
+
+    imported_names = [name.strip() for name in import_match.group(2).split(",") if name.strip()]
+    for name in ("where", "getDocs"):
+        if name not in imported_names:
+            imported_names.append(name)
+    updated_import = import_match.group(1) + " " + ", ".join(imported_names) + " " + import_match.group(3)
+    body = body[:import_match.start()] + updated_import + body[import_match.end():]
+
+    methods_pattern = r'(window\.fbMethods\s*=\s*\{)([^}]*)(\})'
+    methods_match = re.search(methods_pattern, body)
+    if not methods_match:
+        raise ValueError("Firebase method registry was not found in the production module")
+    methods = [name.strip() for name in methods_match.group(2).split(",") if name.strip()]
+    for name in ("where", "getDocs"):
+        if name not in methods:
+            methods.append(name)
+    updated_methods = methods_match.group(1) + " " + ", ".join(methods) + " " + methods_match.group(3)
+    return body[:methods_match.start()] + updated_methods + body[methods_match.end():]
 
 def patch_startup(body: str) -> str:
     old = '''        setTimeout(() => {
@@ -29,13 +48,22 @@ def patch_startup(body: str) -> str:
 
 def patch_priority_loading(body: str) -> str:
     marker = '    fbMethods.onSnapshot(fbMethods.query(txRef, fbMethods.orderBy("date","desc")), (snap) => {'
-    if marker not in body: return body
+    start = body.find(marker)
+    if start == -1:
+        return body
+    end_marker = '    document.getElementById("txForm").onsubmit ='
+    end = body.find(end_marker, start)
+    if end == -1:
+        raise ValueError("Transaction listener end was not found; priority loading was not applied")
     replacement = r'''    // PRIORITY DATA: startup loads TODAY only. History is requested by the filter.
     let todayTx = [];
     let currentRangeCache = new Map();
     const cacheKey = (from, to) => `${from || ''}:${to || ''}`;
     const rebuildToday = () => {
-      allTx = todayTx.slice().sort((a,b) => String(b.date||'').localeCompare(String(a.date||'')));
+      const now = Date.now();
+      pendingTx = pendingTx.filter(p => !todayTx.some(s => s.createdAt === p.createdAt) && (now - p.createdAt) < 15000);
+      allTx = [...pendingTx.filter(p => p.date === todayForPriority), ...todayTx]
+        .sort((a,b) => String(b.date||'').localeCompare(String(a.date||'')));
       window.allTx = allTx;
       currentRangeCache.set(cacheKey(todayForPriority, todayForPriority), allTx.slice());
       window.mtStartupProfiler?.stamp('TODAY_RENDER_READY', `records=${allTx.length}`);
@@ -63,8 +91,12 @@ def patch_priority_loading(body: str) -> str:
       window.mtStartupProfiler?.stamp('TODAY_SNAPSHOT_RECEIVED', `records=${todayTx.length}`);
       rebuildToday(); setRange('today');
       if (document.getElementById('historySheet')?.classList.contains('open')) renderHistorySheet();
+    }, (error) => {
+      window.mtStartupProfiler?.stamp('TODAY_SNAPSHOT_ERROR', error.message);
+      console.error('[Priority] Today data failed to load:', error);
+      window.showToast('⚠️ Не удалось загрузить данные из Firebase: ' + error.message, 'error');
     });'''
-    body=body.replace(marker,replacement)
+    body=body[:start] + replacement + "\n\n" + body[end:]
     old='''      } else { f.value=""; t.value=""; dateRow.style.display='none'; }
       render();'''
     new='''      } else { f.value=""; t.value=""; dateRow.style.display='none'; }
@@ -75,6 +107,33 @@ def patch_priority_loading(body: str) -> str:
       render();'''
     if old in body: body=body.replace(old,new,1)
     return body
+
+def validate_priority_artifact() -> None:
+    modules = list((OUT / "js").glob("inline-*.js"))
+    firebase_module = next((path.read_text(encoding="utf-8") for path in modules
+                            if "firebase-firestore.js" in path.read_text(encoding="utf-8")), "")
+    firestore_import = re.search(
+        r'import\s*\{([^}]*)\}\s*from\s*["\'][^"\']*firebase-firestore\.js["\']',
+        firebase_module,
+    )
+    if not firestore_import:
+        raise ValueError("Production Firebase Firestore import is missing")
+    imported = {name.strip() for name in firestore_import.group(1).split(",")}
+    if not {"where", "getDocs"}.issubset(imported):
+        raise ValueError("Production Firebase query methods are not imported")
+    if not re.search(r'window\.fbMethods\s*=\s*\{[^}]*\bwhere\b[^}]*\bgetDocs\b', firebase_module):
+        raise ValueError("Production Firebase query methods are not exposed")
+
+    transaction_module = "\n".join(path.read_text(encoding="utf-8") for path in modules)
+    required = (
+        'where("date", "==", todayForPriority)',
+        "TODAY_SNAPSHOT_ERROR",
+        "loadDateRange",
+    )
+    if any(marker not in transaction_module for marker in required):
+        raise ValueError("Production priority transaction loading is incomplete")
+    if 'fbMethods.onSnapshot(fbMethods.query(txRef, fbMethods.orderBy("date","desc"))' in transaction_module:
+        raise ValueError("Production artifact contains the obsolete full-history listener")
 
 def main() -> None:
     if OUT.exists(): shutil.rmtree(OUT)
@@ -117,5 +176,6 @@ def main() -> None:
         src=ROOT/name
         if src.exists(): shutil.copy2(src,OUT/name)
     (OUT/"index.html").write_text(index,encoding="utf-8")
+    validate_priority_artifact()
     print(f"Built {OUT}: {script_no} scripts, Auth-first + today-only startup + on-demand history enabled.")
 if __name__=="__main__": main()
