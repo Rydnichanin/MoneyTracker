@@ -85,7 +85,13 @@ public class MainActivity extends Activity {
         settings.setAllowFileAccess(false);
         settings.setAllowContentAccess(false);
 
-        webView.setWebViewClient(new WebViewClient());
+        webView.setWebViewClient(new WebViewClient() {
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                super.onPageFinished(view, url);
+                deliverPendingAuth();
+            }
+        });
         webView.addJavascriptInterface(new WebAppInterface(), "AndroidBridge");
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
@@ -100,13 +106,23 @@ public class MainActivity extends Activity {
         });
     }
 
+    private String pendingAuthUrl = null;
+
     private void handleAuthIntent(Intent intent) {
         if (intent == null) return;
         String authUrl = intent.getStringExtra("authUrl");
-        if (authUrl != null && webView != null) {
+        if (authUrl != null) {
+            pendingAuthUrl = authUrl;
+            deliverPendingAuth();
+        }
+    }
+
+    private void deliverPendingAuth() {
+        if (pendingAuthUrl != null && webView != null) {
+            final String urlToDeliver = pendingAuthUrl;
             webView.post(() -> webView.evaluateJavascript(
-                    "if (typeof handleAndroidAuth === 'function') handleAndroidAuth(" +
-                            org.json.JSONObject.quote(authUrl) + ");", null));
+                    "if (typeof handleAndroidAuth === 'function') { handleAndroidAuth(" +
+                            org.json.JSONObject.quote(urlToDeliver) + "); }", null));
         }
     }
 

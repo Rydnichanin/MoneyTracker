@@ -1,8 +1,8 @@
 {
-  "version": "5.2.0",
-  "build": 2026102301,
-  "updatedAt": "2026-10-23T00:18:00Z",
+  "version": "5.2.1",
+  "build": 2026102501,
+  "updatedAt": "2026-10-25T02:05:00Z",
   "source": "https://github.com/rydnichanin/MoneyTracker",
-  "title": "Учёт Курьера Pro v5.2.0",
-  "changelog": "Отключены навязчивые всплывающие окна предложений обновления, бесшовное фоновое обновление"
+  "title": "Учёт Курьера Pro v5.2.1",
+  "changelog": "Оптимизация авторизации Google, поддержка входа в Android WebView, стабильность всех функций"
 }

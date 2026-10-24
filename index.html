@@ -29,14 +29,17 @@
     default-src 'self';
     script-src 'self' 'unsafe-inline' https://www.gstatic.com;
     style-src 'self' 'unsafe-inline';
+    img-src 'self' data: https://*.googleusercontent.com https://*.gstatic.com;
     connect-src 'self'
       https://*.googleapis.com
       https://*.firebaseio.com
       https://*.firebaseapp.com
+      https://*.google.com
+      https://accounts.google.com
       https://firestore.googleapis.com
       https://identitytoolkit.googleapis.com
       https://securetoken.googleapis.com;
-    frame-src 'none';
+    frame-src 'self' https://*.firebaseapp.com https://accounts.google.com;
     object-src 'none';
     base-uri 'self';
   " />
@@ -2398,11 +2401,11 @@
       document.getElementById("setAccName").value = "";
     };
     window.setInitialBalance = async () => {
-      const accId = document.getElementById("setBalanceAcc").value;
-      const val = Number(document.getElementById("setBalanceVal").value);
+      const accId = document.getElementById("setBalanceAcc")?.value;
+      const val = Number(document.getElementById("setBalanceVal")?.value);
       if (!accId || isNaN(val)) return;
       await fbMethods.updateDoc(fbMethods.doc(fbDB,"users",window.fbUser.uid,"settings",accId), { initialBalance: val });
-      document.getElementById("setBalanceVal").value = "";
+      const bValEl = document.getElementById("setBalanceVal"); if (bValEl) bValEl.value = "";
       window.showToast("Начальный баланс установлен!");
     };
     window.addSub = async () => {
@@ -7411,8 +7414,8 @@
 
 <script>
 // ── СИСТЕМА БЕСШОВНОГО АВТОМАТИЧЕСКОГО ОБНОВЛЕНИЯ (БЕЗ ВСПЛЫВАЮЩИХ ОКОН) ─────────
-const APP_CURRENT_VERSION = '5.2.0';
-const APP_CURRENT_BUILD = 2026102301;
+const APP_CURRENT_VERSION = '5.2.1';
+const APP_CURRENT_BUILD = 2026102501;
 
 window._waitingServiceWorker = null;
 window._updateAvailable = false;

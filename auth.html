@@ -57,7 +57,7 @@
     const auth = getAuth(app);
     const provider = new GoogleAuthProvider();
 
-    async function handleUserSuccess(user) {
+    async function handleUserSuccess(resultOrUser) {
       const btn = document.getElementById("loginBtn");
       const status = document.getElementById("status");
       const appLink = document.getElementById("appLink");
@@ -65,9 +65,24 @@
       status.textContent = "✅ Вход выполнен! Возврат в приложение...";
       status.className = "status success";
 
-      const idToken = await user.getIdToken();
-      const name = encodeURIComponent(user.displayName || "");
-      const email = encodeURIComponent(user.email || "");
+      let user = resultOrUser?.user || resultOrUser;
+      let idToken = null;
+
+      try {
+        const cred = GoogleAuthProvider.credentialFromResult(resultOrUser);
+        if (cred && cred.idToken) idToken = cred.idToken;
+      } catch(e) {}
+
+      if (!idToken && resultOrUser?._tokenResponse?.idToken) {
+        idToken = resultOrUser._tokenResponse.idToken;
+      }
+
+      if (!idToken && user && typeof user.getIdToken === 'function') {
+        idToken = await user.getIdToken();
+      }
+
+      const name = encodeURIComponent(user?.displayName || "");
+      const email = encodeURIComponent(user?.email || "");
 
       // 1. Сохраняем токен в localStorage / sessionStorage
       try { sessionStorage.setItem("pendingIdToken", idToken); } catch(e) {}
@@ -103,7 +118,7 @@
     // Проверяем результат редиректа при загрузке страницы
     getRedirectResult(auth).then(result => {
       if (result && result.user) {
-        handleUserSuccess(result.user);
+        handleUserSuccess(result);
       }
     }).catch(e => {
       console.warn("getRedirectResult error:", e);
@@ -125,7 +140,7 @@
       try {
         const result = await signInWithPopup(auth, provider);
         if (result && result.user) {
-          await handleUserSuccess(result.user);
+          await handleUserSuccess(result);
         }
       } catch (e) {
         console.warn("signInWithPopup error:", e);
