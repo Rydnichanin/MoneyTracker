@@ -90,7 +90,7 @@ def patch_priority_loading(body: str) -> str:
       todayTx=[]; snap.forEach(d=>todayTx.push({id:d.id,...d.data()}));
       window.mtStartupProfiler?.stamp('TODAY_SNAPSHOT_RECEIVED', `records=${todayTx.length}`);
       rebuildToday(); setRange('today');
-      if (document.getElementById('historySheet')?.classList.contains('open')) renderHistorySheet();
+      if (document.getElementById('historySheet')?.classList.contains('open')) window.runRenderTaskSafely?.('история', renderHistorySheet);
     }, (error) => {
       window.mtStartupProfiler?.stamp('TODAY_SNAPSHOT_ERROR', error.message);
       console.error('[Priority] Today data failed to load:', error);
@@ -131,6 +131,7 @@ def validate_priority_artifact() -> None:
         "loadDateRange",
         "_transactionRenderInProgress",
         "function renderTransactionView()",
+        "window.runRenderTaskSafely",
     )
     if any(marker not in transaction_module for marker in required):
         raise ValueError("Production priority transaction loading is incomplete")

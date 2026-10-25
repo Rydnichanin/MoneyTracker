@@ -1578,8 +1578,7 @@
   // ══════════════════════════════════════════════
 
   // XSS защита — экранируем все данные из Firebase перед вставкой в HTML
-  function esc(str) { return window.esc(str); }
-  window.esc = function(str) {
+  function esc(str) {
     if (str == null) return '';
     return String(str)
       .replace(/&/g, '&amp;')
@@ -1588,7 +1587,8 @@
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#x27;')
       .replace(/\//g, '&#x2F;');
-  };
+  }
+  window.esc = esc;
 
   // HTTPS редирект (для веб версии)
   if (location.protocol === 'http:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
@@ -2718,9 +2718,10 @@
         pendingTx = pendingTx.filter(p => !serverTx.some(s => s.createdAt === p.createdAt) && (now - p.createdAt) < 15000);
         allTx = [...pendingTx, ...serverTx]; window.allTx = allTx;
         if (!document.getElementById("fromDate").value) setRange('today'); else safeRender();
-        if (document.getElementById('historySheet')?.classList.contains('open')) renderHistorySheet();
-        if (window.renderDeletedTx) window.renderDeletedTx();
-        if (window.renderFuelTracker) window.renderFuelTracker();
+        if (document.getElementById('historySheet')?.classList.contains('open')) {
+          if (window.runRenderTaskSafely) window.runRenderTaskSafely('история', renderHistorySheet);
+          else renderHistorySheet();
+        }
         cacheTxToLocal();
       } catch(err) {
         console.error('Ошибка обработки транзакций:', err);
@@ -2828,6 +2829,14 @@
   };
 
   window.render = function() { return render(); };
+  window.runRenderTaskSafely = (name, task) => {
+    try {
+      return task();
+    } catch (error) {
+      console.error(`[MoneyTracker] Не удалось обновить блок «${name}»`, error);
+      return undefined;
+    }
+  };
   let _transactionRenderInProgress = false;
   function render() {
     // Некоторые обновления UI могут запросить повторный рендер изнутри рендера.
@@ -3112,25 +3121,25 @@
 
     // Аналитика рендерится только если вкладка активна — иначе при следующем переключении
     if (document.getElementById('tab-income')?.classList.contains('active')) {
-      renderAnalytics();
+      window.runRenderTaskSafely('аналитика доходов', renderAnalytics);
     } else {
       window._analyticsStale = true;
     }
 
-    if (window.renderFuelTracker) window.renderFuelTracker();
+    if (window.renderFuelTracker) window.runRenderTaskSafely('автомобиль', window.renderFuelTracker);
     if (document.getElementById('tab-expense')?.classList.contains('active')) {
-      if (window.renderExpenseFullAnalytics) renderExpenseFullAnalytics();
-      if (window.renderRecurringBills) window.renderRecurringBills();
+      if (window.renderExpenseFullAnalytics) window.runRenderTaskSafely('аналитика расходов', window.renderExpenseFullAnalytics);
+      if (window.renderRecurringBills) window.runRenderTaskSafely('регулярные платежи', window.renderRecurringBills);
     } else {
       window._expAnalyticsStale = true;
     }
 
     if (document.getElementById('tab-budget')?.classList.contains('active')) {
-      if (window.renderBudget) renderBudget();
+      if (window.renderBudget) window.runRenderTaskSafely('бюджет', window.renderBudget);
     }
 
-    if (window.checkCarAndBillsReminders) window.checkCarAndBillsReminders();
-    if (window.renderDeletedTx) window.renderDeletedTx();
+    if (window.checkCarAndBillsReminders) window.runRenderTaskSafely('напоминания', window.checkCarAndBillsReminders);
+    if (window.renderDeletedTx) window.runRenderTaskSafely('удалённые записи', window.renderDeletedTx);
   }
 
   window.render = render;
@@ -4598,8 +4607,7 @@
     if (document.getElementById('_fuelDetailsModal')) window.openFuelDetailsModal();
   };
 
-  function calculateFuelStats() { return window.calculateFuelStats(); }
-  window.calculateFuelStats = () => {
+  function calculateFuelStats() {
     const odoMode = localStorage.getItem('fuel_odo_mode') || 'auto'; // 'auto', 'total', 'trip'
 
     // Собираем строго активные транзакции топлива (удалённые, ТО и ремонты исключены!)
@@ -4772,7 +4780,8 @@
       odoMode,
       rawFuelTxs: enriched.slice().reverse()
     };
-  };
+  }
+  window.calculateFuelStats = calculateFuelStats;
 
   window.getCarMaintenanceStatus = () => {
     let latestOdo = 0;
