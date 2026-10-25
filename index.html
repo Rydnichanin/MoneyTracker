@@ -3392,6 +3392,73 @@
       return sub.includes('ночь') || cat.includes('ночь') || com.includes('ночь');
     };
 
+    // Средний чек доставок за выбранный сверху период (Сегодня / Вчера / Всё время / даты).
+    // Одна запись о доставке считается одним заказом; удалённые операции и переводы исключаем.
+    const deliveryFrom = document.getElementById('fromDate')?.value || '';
+    const deliveryTo = document.getElementById('toDate')?.value || '';
+    const deliveryCheckStats = {
+      all: { sum: 0, count: 0, days: new Set() },
+      day: { sum: 0, count: 0, days: new Set() },
+      night: { sum: 0, count: 0, days: new Set() },
+      points: Object.fromEntries(DELIVERY_POINTS.map(point => [point, { sum: 0, count: 0 }]))
+    };
+    allTx.forEach(t => {
+      if (t.isDeleted || t.deletedAt || t.type !== 'income' || isDepTransfer(t)) return;
+      if (!DELIVERY_POINTS.includes(t.subcategory) || !t.date) return;
+      if ((deliveryFrom && t.date < deliveryFrom) || (deliveryTo && t.date > deliveryTo)) return;
+
+      const amount = Number(t.amount) || 0;
+      if (amount <= 0) return;
+      const shift = isNightTx(t) ? 'night' : 'day';
+      deliveryCheckStats.all.sum += amount;
+      deliveryCheckStats.all.count++;
+      deliveryCheckStats.all.days.add(t.date);
+      deliveryCheckStats[shift].sum += amount;
+      deliveryCheckStats[shift].count++;
+      deliveryCheckStats[shift].days.add(t.date);
+      deliveryCheckStats.points[t.subcategory].sum += amount;
+      deliveryCheckStats.points[t.subcategory].count++;
+    });
+    const formatDeliveryCheck = ({ sum, count }) => count ? Math.round(sum / count).toLocaleString() : '—';
+    const formatShiftAverage = (stats, suffix) => stats.days.size
+      ? `≈ ${Math.round(stats.sum / stats.days.size).toLocaleString()} ₸/${suffix}`
+      : '—';
+    const deliveryPeriodLabel = deliveryFrom || deliveryTo
+      ? `${deliveryFrom ? fmtD(deliveryFrom) : 'начало'} — ${deliveryTo ? fmtD(deliveryTo) : 'сегодня'}`
+      : 'всё время';
+    const deliveryPointRows = DELIVERY_POINTS
+      .filter(point => deliveryCheckStats.points[point].count > 0)
+      .map(point => {
+        const stats = deliveryCheckStats.points[point];
+        return `<div style="display:flex;justify-content:space-between;gap:8px;padding:7px 0;border-top:1px solid #25252a;font-size:11px;">
+          <span style="color:#bbb;">${esc(point)} <span style="color:#666;">(${stats.count} зак.)</span></span>
+          <b style="color:#ffd166;white-space:nowrap;">≈ ${formatDeliveryCheck(stats)} ₸</b>
+        </div>`;
+      }).join('');
+    const deliveryCheckHtml = `
+      <div class="goal-box" style="margin-bottom:14px;border-color:#342d18;">
+        <div class="sec-title" style="margin-top:0;color:#ffd166;">🛵 Средний чек доставки</div>
+        <div class="month-meta" style="margin:-3px 0 9px;">Период: ${deliveryPeriodLabel} · одна запись = одна доставка</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:7px;">
+          <div class="bw-card" style="border-color:#263548;background:#101a25;">
+            <div class="bw-label" style="color:#6ec6ff;">🚴 День · точки</div>
+            <div class="bw-val" style="color:#6ec6ff;">≈ ${formatDeliveryCheck(deliveryCheckStats.day)} ₸</div>
+            <div class="month-meta">${deliveryCheckStats.day.count} доставок · Σ ${deliveryCheckStats.day.sum.toLocaleString()} ₸<br>${deliveryCheckStats.day.days.size} смен · ${formatShiftAverage(deliveryCheckStats.day, 'смену')}</div>
+          </div>
+          <div class="bw-card" style="border-color:#3b2650;background:#1a1025;">
+            <div class="bw-label" style="color:#a78bfa;">🌙 Ночь</div>
+            <div class="bw-val" style="color:#a78bfa;">≈ ${formatDeliveryCheck(deliveryCheckStats.night)} ₸</div>
+            <div class="month-meta">${deliveryCheckStats.night.count} доставок · Σ ${deliveryCheckStats.night.sum.toLocaleString()} ₸<br>${deliveryCheckStats.night.days.size} ночей · ${formatShiftAverage(deliveryCheckStats.night, 'ночь')}</div>
+          </div>
+          <div class="bw-card" style="border-color:#342d18;background:#1c1910;">
+            <div class="bw-label" style="color:#ffd166;">🌓 Сутки · день + ночь</div>
+            <div class="bw-val" style="color:#ffd166;">≈ ${formatDeliveryCheck(deliveryCheckStats.all)} ₸</div>
+            <div class="month-meta">${deliveryCheckStats.all.count} доставок · Σ ${deliveryCheckStats.all.sum.toLocaleString()} ₸<br>${deliveryCheckStats.all.days.size} дн. · ${formatShiftAverage(deliveryCheckStats.all, 'сутки')}</div>
+          </div>
+        </div>
+        ${deliveryPointRows ? `<div style="margin-top:10px;font-size:11px;font-weight:600;color:#888;">Среднее по точкам</div>${deliveryPointRows}` : '<div class="muted" style="font-size:11px;margin-top:8px;">За выбранный период доставок нет</div>'}
+      </div>`;
+
     const monthsFilterHtml=`
       <div class="sec-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
         <span style="display:flex;align-items:center;gap:6px;">
@@ -3783,7 +3850,7 @@
     const heatmapCellsHtml=heatCells.map(c=>`<div class="heatmap-cell" style="background:${heatColor(c.val)};" title="${fmtD(c.date)}: ${c.val.toLocaleString()} ₸"></div>`).join('');
     const heatmapHtml=maxHeat>0?`<div class="sec-title" style="margin-top:18px;">🗓 Тепловая карта дохода (посл. 24 нед.)</div><div class="heatmap-wrap"><div class="heatmap-grid">${heatmapCellsHtml}</div></div><div class="heatmap-legend"><span>меньше</span><div class="heatmap-cell" style="background:#161616;"></div><div class="heatmap-cell" style="background:#4a3570;"></div><div class="heatmap-cell" style="background:#6b4fa8;"></div><div class="heatmap-cell" style="background:#8b6fd1;"></div><div class="heatmap-cell" style="background:#a78bfa;"></div><span>больше</span></div>`:'';
 
-    el.innerHTML=chartHtml+bwHtml+forecastHtml+goalHtml+monthHtml+delivHtml+avgPerShiftHtml+pointShareHtml+expenseRatioHtml+nightDayOverviewHtml+weekdayHtml+heatmapHtml||'<div class="muted">Недостаточно данных</div>';
+    el.innerHTML=deliveryCheckHtml+chartHtml+bwHtml+forecastHtml+goalHtml+monthHtml+delivHtml+avgPerShiftHtml+pointShareHtml+expenseRatioHtml+nightDayOverviewHtml+weekdayHtml+heatmapHtml||'<div class="muted">Недостаточно данных</div>';
     // Сохраняем данные для экспорта/шаринга сводки
     window._analyticsSummary={bestDay,worstDay,bestAllDay,worstAllDay,sortedM:allSortedM,weekdayNames,weekdayOrder,byWeekday,weekdayData,totalDayIncomeAllTime,totalNightIncomeAllTime,totalDayShiftsAllTime,totalNightShiftsAllTime,fmtD,fmtM,curMonthInc,forecast,incomeGoal,currentMonthKey,expenseRatio,topExpenseCats};
     if(chartData){
