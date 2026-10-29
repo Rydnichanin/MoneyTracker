@@ -2251,17 +2251,22 @@
   const CACHE_SETTINGS_KEY = 'cache_settings_v1';
   const CACHE_TX_KEY = 'cache_tx_v1';
   const CACHE_TX_LIMIT = 300; // храним только последние N — не раздуваем localStorage
+  let localCacheUserId = '';
+  const userCacheKey = (key) => localCacheUserId ? `${key}_${localCacheUserId}` : key;
 
   function cacheSettingsToLocal() {
-    try { localStorage.setItem(CACHE_SETTINGS_KEY, JSON.stringify({ DEFAULTS, ACCOUNTS })); } catch(e) {}
+    try { localStorage.setItem(userCacheKey(CACHE_SETTINGS_KEY), JSON.stringify({ DEFAULTS, ACCOUNTS })); } catch(e) {}
   }
-  function cacheTxToLocal() {
-    try { localStorage.setItem(CACHE_TX_KEY, JSON.stringify(allTx.slice(0, CACHE_TX_LIMIT))); } catch(e) {}
+  function cacheTxToLocal(entries = allTx) {
+    try { localStorage.setItem(userCacheKey(CACHE_TX_KEY), JSON.stringify(entries.slice(0, CACHE_TX_LIMIT))); } catch(e) {}
   }
-  function loadCachedDataInstant() {
+  function loadCachedDataInstant(uid = '') {
+    // До авторизации не читаем пользовательские записи из общего кэша.
+    if (!uid) return false;
+    localCacheUserId = uid;
     let loaded = false;
     try {
-      const s = JSON.parse(localStorage.getItem(CACHE_SETTINGS_KEY) || 'null');
+      const s = JSON.parse(localStorage.getItem(userCacheKey(CACHE_SETTINGS_KEY)) || 'null');
       if (s && s.DEFAULTS) {
         DEFAULTS = s.DEFAULTS; window.DEFAULTS = DEFAULTS;
         ACCOUNTS = Array.isArray(s.ACCOUNTS) ? s.ACCOUNTS : [];
@@ -2270,14 +2275,11 @@
       }
     } catch(e) { console.warn('Кэш настроек повреждён:', e.message); }
     try {
-      const t = JSON.parse(localStorage.getItem(CACHE_TX_KEY) || 'null');
+      const t = JSON.parse(localStorage.getItem(userCacheKey(CACHE_TX_KEY)) || 'null');
       if (Array.isArray(t)) { allTx = t; window.allTx = allTx; loaded = true; }
     } catch(e) { console.warn('Кэш транзакций повреждён:', e.message); }
     return loaded;
   }
-
-  // Мгновенная инициализация данных из кэша для нулевой задержки старта
-  try { loadCachedDataInstant(); } catch(e) {}
 
   let appInitialized = false; window.appInitialized = false;
   function tryInitApp() {
@@ -2323,6 +2325,8 @@
   function initApp() {
     const { fbDB, fbMethods } = window;
     const uid = window.fbUser.uid;
+    // Кэш читается только после получения UID, чтобы не смешивать записи разных аккаунтов.
+    try { loadCachedDataInstant(uid); } catch(e) { console.warn('Локальный кэш недоступен:', e.message); }
     const userDoc = fbMethods.doc(fbDB, "users", uid);
     const txRef = fbMethods.collection(fbDB, "users", uid, "transactions");
     const setRef = fbMethods.collection(fbDB, "users", uid, "settings");
@@ -2378,7 +2382,7 @@
     // ── Мгновенная отрисовка из локального кэша ────────────────────
     // Пока Firestore ещё грузится (сеть/холодный старт), показываем то,
     // что видели в прошлый раз — форма и списки не пустые с первой секунды.
-    if (loadCachedDataInstant()) {
+    if (allTx.length || DEFAULTS.income.length || DEFAULTS.expense.length || ACCOUNTS.length) {
       try {
         updateUI(true);
         if (!document.getElementById("fromDate").value) setRange('today'); else render();
@@ -2704,19 +2708,58 @@
       _renderTimer = setTimeout(() => { render(); _renderTimer = null; }, 80);
     };
 
-    let pendingTx = []; window.pendingTx = pendingTx; // оптимистичные записи, ещё не подтверждённые Firebase
+    const PENDING_TX_KEY = `pending_transactions_v1_${uid}`;
+    let pendingTx = [];
+    try {
+      const savedPending = JSON.parse(localStorage.getItem(PENDING_TX_KEY) || '[]');
+      if (Array.isArray(savedPending)) pendingTx = savedPending.filter(p => p && p.id && p.data).map(p => ({ ...p.data, id: p.id, _pending: true }));
+    } catch(e) { console.warn('Локальная очередь записей повреждена:', e.message); }
+    window.pendingTx = pendingTx;
+    if (pendingTx.length) {
+      const restored = new Map(allTx.map(tx => [tx.id, tx]));
+      pendingTx.forEach(tx => restored.set(tx.id, tx));
+      allTx = [...restored.values()].sort((a,b) => String(b.date||'').localeCompare(String(a.date||'')) || Number(b.createdAt||0)-Number(a.createdAt||0));
+      window.allTx = allTx;
+      safeRender();
+    }
+    const persistPendingTx = () => {
+      try { localStorage.setItem(PENDING_TX_KEY, JSON.stringify(pendingTx.map(({ id, _pending, ...data }) => ({ id, data })))); } catch(e) {}
+    };
+    const settlePendingTx = (id, data) => {
+      pendingTx = pendingTx.filter(p => p.id !== id);
+      window.pendingTx = pendingTx;
+      allTx = allTx.map(tx => tx.id === id ? data : tx);
+      window.allTx = allTx;
+      persistPendingTx();
+      cacheTxToLocal();
+      safeRender();
+    };
+    const inFlightTx = new Set();
+    const syncPendingTx = () => {
+      for (const entry of [...pendingTx]) {
+        if (inFlightTx.has(entry.id)) continue;
+        inFlightTx.add(entry.id);
+        const { id, _pending, ...data } = entry;
+        fbMethods.setDoc(fbMethods.doc(txRef, id), data).then(() => {
+          settlePendingTx(id, data);
+        }).catch(err => {
+          console.warn('Запись ожидает синхронизации с Firebase:', err.message);
+        }).finally(() => inFlightTx.delete(id));
+      }
+    };
+    window.addEventListener('online', syncPendingTx);
 
     fbMethods.onSnapshot(fbMethods.query(txRef, fbMethods.orderBy("date","desc")), (snap) => {
       window._fbDataArrived = true;
       try {
         const serverTx = [];
         snap.forEach(d=>serverTx.push({id:d.id,...d.data()}));
-        // Оставляем только те оптимистичные записи, которых сервер ещё не вернул,
-        // и не старше 15 секунд — если по какой-то причине сверка не сработала,
-        // запись всё равно перестаёт выглядеть "вечно загружающейся".
-        const now = Date.now();
-        pendingTx = pendingTx.filter(p => !serverTx.some(s => s.createdAt === p.createdAt) && (now - p.createdAt) < 15000);
-        allTx = [...pendingTx, ...serverTx]; window.allTx = allTx;
+        // Сохраняем локальные записи до подтверждения write promise: Firestore может
+        // показать локальный snapshot, пока сеть ещё не подтвердила запись.
+        const merged = new Map(serverTx.map(tx => [tx.id, tx]));
+        pendingTx.forEach(tx => merged.set(tx.id, tx));
+        allTx = [...merged.values()].sort((a,b) => String(b.date||'').localeCompare(String(a.date||'')) || Number(b.createdAt||0)-Number(a.createdAt||0));
+        window.allTx = allTx;
         if (!document.getElementById("fromDate").value) setRange('today'); else safeRender();
         if (document.getElementById('historySheet')?.classList.contains('open')) {
           if (window.runRenderTaskSafely) window.runRenderTaskSafely('история', renderHistorySheet);
@@ -2783,9 +2826,13 @@
       // ── Оптимистичное добавление: сразу показываем в списке, ──────
       // не дожидаясь ответа сервера. Firebase подтвердит в фоне —
       // если не получится, запись откатится и покажется ошибка.
-      const tempEntry = { ...txData, id: 'tmp_' + txData.createdAt, _pending: true };
+      const txDoc = fbMethods.doc(txRef);
+      const tempEntry = { ...txData, id: txDoc.id, _pending: true };
       pendingTx.push(tempEntry);
+      window.pendingTx = pendingTx;
+      persistPendingTx();
       allTx = [tempEntry, ...allTx]; window.allTx = allTx;
+      cacheTxToLocal();
       document.getElementById("amount").value=""; document.getElementById("comment").value="";
       document.getElementById("fuelOdometer").value=""; document.getElementById("fuelLiters").value="";
       document.getElementById("fuelFullTank").checked = false;
@@ -2796,16 +2843,20 @@
       window.showToast(`${type==='income'?'+':'−'}${amt.toLocaleString()} ₸ записано`);
 
       try {
-        await fbMethods.addDoc(txRef, txData);
-        // Настоящая запись подтвердится через onSnapshot и заменит временную
+        await fbMethods.setDoc(txDoc, txData);
+        settlePendingTx(tempEntry.id, txData);
       } catch(err) {
         // Откатываем оптимистичную запись при ошибке сохранения
         pendingTx = pendingTx.filter(p => p.id !== tempEntry.id);
+        window.pendingTx = pendingTx;
+        persistPendingTx();
         allTx = allTx.filter(t => t.id !== tempEntry.id); window.allTx = allTx;
+        cacheTxToLocal();
         safeRender();
         window.showToast('⚠️ Не удалось сохранить запись. ' + window.firebaseErrorRu(err), 'error');
       }
     };
+    syncPendingTx();
   }
 
   window.doTransfer = async () => {

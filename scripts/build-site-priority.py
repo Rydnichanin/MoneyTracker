@@ -56,16 +56,24 @@ def patch_priority_loading(body: str) -> str:
     if end == -1:
         raise ValueError("Transaction listener end was not found; priority loading was not applied")
     replacement = r'''    // PRIORITY DATA: startup loads TODAY only. History is requested by the filter.
-    let todayTx = [];
+    const todayForPriority = getToday();
+    const startupLocalTx = [...(allTx || [])];
+    let todayTx = startupLocalTx.filter(tx => tx.date === todayForPriority);
+    let hasServerTodaySnapshot = false;
     let currentRangeCache = new Map();
     const cacheKey = (from, to) => `${from || ''}:${to || ''}`;
     const rebuildToday = () => {
-      const now = Date.now();
-      pendingTx = pendingTx.filter(p => !todayTx.some(s => s.createdAt === p.createdAt) && (now - p.createdAt) < 15000);
-      allTx = [...pendingTx.filter(p => p.date === todayForPriority), ...todayTx]
-        .sort((a,b) => String(b.date||'').localeCompare(String(a.date||'')));
+      const merged = new Map(todayTx.map(tx => [tx.id, tx]));
+      pendingTx.filter(p => p.date === todayForPriority).forEach(tx => merged.set(tx.id, tx));
+      allTx = [...merged.values()]
+        .sort((a,b) => String(b.date||'').localeCompare(String(a.date||'')) || Number(b.createdAt||0)-Number(a.createdAt||0));
       window.allTx = allTx;
       currentRangeCache.set(cacheKey(todayForPriority, todayForPriority), allTx.slice());
+      // Persist today's confirmed rows while retaining the recent historical cache.
+      const recentHistory = startupLocalTx.filter(tx => tx.date !== todayForPriority);
+      const cacheRows = [...allTx, ...recentHistory];
+      const cacheById = new Map(cacheRows.map(tx => [tx.id, tx]));
+      cacheTxToLocal([...cacheById.values()].sort((a,b) => String(b.date||'').localeCompare(String(a.date||'')) || Number(b.createdAt||0)-Number(a.createdAt||0)));
       window.mtStartupProfiler?.stamp('TODAY_RENDER_READY', `records=${allTx.length}`);
       debouncedRender();
     };
@@ -73,6 +81,11 @@ def patch_priority_loading(body: str) -> str:
       const key = cacheKey(from, to);
       if (useCache && currentRangeCache.has(key)) {
         allTx = currentRangeCache.get(key).slice(); window.allTx = allTx; debouncedRender(); return;
+      }
+      const cachedRange = startupLocalTx.filter(tx => tx.date >= from && (!to || tx.date <= to));
+      if (cachedRange.length) {
+        currentRangeCache.set(key, cachedRange.slice());
+        allTx=cachedRange; window.allTx=allTx; debouncedRender();
       }
       const constraints = [fbMethods.where("date", ">=", from)];
       if (to) constraints.push(fbMethods.where("date", "<=", to));
@@ -83,11 +96,19 @@ def patch_priority_loading(body: str) -> str:
       const requested=[]; snap.forEach(d=>requested.push({id:d.id,...d.data()}));
       currentRangeCache.set(key, requested.slice()); allTx=requested; window.allTx=allTx; debouncedRender();
     };
-    const todayForPriority = getToday();
     const todayQuery = fbMethods.query(txRef, fbMethods.where("date", "==", todayForPriority), fbMethods.orderBy("date", "desc"));
     window.mtStartupProfiler?.stamp('TODAY_QUERY_START', todayForPriority);
     fbMethods.onSnapshot(todayQuery, (snap) => {
-      todayTx=[]; snap.forEach(d=>todayTx.push({id:d.id,...d.data()}));
+      const freshToday=[]; snap.forEach(d=>freshToday.push({id:d.id,...d.data()}));
+      // Offline/cache snapshots must not erase the last locally saved view.
+      if (snap.metadata?.fromCache && !hasServerTodaySnapshot) {
+        const merged = new Map(todayTx.map(tx => [tx.id, tx]));
+        freshToday.forEach(tx => merged.set(tx.id, tx));
+        todayTx=[...merged.values()];
+      } else {
+        todayTx=freshToday;
+        if (!snap.metadata?.fromCache) hasServerTodaySnapshot=true;
+      }
       window.mtStartupProfiler?.stamp('TODAY_SNAPSHOT_RECEIVED', `records=${todayTx.length}`);
       rebuildToday(); setRange('today');
       if (document.getElementById('historySheet')?.classList.contains('open')) window.runRenderTaskSafely?.('история', renderHistorySheet);
