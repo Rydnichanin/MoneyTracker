@@ -2185,6 +2185,7 @@
   let DEFAULTS = { income: [], expense: [] }; window.DEFAULTS = DEFAULTS;
   let ACCOUNTS = []; window.ACCOUNTS = ACCOUNTS;
   let allTx = []; window.allTx = allTx;
+  let startupCachedTx = [];
   let _txRenderLimit = 60; // пагинация списка транзакций — рендерим порциями. Объявлена
   // здесь (а не внутри initApp), т.к. render() — отдельная функция вне initApp() и не
   // видит переменных, объявленных через let/const внутри initApp().
@@ -2327,6 +2328,7 @@
     const uid = window.fbUser.uid;
     // Кэш читается только после получения UID, чтобы не смешивать записи разных аккаунтов.
     try { loadCachedDataInstant(uid); } catch(e) { console.warn('Локальный кэш недоступен:', e.message); }
+    startupCachedTx = allTx.slice();
     const userDoc = fbMethods.doc(fbDB, "users", uid);
     const txRef = fbMethods.collection(fbDB, "users", uid, "transactions");
     const setRef = fbMethods.collection(fbDB, "users", uid, "settings");

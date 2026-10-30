@@ -57,7 +57,7 @@ def patch_priority_loading(body: str) -> str:
         raise ValueError("Transaction listener end was not found; priority loading was not applied")
     replacement = r'''    // PRIORITY DATA: startup loads TODAY only. History is requested by the filter.
     const todayForPriority = getToday();
-    const startupLocalTx = [...(allTx || [])];
+    const startupLocalTx = [...(startupCachedTx || allTx || [])];
     let todayTx = startupLocalTx.filter(tx => tx.date === todayForPriority);
     let hasServerTodaySnapshot = false;
     let currentRangeCache = new Map();
@@ -121,7 +121,12 @@ def patch_priority_loading(body: str) -> str:
     old='''      } else { f.value=""; t.value=""; dateRow.style.display='none'; }
       render();'''
     new='''      } else { f.value=""; t.value=""; dateRow.style.display='none'; }
-      if (mode === 'today') { allTx=todayTx.slice(); window.allTx=allTx; render(); return; }
+      if (mode === 'today') {
+        let todayRows;
+        try { todayRows = todayTx; } catch (_) { /* Called before listener initialization. */ }
+        if (!Array.isArray(todayRows)) todayRows = (allTx || []).filter(tx => tx.date === getToday());
+        allTx=todayRows.slice(); window.allTx=allTx; render(); return;
+      }
       if (mode === 'yesterday') { const y=f.value; loadDateRange(y,y).then(()=>render()).catch(e=>{console.warn('[Priority] Yesterday load failed:',e.message);render();}); return; }
       if (mode === 'all') { loadDateRange('0000-01-01','9999-12-31',false).then(()=>render()).catch(e=>{console.warn('[Priority] Full history load failed:',e.message);render();}); return; }
       if (mode === 'custom') { const from=f.value, to=t.value||from; if(!from){render();return;} loadDateRange(from,to).then(()=>render()).catch(e=>{console.warn('[Priority] Custom range load failed:',e.message);render();}); return; }
@@ -201,6 +206,10 @@ def main() -> None:
     for name in ["auth.html","manifest.json","sw.js","ai_parser.js","icon.png","version.json"]:
         src=ROOT/name
         if src.exists(): shutil.copy2(src,OUT/name)
+    for name in ["address-parser.js", "category-rename-panel.js"]:
+        src=ROOT/"js"/name
+        if not src.exists(): raise FileNotFoundError(f"Required lazy-loaded module is missing: {src}")
+        shutil.copy2(src,OUT/"js"/name)
     (OUT/"index.html").write_text(index,encoding="utf-8")
     validate_priority_artifact()
     print(f"Built {OUT}: {script_no} scripts, Auth-first + today-only startup + on-demand history enabled.")

@@ -115,6 +115,13 @@ def main() -> None:
             1,
         )
 
+    # The lazy loader requests these modules after the initial screen is ready.
+    for name in ["address-parser.js", "category-rename-panel.js"]:
+        src = ROOT / "js" / name
+        if not src.exists():
+            raise FileNotFoundError(f"Required lazy-loaded module is missing: {src}")
+        shutil.copy2(src, OUT / "js" / name)
+
     (OUT / "index.html").write_text(index, encoding="utf-8")
 
     # Copy remaining production web assets. migrate.html is deliberately
