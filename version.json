@@ -1,8 +1,8 @@
 {
-  "version": "5.2.1",
-  "build": 2026102501,
-  "updatedAt": "2026-10-25T02:05:00Z",
+  "version": "5.2.2",
+  "build": 2026110601,
+  "updatedAt": "2026-11-06T14:32:31.849Z",
   "source": "https://github.com/rydnichanin/MoneyTracker",
-  "title": "Учёт Курьера Pro v5.2.1",
-  "changelog": "Оптимизация авторизации Google, поддержка входа в Android WebView, стабильность всех функций"
+  "title": "Учёт Курьера Pro v5.2.2",
+  "changelog": "Добавлена точка LSK CARGO (600/900 ₸), интеграция Google Identity Services (GIS), исправление входа и запуска приложения"
 }

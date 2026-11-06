@@ -623,17 +623,75 @@
     });
     checkPendingToken();
 
-    // Проверка результата редиректа Google Sign-In при перезагрузке страницы
-    getRedirectResult(auth).then(result => {
-      if (result && result.user) {
-        startApp(result.user);
+        // Проверка результата редиректа Google Sign-In (только если был реальный редирект)
+    if (sessionStorage.getItem("fbRedirectPending") === "1") {
+      sessionStorage.removeItem("fbRedirectPending");
+      getRedirectResult(auth).then(result => {
+        if (result && result.user) {
+          startApp(result.user);
+        }
+      }).catch(err => {
+        console.warn("getRedirectResult status:", err);
+        if (err?.code &&
+            err.code !== 'auth/popup-closed-by-user' &&
+            err.code !== 'auth/internal-error' &&
+            err.code !== 'auth/cancelled-popup-request' &&
+            err.code !== 'auth/operation-not-supported-in-this-environment') {
+          showError(getAuthErrorMessage(err));
+        }
+      });
+    }
+
+    // ── Google Identity Services (GIS) — надёжный вход без куки-блокировок ─
+    function initGsi() {
+      if (typeof window.google === 'undefined' || !window.google.accounts || !window.google.accounts.id) {
+        setTimeout(initGsi, 250);
+        return;
       }
-    }).catch(err => {
-      console.warn("getRedirectResult error:", err);
-      if (err?.code && err.code !== 'auth/popup-closed-by-user') {
-        showError(getAuthErrorMessage(err));
+      try {
+        window.google.accounts.id.initialize({
+          client_id: "440589448883-e87fh2fe04qcpa4hlujtk5e86b8v6b3i.apps.googleusercontent.com",
+          callback: async (response) => {
+            if (!response || !response.credential) return;
+            try {
+              showError('');
+              const cred = GoogleAuthProvider.credential(response.credential);
+              const userCred = await signInWithCredential(auth, cred);
+              if (userCred && userCred.user) {
+                startApp(userCred.user);
+                window.showToast("✅ Вход через Google выполнен!");
+              }
+            } catch(e) {
+              console.warn("GIS credential auth error:", e);
+              showError(getAuthErrorMessage(e));
+            }
+          },
+          auto_select: false,
+          cancel_on_tap_outside: true
+        });
+
+        const slot = document.getElementById("googleBtnContainer");
+        if (slot) {
+          window.google.accounts.id.renderButton(slot, {
+            theme: "filled_blue",
+            size: "large",
+            shape: "rectangular",
+            text: "signin_with",
+            width: 320,
+            locale: "ru"
+          });
+          const oldBtn = document.getElementById("googleSignInBtn");
+          if (oldBtn) oldBtn.style.display = "none";
+        }
+      } catch(e) {
+        console.warn("initGsi error:", e);
       }
-    });
+    }
+    if (document.readyState === 'complete') {
+      initGsi();
+    } else {
+      window.addEventListener('load', initGsi);
+    }
 
     // ── Кнопка входа через Google ──────────────────────────────────
     window.fbSignIn = async () => {
@@ -678,23 +736,16 @@
         }
       } catch(e) {
         console.warn("signInWithPopup error:", e);
-        // При блокировке popup, cookie или auth/internal-error автоматически переключаемся на redirect:
+        // При блокировке popup, cookie или auth/internal-error переключаемся на автономную auth.html:
         if (e?.code === 'auth/popup-blocked' ||
             e?.code === 'auth/internal-error' ||
             e?.code === 'auth/operation-not-supported-in-this-environment' ||
             (isAndroid && !isWebView)) {
           try {
-            console.log("signInWithPopup failed, attempting signInWithRedirect...");
-            await signInWithRedirect(auth, provider);
+            window.location.href = "./auth.html";
             return;
-          } catch(re) {
-            console.warn("signInWithRedirect failed, trying fallback to auth.html:", re);
-            try {
-              window.location.href = "./auth.html";
-              return;
-            } catch(fe) {
-              showError(getAuthErrorMessage(re || e));
-            }
+          } catch(fe) {
+            showError(getAuthErrorMessage(e));
           }
         } else if (e?.code !== 'auth/popup-closed-by-user' && e?.code !== 'auth/cancelled-popup-request') {
           showError(getAuthErrorMessage(e));
@@ -853,6 +904,7 @@
       }
     };
   </script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
 
@@ -913,7 +965,7 @@
       <div style="flex:1;height:1px;background:#1c1c1c;"></div>
     </div>
 
-    <div id="googleBtnContainer" style="width:100%;display:flex;justify-content:center;margin-bottom:8px;min-height:44px;"></div>
+    <div id="googleBtnContainer" style="width:100%;display:flex;justify-content:center;margin-bottom:8px;"></div>
     <button id="googleSignInBtn" type="button" onclick="fbSignIn()"
       style="width:100%;padding:14px;border-radius:12px;border:1px solid #282828;background:#141414;color:#fff;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;box-sizing:border-box;">
       <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#4285F4" d="M44.5 20H24v8.5h11.8C34.7 33.9 29.8 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 5.1 29.6 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21c10.5 0 20-7.6 20-21 0-1.4-.1-2.7-.5-4z"/></svg>
@@ -2286,7 +2338,7 @@
   let appInitialized = false; window.appInitialized = false;
   function tryInitApp() {
     if (appInitialized) return;
-    if (window.fbDB && window.fbMethods) { appInitialized = true; window.appInitialized = true; initApp(); }
+    if (window.fbDB && window.fbMethods && window.fbUser) { appInitialized = true; window.appInitialized = true; initApp(); }
   }
   // Позволяем внешнему коду сбросить флаг
   window.resetApp = () => { appInitialized = false; window.appInitialized = false; };
@@ -7602,8 +7654,8 @@
 
 <script>
 // ── СИСТЕМА БЕСШОВНОГО АВТОМАТИЧЕСКОГО ОБНОВЛЕНИЯ (БЕЗ ВСПЛЫВАЮЩИХ ОКОН) ─────────
-const APP_CURRENT_VERSION = '5.2.1';
-const APP_CURRENT_BUILD = 2026102501;
+const APP_CURRENT_VERSION = '5.2.2';
+const APP_CURRENT_BUILD = 2026110601;
 
 window._waitingServiceWorker = null;
 window._updateAvailable = false;
