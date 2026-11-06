@@ -1623,6 +1623,7 @@
     'F2':      { under: 150, flat: 300 },
     'F3':      { under: 150, flat: 300 },
     'ALLEY PUB': { under: 600, flat: 900 },
+    'LSK CARGO': { under: 600, flat: 900 },
   };
 
   // Адреса: кэш в памяти + Firebase как основное хранилище
@@ -2937,9 +2938,7 @@
       } else if(t.type==='expense'){
         exp+=t.amount;
         // Бензин
-        const lsub=String(t.subcategory||'').toLowerCase();
-        const lcat=String(t.categoryName||'').toLowerCase();
-        if(lsub.includes('бенз')||lcat.includes('бенз')) gas+=t.amount;
+        if(window.isFuelTransaction(t)) gas+=t.amount;
         // statsExp
         const rawName=t.categoryName||'Прочее';
         const existingKey=Object.keys(statsExpRaw).find(k=>k.toLowerCase()===rawName.toLowerCase());
@@ -3324,7 +3323,7 @@
 
   function renderAnalytics() {
     const el=document.getElementById("analyticsContent"); if(!el)return;
-    const DELIVERY_POINTS_BW=["F1","F2","F3","ALLEY PUB","Ночь"];
+    const DELIVERY_POINTS_BW=["F1","F2","F3","ALLEY PUB","LSK CARGO","Ночь"];
     const byDay={},byMonth={},byDayDeliv={};
     // Исключаем старые записи переводов в/из депозита (← возврат, → пополнение)
     const isDepTransfer=t=>t.subcategory&&(t.subcategory.startsWith('← ')||t.subcategory.startsWith('→ '));
@@ -3419,7 +3418,7 @@
         ? `<div class="goal-box"><div style="display:flex;justify-content:space-between;font-size:13px;"><span>${curMonthInc.toLocaleString()} ₸ из ${incomeGoal.toLocaleString()} ₸</span><span style="font-weight:bold;color:${goalPct>=100?'#65d48b':'#a78bfa'};">${goalPct}%</span></div><div class="goal-bar-bg"><div class="goal-bar-fill" style="width:${goalPct}%;"></div></div>${goalPct>=100?'<div class="month-meta" style="margin-top:4px;color:#65d48b;">🎉 цель достигнута!</div>':`<div class="month-meta" style="margin-top:4px;">осталось: ${(incomeGoal-curMonthInc).toLocaleString()} ₸</div>`}</div>`
         : `<div class="muted" style="font-size:11px;">Цель не задана</div>`
     }`;
-    const DELIVERY_POINTS=["F1","F2","F3","ALLEY PUB","Ночь"];
+    const DELIVERY_POINTS=["F1","F2","F3","ALLEY PUB","LSK CARGO","Ночь"];
     const wdByM={};
     allTx.forEach(t=>{if(t.type==='income'&&DELIVERY_POINTS.includes(t.subcategory)){const m=(t.date||'').slice(0,7);if(!wdByM[m])wdByM[m]=new Set();wdByM[m].add(t.date);}});
     // Лучший/худший день ВНУТРИ каждого месяца (по общему доходу за день)
@@ -3613,7 +3612,7 @@
     const allSortedDeliv=Object.entries(delivByMonth).sort((a,b)=>b[0]>a[0]?1:-1);
     const sortedDeliv=_analyticsMonthsLimit>0?allSortedDeliv.slice(0,_analyticsMonthsLimit):allSortedDeliv;
     const maxDeliv=Math.max(...sortedDeliv.map(([,d])=>d.sum),1);
-    const delivHtml=sortedDeliv.length>0?`<div class="sec-title" style="margin-top:18px;color:#ffd166;">🚴 По точкам (F1·F2·F3·ALLEY·Ночь)</div>${sortedDeliv.map(([m,d])=>{const days=d.days.size,avg=days>0?Math.round(d.sum/days):0;return`<div class="month-row"><div class="month-top"><span>${fmtM(m)}</span><span style="color:#ffd166;font-weight:bold;">${d.sum.toLocaleString()} ₸</span></div><div class="month-bar-bg"><div class="month-bar-fill" style="width:${(d.sum/maxDeliv*100).toFixed(1)}%;background:#ffd166;"></div></div><div class="month-meta">📅 ${days} дн. · ≈ ${avg.toLocaleString()} ₸/день</div></div>`;}).join('')}`:'';
+    const delivHtml=sortedDeliv.length>0?`<div class="sec-title" style="margin-top:18px;color:#ffd166;">🚴 По точкам (F1·F2·F3·ALLEY·LSK·Ночь)</div>${sortedDeliv.map(([m,d])=>{const days=d.days.size,avg=days>0?Math.round(d.sum/days):0;return`<div class="month-row"><div class="month-top"><span>${fmtM(m)}</span><span style="color:#ffd166;font-weight:bold;">${d.sum.toLocaleString()} ₸</span></div><div class="month-bar-bg"><div class="month-bar-fill" style="width:${(d.sum/maxDeliv*100).toFixed(1)}%;background:#ffd166;"></div></div><div class="month-meta">📅 ${days} дн. · ≈ ${avg.toLocaleString()} ₸/день</div></div>`;}).join('')}`:'';
 
     const dayShiftMap = {};
     let totalNightIncomeAllTime = 0, totalDayIncomeAllTime = 0;
@@ -3857,7 +3856,7 @@
     }).join('')}` : '';
 
     // Доля каждой точки в доходе + средний доход за смену на каждой точке (за всё время)
-    const pointColors={'F1':'#a78bfa','F2':'#6ec6ff','F3':'#ffd166','ALLEY PUB':'#65d48b','Ночь':'#e05a5a'};
+    const pointColors={'F1':'#a78bfa','F2':'#6ec6ff','F3':'#ffd166','ALLEY PUB':'#65d48b','LSK CARGO':'#38ef7d','Ночь':'#e05a5a'};
     const pointTotals={},pointDays={};
     DELIVERY_POINTS.forEach(p=>{pointTotals[p]=0;pointDays[p]=new Set();});
     allTx.forEach(t=>{if(t.type==='income'&&DELIVERY_POINTS.includes(t.subcategory)){pointTotals[t.subcategory]+=t.amount;pointDays[t.subcategory].add(t.date);}});
@@ -4059,7 +4058,7 @@
   function getAvailableIncomeSources() {
     const sources = new Map();
     // Стандартные курьерские смены/точки
-    const standard = ['F1', 'F2', 'F3', 'Ночь'];
+    const standard = ['F1', 'F2', 'F3', 'ALLEY PUB', 'LSK CARGO', 'Ночь'];
     standard.forEach(s => sources.set(s, { id: s, name: '📍 ' + s }));
 
     // Из категорий DEFAULTS.income
@@ -6411,7 +6410,10 @@
       populateCategories(selType.value, '');
     };
     selCat.onchange = () => {
-      populateSubcategories(selCat.value, '');
+      const cats = (window.DEFAULTS && window.DEFAULTS[selType.value]) || [];
+      const cat = cats.find(c => c.name === selCat.value);
+      const firstSub = (cat && Array.isArray(cat.sub) && cat.sub.length > 0) ? cat.sub[0] : '';
+      populateSubcategories(selCat.value, firstSub);
     };
 
     populateCategories(t.type || 'expense', t.categoryName);
@@ -6671,6 +6673,7 @@
       'F2':        { under: 150, flat: 300 },
       'F3':        { under: 150, flat: 300 },
       'ALLEY PUB': { under: 600, flat: 900 },
+      'LSK CARGO': { under: 600, flat: 900 },
     };
 
     // Справочник пользовательских адресов [{ addr, type, price }]
@@ -6723,14 +6726,15 @@
       // Определяем точку
       let point = null;
       const fl = firstLine.toUpperCase();
-      if (/ALLEY|АЛЕЙ/.test(fl)) point = 'ALLEY PUB';
-      else if (/F\s*3/.test(fl)) point = 'F3';
-      else if (/F\s*2/.test(fl)) point = 'F2';
-      else if (/F\s*1/.test(fl)) point = 'F1';
+      if (/LSK\s*CARGO|ЛСК\s*КАРГО|LSK|ЛСК/i.test(fl)) point = 'LSK CARGO';
+      else if (/ALLEY|АЛЕЙ/.test(fl)) point = 'ALLEY PUB';
+      else if (/F\s*3|Ф\s*3/i.test(fl)) point = 'F3';
+      else if (/F\s*2|Ф\s*2/i.test(fl)) point = 'F2';
+      else if (/F\s*1|Ф\s*1/i.test(fl)) point = 'F1';
       if (!point) continue;
 
-      // Всё что идёт после "F1:" / "ALLEY PUB:" — потенциальный адрес
-      let afterColon = firstLine.replace(/^.*?(?:ALLEY\s*PUB|F\s*[123])\s*[:\-\s]/i, '').trim();
+      // Всё что идёт после "F1:" / "ALLEY PUB:" / "LSK CARGO:" — потенциальный адрес
+      let afterColon = firstLine.replace(/^.*?(?:LSK\s*CARGO|ЛСК\s*КАРГО|LSK|ЛСК|ALLEY\s*PUB|F\s*[123]|Ф\s*[123])\s*[:\-\s]/i, '').trim();
       afterColon = stripPhone(afterColon);
 
       let address = '';
@@ -6996,9 +7000,10 @@
 
       console.log('[WA Auto] Получено уведомление WhatsApp:', title, text);
 
-      // Извлекаем точку (F1, F2, F3, ALLEY PUB)
+      // Извлекаем точку (F1, F2, F3, ALLEY PUB, LSK CARGO)
       let point = null;
-      if (/ALLEY|АЛЕЙ/i.test(rawFull)) point = 'ALLEY PUB';
+      if (/LSK\s*CARGO|ЛСК\s*КАРГО|LSK|ЛСК/i.test(rawFull)) point = 'LSK CARGO';
+      else if (/ALLEY|АЛЕЙ/i.test(rawFull)) point = 'ALLEY PUB';
       else if (/F\s*3|Ф\s*3/i.test(rawFull)) point = 'F3';
       else if (/F\s*2|Ф\s*2/i.test(rawFull)) point = 'F2';
       else if (/F\s*1|Ф\s*1/i.test(rawFull)) point = 'F1';
@@ -7018,7 +7023,7 @@
       let address = '';
 
       for (const line of lines) {
-        let clean = line.replace(/^.*?(?:ALLEY\s*PUB|F\s*[123]|Ф\s*[123])\s*[:\-\s]/i, '').trim();
+        let clean = line.replace(/^.*?(?:LSK\s*CARGO|ЛСК\s*КАРГО|LSK|ЛСК|ALLEY\s*PUB|F\s*[123]|Ф\s*[123])\s*[:\-\s]/i, '').trim();
         clean = stripPhone(clean);
         if (!clean || clean.length < 2) continue;
         const cleanedDigits = clean.replace(/[\s\-\(\)]/g, '');
@@ -7034,7 +7039,8 @@
         'F1':        { under: 150, flat: 300 },
         'F2':        { under: 150, flat: 300 },
         'F3':        { under: 150, flat: 300 },
-        'ALLEY PUB': { under: 600, flat: 900 }
+        'ALLEY PUB': { under: 600, flat: 900 },
+        'LSK CARGO': { under: 600, flat: 900 }
       };
 
       const customAddrs = typeof loadCustomAddressesAsync === 'function' ? await loadCustomAddressesAsync() : [];
