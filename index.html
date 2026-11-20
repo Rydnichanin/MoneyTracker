@@ -494,6 +494,7 @@
       document.getElementById("drawerName").textContent = user.displayName || user.email || "Пользователь";
       document.getElementById("drawerEmail").textContent = user.email || "";
       window.fbUser = user;
+      try { if (user && user.uid) localStorage.setItem('cached_last_uid', user.uid); } catch(e) {}
       if (!window.appStarted) {
         window.appStarted = true;
         // Показываем skeleton-заглушку только если в локальном кэше ещё нет данных
@@ -516,9 +517,11 @@
         }, 14000);
         requestAnimationFrame(() => {
           window.dispatchEvent(new Event("fbReady"));
-          // Загружаем адреса и настройки (бюджет, цели) из Firebase сразу после авторизации
-          if (window.loadCustomAddressesFromFirebase) window.loadCustomAddressesFromFirebase();
-          if (window.loadUserDataFromFirebase) window.loadUserDataFromFirebase();
+          // Загружаем адреса и настройки параллельно для ускорения старта
+          Promise.all([
+            window.loadCustomAddressesFromFirebase ? window.loadCustomAddressesFromFirebase() : Promise.resolve(),
+            window.loadUserDataFromFirebase ? window.loadUserDataFromFirebase() : Promise.resolve()
+          ]).catch(e => console.warn('Параллельная загрузка настроек:', e.message));
         });
       }
     }
@@ -2142,6 +2145,18 @@
     return false;
   };
 
+  window.isAutoTransaction = (t) => {
+    if (!t || t.type !== 'expense' || t.isDeleted || t.deletedAt) return false;
+    if (t.subcategory && (t.subcategory.startsWith('← ') || t.subcategory.startsWith('→ '))) return false;
+    if (window.isFuelTransaction && window.isFuelTransaction(t)) return true;
+    if (window.isMaintenanceTx && window.isMaintenanceTx(t)) return true;
+    const sub = String(t.subcategory || '').toLowerCase();
+    const cat = String(t.categoryName || '').toLowerCase();
+    const com = String(t.comment || '').toLowerCase();
+    const text = `${sub} ${cat} ${com}`;
+    return text.includes('авто') || text.includes('машин') || Boolean(t.odometer && Number(t.odometer) > 0);
+  };
+
   window._fuelLitersManuallyEdited = false;
   window.autoCalcFuelLiters = () => {
     const elT = document.getElementById("type");
@@ -2252,6 +2267,12 @@
   let _compareMonthA = '';
   let _compareMonthB = '';
 
+  let _carCostPeriodMode = 'topbar'; // 'topbar', 'this_month', 'prev_month', 'all'
+  window.setCarCostPeriodMode = (mode) => {
+    _carCostPeriodMode = mode;
+    if (window.renderFuelTracker) window.renderFuelTracker();
+  };
+
   window.setCarHubTab = (tab) => {
     _carHubTab = tab;
     ['Fuel', 'Oil', 'Cost'].forEach(k => {
@@ -2315,7 +2336,6 @@
     try { localStorage.setItem(userCacheKey(CACHE_TX_KEY), JSON.stringify(entries.slice(0, CACHE_TX_LIMIT))); } catch(e) {}
   }
   function loadCachedDataInstant(uid = '') {
-    // До авторизации не читаем пользовательские записи из общего кэша.
     if (!uid) return false;
     localCacheUserId = uid;
     let loaded = false;
@@ -2334,6 +2354,14 @@
     } catch(e) { console.warn('Кэш транзакций повреждён:', e.message); }
     return loaded;
   }
+  // МГНОВЕННЫЙ ХОЛОДНЫЙ СТАРТ: загружаем кэш последнего пользователя ДО сети
+  try {
+    const _earlyUid = localStorage.getItem('cached_last_uid') || '';
+    if (_earlyUid) {
+      loadCachedDataInstant(_earlyUid);
+      startupCachedTx = allTx.slice();
+    }
+  } catch(e) {}
 
   let appInitialized = false; window.appInitialized = false;
   function tryInitApp() {
@@ -2341,7 +2369,7 @@
     if (window.fbDB && window.fbMethods && window.fbUser) { appInitialized = true; window.appInitialized = true; initApp(); }
   }
   // Позволяем внешнему коду сбросить флаг
-  window.resetApp = () => { appInitialized = false; window.appInitialized = false; };
+  window.tryInitApp = tryInitApp; window.resetApp = () => { appInitialized = false; window.appInitialized = false; };
   window.addEventListener("fbReady", tryInitApp);
   const checkFB = setInterval(() => {
     if (window.fbDB && window.fbMethods && window.fbUser) { clearInterval(checkFB); tryInitApp(); }
@@ -5086,8 +5114,58 @@
     if (window.checkCarAndBillsReminders) window.checkCarAndBillsReminders();
   };
 
-  window.getCarOwnershipStats = (fuelStats) => {
-    const isDepTransfer = t => t.subcategory && (t.subcategory.startsWith('← ') || t.subcategory.startsWith('→ '));
+  window.getCarOwnershipStats = (fuelStats, forcedPeriod = null) => {
+    const periodMode = forcedPeriod || (window._carCostPeriodMode || 'topbar');
+
+    const now = new Date();
+    if (now.getHours() < 3) now.setDate(now.getDate() - 1);
+    const todayStr = new Date(now - now.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+    const thisMonthKey = todayStr.slice(0, 7); // 'YYYY-MM'
+
+    // Предыдущий месяц
+    const [curY, curM] = thisMonthKey.split('-').map(Number);
+    const prevY = curM === 1 ? curY - 1 : curY;
+    const prevM = curM === 1 ? 12 : curM - 1;
+    const prevMonthKey = `${prevY}-${String(prevM).padStart(2, '0')}`;
+
+    const monthNames = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+    let filterFrom = '', filterTo = '', periodName = 'За всё время';
+
+    if (periodMode === 'this_month') {
+      filterFrom = `${thisMonthKey}-01`;
+      filterTo = `${thisMonthKey}-31`;
+      periodName = `Этот месяц (${monthNames[curM - 1]} ${curY})`;
+    } else if (periodMode === 'prev_month') {
+      filterFrom = `${prevMonthKey}-01`;
+      filterTo = `${prevMonthKey}-31`;
+      periodName = `Прошлый месяц (${monthNames[prevM - 1]} ${prevY})`;
+    } else if (periodMode === 'all') {
+      filterFrom = '';
+      filterTo = '';
+      periodName = 'За всё время';
+    } else {
+      // topbar — синхронизация с верхним фильтром
+      const fEl = document.getElementById("fromDate");
+      const tEl = document.getElementById("toDate");
+      filterFrom = fEl ? fEl.value : '';
+      filterTo = tEl ? tEl.value : '';
+
+      if (!filterFrom && !filterTo) {
+        periodName = 'За всё время';
+      } else if (filterFrom === filterTo) {
+        if (filterFrom === todayStr) periodName = `Сегодня (${filterFrom.slice(8,10)}.${filterFrom.slice(5,7)})`;
+        else periodName = `День: ${filterFrom.slice(8,10)}.${filterFrom.slice(5,7)}.${filterFrom.slice(0,4)}`;
+      } else if (filterFrom && filterTo) {
+        periodName = `Период: ${filterFrom.slice(8,10)}.${filterFrom.slice(5,7)} — ${filterTo.slice(8,10)}.${filterTo.slice(5,7)}`;
+      } else if (filterFrom) {
+        periodName = `С ${filterFrom.slice(8,10)}.${filterFrom.slice(5,7)}`;
+      } else {
+        periodName = `По ${filterTo.slice(8,10)}.${filterTo.slice(5,7)}`;
+      }
+    }
+
+    const isPeriodActive = Boolean(filterFrom || filterTo);
+
     const autoBreakdown = {
       fuel: { label: '⛽ Топливо', sum: 0, count: 0, color: '#6ec6ff' },
       oil: { label: '🛢️ Масло и ТО', sum: 0, count: 0, color: '#ffd166' },
@@ -5098,63 +5176,145 @@
       other: { label: '🅿️ Прочее авто', sum: 0, count: 0, color: '#8899a6' }
     };
 
-    let totalAutoCost = 0;
-    const autoMonths = {};
-    const todayMonth = new Date().toISOString().slice(0, 7);
-    let curMonthAutoCost = 0;
+    const isDepTransfer = t => t.subcategory && (t.subcategory.startsWith('← ') || t.subcategory.startsWith('→ '));
 
-    (window.allTx || []).forEach(t => {
-      if (t.isDeleted || t.deletedAt || t.type !== 'expense' || isDepTransfer(t)) return;
+    // Сортируем авто-транзакции хронологически для верного расчёта пробега
+    const sortedTxs = (window.allTx || []).filter(t => !t.isDeleted && !t.deletedAt && t.type === 'expense' && !isDepTransfer(t))
+      .sort((a,b) => (a.date || '').localeCompare(b.date || '') || (a.createdAt || 0) - (b.createdAt || 0));
+
+    let allTimeAutoCost = 0;
+    let allTimeFuelCost = 0;
+    const allMonths = {};
+    let curMonthAutoCost = 0;
+    const allOdoEntries = [];
+
+    // Для выбранного периода:
+    let periodAutoCost = 0;
+    let periodFuelCost = 0;
+    let periodOtherCost = 0;
+    const periodOdoEntries = [];
+    let lastOdoBeforePeriod = null;
+
+    sortedTxs.forEach(t => {
+      const isFuel = window.isFuelTransaction ? window.isFuelTransaction(t) : false;
+      const isMaint = window.isMaintenanceTx ? window.isMaintenanceTx(t) : false;
       const sub = String(t.subcategory || '').toLowerCase();
       const cat = String(t.categoryName || '').toLowerCase();
       const com = String(t.comment || '').toLowerCase();
       const text = `${sub} ${cat} ${com}`;
 
-      const isFuel = window.isFuelTransaction(t);
       const isOil = text.includes('масл') || /(?:^|[\s,._/])то(?:$|[\s,._/0-9])/i.test(text) || text.includes('фильтр') || text.includes('расходник');
-      const isRepair = text.includes('ремонт') || text.includes('сервис') || text.includes('сто ') || text.includes('запчаст') || text.includes('детал') || text.includes('шин') || text.includes('колес') || text.includes('аккумулятор');
+      const isRepair = text.includes('ремонт') || text.includes('сервис') || text.includes('сто ') || text.includes('запчаст') || text.includes('детал') || text.includes('шин') || text.includes('колес') || text.includes('аккумулятор') || text.includes('колодк');
       const isWash = text.includes('мойк') || text.includes('химчист') || text.includes('полиров');
-      const isIns = text.includes('страхов') || text.includes('техосмотр') || text.includes('налог');
+      const isIns = text.includes('страхов') || text.includes('техосмотр') || text.includes('налог') || text.includes('огпо') || text.includes('каско');
       const isFine = text.includes('штраф');
-      const isCarGeneral = cat.includes('авто') || cat.includes('машин') || sub.includes('авто') || sub.includes('машин');
+      const hasOdo = Boolean(t.odometer && Number(t.odometer) > 0);
+      const isCarGeneral = cat.includes('авто') || cat.includes('машин') || sub.includes('авто') || sub.includes('машин') || hasOdo;
 
-      if (!isFuel && !isOil && !isRepair && !isWash && !isIns && !isFine && !isCarGeneral && !t.odometer) {
-        return;
-      }
+      if (!isFuel && !isOil && !isRepair && !isWash && !isIns && !isFine && !isCarGeneral && !isMaint) return;
 
       const amt = Number(t.amount) || 0;
-      totalAutoCost += amt;
+      allTimeAutoCost += amt;
+      if (isFuel) allTimeFuelCost += amt;
+
       const m = (t.date || '').slice(0, 7);
       if (m) {
-        autoMonths[m] = (autoMonths[m] || 0) + amt;
-        if (m === todayMonth) curMonthAutoCost += amt;
+        allMonths[m] = (allMonths[m] || 0) + amt;
+        if (m === thisMonthKey) curMonthAutoCost += amt;
       }
 
-      if (isFine) {
-        autoBreakdown.fines.sum += amt; autoBreakdown.fines.count++;
-      } else if (isIns) {
-        autoBreakdown.insurance.sum += amt; autoBreakdown.insurance.count++;
-      } else if (isOil && !isFuel) {
-        autoBreakdown.oil.sum += amt; autoBreakdown.oil.count++;
-      } else if (isRepair) {
-        autoBreakdown.repair.sum += amt; autoBreakdown.repair.count++;
-      } else if (isWash) {
-        autoBreakdown.wash.sum += amt; autoBreakdown.wash.count++;
-      } else if (isFuel) {
-        autoBreakdown.fuel.sum += amt; autoBreakdown.fuel.count++;
-      } else {
-        autoBreakdown.other.sum += amt; autoBreakdown.other.count++;
+      const odo = Number(t.odometer);
+      if (odo > 0) {
+        allOdoEntries.push({ date: t.date || '', odo, amount: amt, isFuel });
+      }
+
+      // Проверка диапазона дат
+      const d = t.date || '';
+      if (filterFrom && d < filterFrom) {
+        if (odo > 0) lastOdoBeforePeriod = odo;
+        return;
+      }
+      if (filterTo && d > filterTo) return;
+
+      periodAutoCost += amt;
+      if (isFuel) periodFuelCost += amt; else periodOtherCost += amt;
+
+      if (isFine) { autoBreakdown.fines.sum += amt; autoBreakdown.fines.count++; }
+      else if (isIns) { autoBreakdown.insurance.sum += amt; autoBreakdown.insurance.count++; }
+      else if (isOil && !isFuel) { autoBreakdown.oil.sum += amt; autoBreakdown.oil.count++; }
+      else if (isRepair) { autoBreakdown.repair.sum += amt; autoBreakdown.repair.count++; }
+      else if (isWash) { autoBreakdown.wash.sum += amt; autoBreakdown.wash.count++; }
+      else if (isFuel) { autoBreakdown.fuel.sum += amt; autoBreakdown.fuel.count++; }
+      else { autoBreakdown.other.sum += amt; autoBreakdown.other.count++; }
+
+      if (odo > 0) {
+        periodOdoEntries.push({ date: d, odo, amount: amt, isFuel });
       }
     });
 
-    const mCount = Math.max(Object.keys(autoMonths).length, 1);
-    const avgMonthCost = Math.round(totalAutoCost / mCount);
+    const mCount = Math.max(Object.keys(allMonths).length, 1);
+    const avgMonthCost = Math.round(allTimeAutoCost / mCount);
     const avgDayCost = Math.round(avgMonthCost / 30);
-    const trackedDistance = (fuelStats && fuelStats.totalDistanceAllTime > 0) ? fuelStats.totalDistanceAllTime : 0;
-    const costPerKm = trackedDistance > 0 ? (totalAutoCost / trackedDistance).toFixed(1) : null;
-    const fuelCostPerKm = trackedDistance > 0 ? (autoBreakdown.fuel.sum / trackedDistance).toFixed(1) : null;
 
-    return { totalAutoCost, curMonthAutoCost, avgMonthCost, avgDayCost, costPerKm, fuelCostPerKm, trackedDistance, autoBreakdown, mCount };
+    // 1. Дистанция за всё время
+    let allTimeDistance = (fuelStats && fuelStats.totalDistanceAllTime > 0) ? fuelStats.totalDistanceAllTime : 0;
+    if (allTimeDistance === 0 && allOdoEntries.length >= 2) {
+      const minOdo = allOdoEntries[0].odo;
+      const maxOdo = allOdoEntries[allOdoEntries.length - 1].odo;
+      if (maxOdo > minOdo) allTimeDistance = maxOdo - minOdo;
+    }
+    const allTimeCostPerKm = allTimeDistance > 0 ? (allTimeAutoCost / allTimeDistance).toFixed(1) : null;
+    const allTimeFuelCostPerKm = allTimeDistance > 0 ? (allTimeFuelCost / allTimeDistance).toFixed(1) : null;
+
+    // 2. Дистанция за период
+    let periodDistance = 0;
+    if (isPeriodActive) {
+      if (periodOdoEntries.length >= 2) {
+        const minO = periodOdoEntries[0].odo;
+        const maxO = periodOdoEntries[periodOdoEntries.length - 1].odo;
+        if (maxO > minO) periodDistance = maxO - minO;
+      } else if (periodOdoEntries.length === 1 && lastOdoBeforePeriod && periodOdoEntries[0].odo > lastOdoBeforePeriod) {
+        periodDistance = periodOdoEntries[0].odo - lastOdoBeforePeriod;
+      }
+    } else {
+      periodDistance = allTimeDistance;
+    }
+
+    // 3. Цена 1 км (период либо среднее)
+    const costPerKm = periodDistance > 0
+      ? (periodAutoCost / periodDistance).toFixed(1)
+      : allTimeCostPerKm;
+
+    const fuelCostPerKm = periodDistance > 0
+      ? (periodFuelCost / periodDistance).toFixed(1)
+      : allTimeFuelCostPerKm;
+
+    return {
+      periodMode,
+      periodName,
+      isPeriodActive,
+      filterFrom,
+      filterTo,
+      totalAutoCost: isPeriodActive ? periodAutoCost : allTimeAutoCost,
+      periodAutoCost,
+      periodFuelCost,
+      periodOtherCost,
+      allTimeAutoCost,
+      allTimeFuelCost,
+      allTimeDistance,
+      curMonthAutoCost,
+      avgMonthCost,
+      avgDayCost,
+      periodDistance,
+      costPerKm,
+      fuelCostPerKm,
+      allTimeCostPerKm,
+      allTimeFuelCostPerKm,
+      isPerKmFallback: periodDistance === 0 && Boolean(allTimeCostPerKm),
+      trackedDistance: periodDistance > 0 ? periodDistance : allTimeDistance,
+      autoBreakdown,
+      mCount
+    };
   };
 
   window.renderFuelTracker = () => {
@@ -5167,7 +5327,7 @@
     const maint = window.getCarMaintenanceStatus();
     const ownership = window.getCarOwnershipStats(stats);
 
-    if ((!stats || stats.totalTxs === 0) && maint.autoTxCount === 0 && !maint.latestOdo) {
+    if ((!stats || stats.totalTxs === 0) && maint.autoTxCount === 0 && !maint.latestOdo && ownership.allTimeAutoCost === 0) {
       card.style.display = 'none';
       return;
     }
@@ -5239,51 +5399,97 @@
         </button>
       `;
     } else if (_carHubTab === 'cost') {
-      // ════ Вкладка: СТОИМОСТЬ ВЛАДЕНИЯ ════
-      const { totalAutoCost, curMonthAutoCost, avgMonthCost, avgDayCost, costPerKm, fuelCostPerKm, trackedDistance, autoBreakdown } = ownership;
+      // ════ Вкладка: СТОИМОСТЬ ВЛАДЕНИЯ (С ПОДДЕРЖКОЙ ФИЛЬТРОВ И РАСЧЕТА 1 КМ) ════
+      const {
+        periodMode, periodName, isPeriodActive,
+        totalAutoCost, periodAutoCost, periodFuelCost, periodOtherCost,
+        allTimeAutoCost, allTimeDistance,
+        curMonthAutoCost, avgMonthCost, avgDayCost,
+        periodDistance, costPerKm, fuelCostPerKm,
+        isPerKmFallback, autoBreakdown
+      } = ownership;
+
       const bList = Object.values(autoBreakdown).filter(b => b.sum > 0).sort((a,b) => b.sum - a.sum);
+      const totalBreakdownSum = bList.reduce((s, b) => s + b.sum, 0);
+
+      // Быстрые фильтры периода
+      const filterPills = `
+        <div style="display:flex;gap:4px;margin-bottom:10px;background:#0c121c;padding:3px;border-radius:10px;border:1px solid #1a273d;overflow-x:auto;">
+          <button type="button" onclick="setCarCostPeriodMode('topbar')" style="flex:1;padding:6px 8px;border-radius:7px;border:none;background:${periodMode==='topbar'?'#182844':'transparent'};color:${periodMode==='topbar'?'#6ec6ff':'#8899a6'};font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all 0.2s;">🔘 Как вверху</button>
+          <button type="button" onclick="setCarCostPeriodMode('this_month')" style="flex:1;padding:6px 8px;border-radius:7px;border:none;background:${periodMode==='this_month'?'#182844':'transparent'};color:${periodMode==='this_month'?'#6ec6ff':'#8899a6'};font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all 0.2s;">📅 Этот месяц</button>
+          <button type="button" onclick="setCarCostPeriodMode('prev_month')" style="flex:1;padding:6px 8px;border-radius:7px;border:none;background:${periodMode==='prev_month'?'#182844':'transparent'};color:${periodMode==='prev_month'?'#6ec6ff':'#8899a6'};font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all 0.2s;">🗓️ Прошлый</button>
+          <button type="button" onclick="setCarCostPeriodMode('all')" style="flex:1;padding:6px 8px;border-radius:7px;border:none;background:${periodMode==='all'?'#182844':'transparent'};color:${periodMode==='all'?'#6ec6ff':'#8899a6'};font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all 0.2s;">♾️ Всё время</button>
+        </div>
+      `;
+
+      // Главная карточка стоимости
+      let mainCostTitle = 'Машина обходится тебе';
+      let mainCostVal = `≈ ${avgMonthCost.toLocaleString()} ₸ / месяц`;
+      let mainCostSub = `≈ ${avgDayCost.toLocaleString()} ₸ в день · за этот месяц: ${curMonthAutoCost.toLocaleString()} ₸`;
+      let mainCostFooter = `Всего расходов на авто: ${allTimeAutoCost.toLocaleString()} ₸`;
+
+      if (isPeriodActive) {
+        mainCostTitle = `Расходы на авто · ${periodName}`;
+        mainCostVal = `${periodAutoCost.toLocaleString()} ₸`;
+        mainCostSub = `Бензин: ${periodFuelCost.toLocaleString()} ₸ · ТО/прочее: ${periodOtherCost.toLocaleString()} ₸`;
+        mainCostFooter = `В среднем за всё время: ≈ ${avgMonthCost.toLocaleString()} ₸ / месяц (≈ ${avgDayCost.toLocaleString()} ₸ / день)`;
+      }
 
       content.innerHTML = `
+        ${filterPills}
+
         <div style="background:#101926;border:1px solid #1a2f4c;border-radius:12px;padding:12px;margin-bottom:10px;text-align:center;">
-          <div style="font-size:11px;color:#8899a6;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px;">Машина обходится тебе</div>
-          <div style="font-size:22px;font-weight:bold;color:#6ec6ff;margin-bottom:2px;">≈ ${avgMonthCost.toLocaleString()} ₸ / месяц</div>
-          <div style="font-size:12px;color:#ffd166;font-weight:600;">≈ ${avgDayCost.toLocaleString()} ₸ в день · за этот месяц: ${curMonthAutoCost.toLocaleString()} ₸</div>
-          <div style="font-size:10px;color:#777;margin-top:4px;">Всего расходов на авто: ${totalAutoCost.toLocaleString()} ₸</div>
+          <div style="font-size:11px;color:#8899a6;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px;">${mainCostTitle}</div>
+          <div style="font-size:22px;font-weight:bold;color:#6ec6ff;margin-bottom:2px;">${mainCostVal}</div>
+          <div style="font-size:12px;color:#ffd166;font-weight:600;">${mainCostSub}</div>
+          <div style="font-size:10px;color:#777;margin-top:4px;">${mainCostFooter}</div>
         </div>
 
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
           <div class="fuel-box" style="margin-bottom:0;">
-            <div class="fuel-label">Полная цена 1 км</div>
+            <div class="fuel-label">Общая цена 1 км</div>
             <div class="fuel-metric" style="color:#ffd166;">${costPerKm ? `${costPerKm} ₸/км` : '—'}</div>
-            <div style="font-size:10px;color:#8899a6;margin-top:2px;">все расходы авто ÷ км</div>
+            <div style="font-size:10px;color:#8899a6;margin-top:2px;">
+              ${periodDistance > 0 ? `все авто-расходы ÷ ${periodDistance.toLocaleString()} км` : (isPerKmFallback ? 'среднее за всё время (все расходы ÷ км)' : 'введите показания одометра')}
+            </div>
           </div>
           <div class="fuel-box" style="margin-bottom:0;">
-            <div class="fuel-label">Только бензин</div>
+            <div class="fuel-label">Только бензин (1 км)</div>
             <div class="fuel-metric" style="color:#6ec6ff;">${fuelCostPerKm ? `${fuelCostPerKm} ₸/км` : '—'}</div>
-            <div style="font-size:10px;color:#8899a6;margin-top:2px;">топливо ÷ км</div>
+            <div style="font-size:10px;color:#8899a6;margin-top:2px;">
+              ${periodDistance > 0 ? `бензин ÷ ${periodDistance.toLocaleString()} км` : (isPerKmFallback ? 'среднее за всё время (топливо ÷ км)' : 'введите показания одометра')}
+            </div>
           </div>
         </div>
 
-        <div style="font-size:11px;font-weight:bold;color:#aaa;margin-bottom:6px;">Структура расходов на авто:</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;background:#0d1522;border:1px solid #1a2a40;border-radius:10px;padding:8px 12px;margin-bottom:10px;font-size:11px;">
+          <span>🚗 Пробег: <b style="color:#fff;">${periodDistance > 0 ? `${periodDistance.toLocaleString()} км` : (allTimeDistance > 0 ? `${allTimeDistance.toLocaleString()} км (всего)` : '—')}</b></span>
+          <span>⛽ Бензин: <b style="color:#6ec6ff;">${periodFuelCost.toLocaleString()} ₸</b></span>
+        </div>
+
+        <div style="font-size:11px;font-weight:bold;color:#aaa;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;">
+          <span>Структура расходов на авто:</span>
+          <span style="font-size:10px;color:#6ec6ff;font-weight:normal;">${periodName}</span>
+        </div>
         ${bList.length > 0 ? `
           <div class="comp-bar-bg" style="display:flex;height:8px;border-radius:4px;overflow:hidden;margin-bottom:8px;">
-            ${bList.map(b => `<div style="height:100%;width:${(b.sum / totalAutoCost * 100).toFixed(1)}%;background:${b.color};" title="${b.label}: ${b.sum.toLocaleString()} ₸"></div>`).join('')}
+            ${bList.map(b => `<div style="height:100%;width:${(b.sum / totalBreakdownSum * 100).toFixed(1)}%;background:${b.color};" title="${b.label}: ${b.sum.toLocaleString()} ₸"></div>`).join('')}
           </div>
           <div style="display:flex;flex-direction:column;gap:5px;">
             ${bList.map(b => {
-              const pct = totalAutoCost > 0 ? Math.round(b.sum / totalAutoCost * 100) : 0;
+              const pct = totalBreakdownSum > 0 ? Math.round(b.sum / totalBreakdownSum * 100) : 0;
               return `
                 <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:3px 0;border-bottom:1px solid #141c29;">
                   <span style="display:flex;align-items:center;gap:6px;">
                     <span style="width:8px;height:8px;border-radius:2px;background:${b.color};display:inline-block;"></span>
-                    <span>${b.label}</span>
+                    <span>${b.label} <small style="color:#666;">(${b.count})</small></span>
                   </span>
                   <span style="font-weight:600;color:#fff;">${b.sum.toLocaleString()} ₸ <small style="color:#777;font-weight:normal;">(${pct}%)</small></span>
                 </div>
               `;
             }).join('')}
           </div>
-        ` : '<div class="muted" style="font-size:11px;">Нет расходов на автомобиль</div>'}
+        ` : '<div class="muted" style="font-size:11px;padding:8px 0;">Нет расходов на автомобиль за выбранный период</div>'}
       `;
     } else {
       // ════ Вкладка: ТОПЛИВО ════
@@ -5337,6 +5543,20 @@
             <div style="font-size:10px;color:#778899;margin-top:3px;">${lastInterval ? (lastInterval.isExact ? (lastInterval.partialCount > 0 ? `+${lastInterval.partialCount} неполн. заправок` : 'от полного до полного') : 'по одометру') : 'нет замеров'}</div>
           </div>
         </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+          <div class="fuel-box" style="margin-bottom:0;">
+            <div class="fuel-label">Цена 1 км бензина</div>
+            <div class="fuel-metric" style="color:#6ec6ff;font-size:16px;">${ownership.fuelCostPerKm ? `${ownership.fuelCostPerKm} ₸/км` : '—'}</div>
+            <div style="font-size:9px;color:#8899a6;margin-top:2px;">топливо ÷ км</div>
+          </div>
+          <div class="fuel-box" style="margin-bottom:0;">
+            <div class="fuel-label">Полная цена 1 км</div>
+            <div class="fuel-metric" style="color:#ffd166;font-size:16px;">${ownership.costPerKm ? `${ownership.costPerKm} ₸/км` : '—'}</div>
+            <div style="font-size:9px;color:#8899a6;margin-top:2px;">все расходы авто ÷ км</div>
+          </div>
+        </div>
+
         <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:6px 2px;color:#aaa;">
           <span>Пробег: <b style="color:#fff;">${totalDistanceAllTime > 0 ? totalDistanceAllTime.toLocaleString() + ' км' : '—'}</b></span>
           <span>Потрачено на бензин: <b style="color:#ff6b6b;">${totalFuelCost.toLocaleString()} ₸</b></span>
@@ -7654,8 +7874,8 @@
 
 <script>
 // ── СИСТЕМА БЕСШОВНОГО АВТОМАТИЧЕСКОГО ОБНОВЛЕНИЯ (БЕЗ ВСПЛЫВАЮЩИХ ОКОН) ─────────
-const APP_CURRENT_VERSION = '5.2.2';
-const APP_CURRENT_BUILD = 2026110601;
+const APP_CURRENT_VERSION = '5.2.3';
+const APP_CURRENT_BUILD = 2026112101;
 
 window._waitingServiceWorker = null;
 window._updateAvailable = false;
