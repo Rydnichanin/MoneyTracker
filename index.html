@@ -665,19 +665,7 @@
         }
       }
 
-      // 2. Если запущен в Android WebView (где Google блокирует OAuth 403 disallowed_useragent):
-      const isWebView = /wv|android.*version\/[0-9]/i.test(navigator.userAgent) || !!window.AndroidBridge;
-      if (isWebView) {
-        try {
-          window.location.href = "intent://rydnichanin.github.io/MoneyTracker/auth.html#Intent;scheme=https;action=android.intent.action.VIEW;end;";
-          setTimeout(() => { if (googleBtn) { googleBtn.disabled = false; googleBtn.style.opacity = '1'; } }, 2500);
-          return;
-        } catch(e) {
-          console.warn("Intent failed:", e);
-        }
-      }
-
-      // 3. В веб-браузерах (десктоп, мобильный Chrome/Safari, PWA):
+      // 2. Прямой вход через Google Auth:
       try {
         const result = await signInWithPopup(auth, provider);
         if (result && result.user) {
@@ -685,11 +673,12 @@
         }
       } catch(e) {
         console.warn("signInWithPopup error:", e);
-        // Если всплывающее окно заблокировано, возникла внутренняя ошибка или не поддерживается окружением — запасной вход через Redirect:
+        // Если всплывающее окно заблокировано, мобильное окружение или внутренняя ошибка — переход на Redirect:
         if (e?.code === 'auth/popup-blocked' ||
             e?.code === 'auth/cancelled-popup-request' ||
             e?.code === 'auth/internal-error' ||
-            e?.code === 'auth/operation-not-supported-in-this-environment') {
+            e?.code === 'auth/operation-not-supported-in-this-environment' ||
+            /mobile|android|iphone|ipad/i.test(navigator.userAgent)) {
           try {
             sessionStorage.setItem("fbRedirectPending", "1");
             await signInWithRedirect(auth, provider);

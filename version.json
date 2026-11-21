@@ -1,8 +1,8 @@
 {
-  "version": "5.2.5",
-  "build": 2026112103,
-  "updatedAt": "2026-11-21T08:04:36.161Z",
+  "version": "5.2.6",
+  "build": 2026112104,
+  "updatedAt": "2026-11-21T08:13:18.493Z",
   "source": "https://github.com/rydnichanin/MoneyTracker",
-  "title": "Учёт Курьера Pro v5.2.5",
-  "changelog": "Улучшены подсказки авторизации: понятное сообщение при неверном пароле для Google-аккаунтов, автоматический fallback на Redirect при внутренних ошибках popup"
+  "title": "Учёт Курьера Pro v5.2.6",
+  "changelog": "Удален вызов intent://, вызывавший ошибку ERR_UNKNOWN_URL_SCHEME на мобильных устройствах, включен прямой Firebase Google Auth"
 }
