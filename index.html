@@ -453,6 +453,7 @@
 
     const auth = getAuth(app);
     const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: "select_account" });
 
     // ── Toast уведомления (нужны до старта приложения) ────────────
     window.showToast = (msg, type = 'success') => {
@@ -665,7 +666,7 @@
         }
       }
 
-      // 2. Прямой вход через Google Auth:
+      // 2. Прямой вход через Google Auth Popup (без перехода на пустой экран):
       try {
         const result = await signInWithPopup(auth, provider);
         if (result && result.user) {
@@ -673,20 +674,9 @@
         }
       } catch(e) {
         console.warn("signInWithPopup error:", e);
-        // Если всплывающее окно заблокировано, мобильное окружение или внутренняя ошибка — переход на Redirect:
-        if (e?.code === 'auth/popup-blocked' ||
-            e?.code === 'auth/cancelled-popup-request' ||
-            e?.code === 'auth/internal-error' ||
-            e?.code === 'auth/operation-not-supported-in-this-environment' ||
-            /mobile|android|iphone|ipad/i.test(navigator.userAgent)) {
-          try {
-            sessionStorage.setItem("fbRedirectPending", "1");
-            await signInWithRedirect(auth, provider);
-            return;
-          } catch(re) {
-            showError(getAuthErrorMessage(re));
-          }
-        } else if (e?.code !== 'auth/popup-closed-by-user') {
+        if (e?.code === 'auth/popup-blocked') {
+          showError('Всплывающее окно заблокировано браузером. Разрешите всплывающие окна в строке браузера или войдите по Email и паролю.');
+        } else if (e?.code !== 'auth/popup-closed-by-user' && e?.code !== 'auth/cancelled-popup-request') {
           showError(getAuthErrorMessage(e));
         }
       } finally {

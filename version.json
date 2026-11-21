@@ -1,8 +1,8 @@
 {
-  "version": "5.2.6",
-  "build": 2026112104,
-  "updatedAt": "2026-11-21T08:13:18.493Z",
+  "version": "5.2.7",
+  "build": 2026112105,
+  "updatedAt": "2026-11-21T08:24:00.200Z",
   "source": "https://github.com/rydnichanin/MoneyTracker",
-  "title": "Учёт Курьера Pro v5.2.6",
-  "changelog": "Удален вызов intent://, вызывавший ошибку ERR_UNKNOWN_URL_SCHEME на мобильных устройствах, включен прямой Firebase Google Auth"
+  "title": "Учёт Курьера Pro v5.2.7",
+  "changelog": "Полностью исключен signInWithRedirect, приводивший к зависанию на белом экране handler.js на мобильных устройствах; вход через прямой чистый popup"
 }
