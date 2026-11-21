@@ -5138,7 +5138,10 @@
       const isIns = text.includes('страхов') || text.includes('техосмотр') || text.includes('налог') || text.includes('огпо') || text.includes('каско');
       const isFine = text.includes('штраф');
       const hasOdo = Boolean(t.odometer && Number(t.odometer) > 0);
-      const isCarGeneral = cat.includes('авто') || cat.includes('машин') || sub.includes('авто') || sub.includes('машин') || hasOdo;
+      // Используем общий классификатор приложения: он также учитывает записи ТО,
+      // ремонта, страховки и других авторасходов без слова «авто» в категории.
+      const isCarGeneral = window.isAutoTransaction ? window.isAutoTransaction(t) :
+        (cat.includes('авто') || cat.includes('машин') || sub.includes('авто') || sub.includes('машин') || hasOdo);
 
       if (!isFuel && !isOil && !isRepair && !isWash && !isIns && !isFine && !isCarGeneral && !isMaint) return;
 
@@ -5186,7 +5189,11 @@
     const avgDayCost = Math.round(avgMonthCost / 30);
 
     // 1. Дистанция за всё время
-    let allTimeDistance = (fuelStats && fuelStats.totalDistanceAllTime > 0) ? fuelStats.totalDistanceAllTime : 0;
+    // Стоимость владения делим на пробег по всем авто-записям с одометром,
+    // включая ТО и ремонт. Топливные интервалы отдельно остаются источником
+    // пробега только в режиме «поездка», где одометр хранит длину поездки.
+    let allTimeDistance = fuelStats && fuelStats.odoMode === 'trip' && fuelStats.totalDistanceAllTime > 0
+      ? fuelStats.totalDistanceAllTime : 0;
     if (allTimeDistance === 0 && allOdoEntries.length >= 2) {
       const minOdo = allOdoEntries[0].odo;
       const maxOdo = allOdoEntries[allOdoEntries.length - 1].odo;
