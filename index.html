@@ -544,7 +544,7 @@
       if (!e) return '';
       const code = e.code || '';
       const msgs = {
-        'auth/invalid-login-credentials': 'Неверный email или пароль. Если вы регистрировались через Google — нажмите кнопку «Войти через Google» ниже (или «Забыли пароль?», чтобы установить пароль).',
+        'auth/invalid-login-credentials': 'Неверный email или пароль. Если вы регистрировались через Google — нажмите кнопку «Войти через Google» ниже (или «🔑 Забыли или ещё не задавали пароль? Нажмите сюда», чтобы установить пароль).',
         'auth/invalid-credential': 'Неверный email или пароль. Если вы регистрировались через Google — нажмите кнопку «Войти через Google» ниже (или «Забыли пароль?», чтобы установить пароль).',
         'auth/user-not-found': 'Пользователь не найден. Перейдите на вкладку «Регистрация» или войдите через Google',
         'auth/wrong-password': 'Неверный пароль. Если аккаунт создан через Google — нажмите «Войти через Google» ниже.',
@@ -833,7 +833,7 @@
       try {
         await sendPasswordResetEmail(auth, email);
         showError('');
-        window.showToast('✅ Письмо для сброса пароля отправлено на ' + email);
+        window.showToast('✅ Письмо отправлено на ' + email + '! Откройте ссылку в письме и придумайте пароль.');
       } catch(e) {
         showError(getAuthErrorMessage(e));
       }
@@ -868,7 +868,7 @@
     </div>
 
     <form onsubmit="event.preventDefault(); submitEmailAuth();" style="width:100%;margin:0;padding:0;">
-      <input id="loginEmail" type="email" placeholder="Email (напр. user@mail.com)" autocomplete="email" required
+      <input id="loginEmail" type="email" placeholder="Email (напр. user@mail.com)" value="seregabest09@gmail.com" autocomplete="email" required
         style="width:100%;padding:14px;border-radius:12px;border:1px solid #222;background:#111;color:#fff;font-size:15px;margin-bottom:10px;outline:none;box-sizing:border-box;" />
 
       <div style="position:relative;margin-bottom:6px;">

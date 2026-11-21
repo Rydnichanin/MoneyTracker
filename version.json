@@ -1,8 +1,8 @@
 {
-  "version": "5.2.7",
-  "build": 2026112105,
-  "updatedAt": "2026-11-21T08:24:00.200Z",
+  "version": "5.2.8",
+  "build": 2026112106,
+  "updatedAt": "2026-11-21T08:41:53.783Z",
   "source": "https://github.com/rydnichanin/MoneyTracker",
-  "title": "Учёт Курьера Pro v5.2.7",
-  "changelog": "Полностью исключен signInWithRedirect, приводивший к зависанию на белом экране handler.js на мобильных устройствах; вход через прямой чистый popup"
+  "title": "Учёт Курьера Pro v5.2.8",
+  "changelog": "Предустановлен email seregabest09@gmail.com для быстрого входа без зависаний, кнопка быстрой установки пароля"
 }
