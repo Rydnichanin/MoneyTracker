@@ -2,7 +2,7 @@
 // Кэшируем оболочку приложения и статику.
 // Firebase/Firestore запросы не кэшируем — это живые данные.
 
-const CACHE_NAME = 'courier-app-v13';
+const CACHE_NAME = 'courier-app-v14';
 const APP_SHELL = [
   './',
   './index.html',

@@ -543,10 +543,10 @@
       if (!e) return '';
       const code = e.code || '';
       const msgs = {
-        'auth/invalid-login-credentials': 'Неверный email или пароль',
-        'auth/invalid-credential': 'Неверный email или пароль',
+        'auth/invalid-login-credentials': 'Неверный email или пароль. Если вы регистрировались через Google — нажмите кнопку «Войти через Google» ниже (или «Забыли пароль?», чтобы установить пароль).',
+        'auth/invalid-credential': 'Неверный email или пароль. Если вы регистрировались через Google — нажмите кнопку «Войти через Google» ниже (или «Забыли пароль?», чтобы установить пароль).',
         'auth/user-not-found': 'Пользователь не найден. Перейдите на вкладку «Регистрация» или войдите через Google',
-        'auth/wrong-password': 'Неверный пароль',
+        'auth/wrong-password': 'Неверный пароль. Если аккаунт создан через Google — нажмите «Войти через Google» ниже.',
         'auth/email-already-in-use': 'Этот email уже зарегистрирован. Перейдите на вкладку «Вход» или восстановите пароль',
         'auth/invalid-email': 'Некорректный формат email адреса',
         'auth/weak-password': 'Пароль слишком простой (нужно минимум 6 символов)',
@@ -685,9 +685,10 @@
         }
       } catch(e) {
         console.warn("signInWithPopup error:", e);
-        // Если всплывающее окно заблокировано или не поддерживается окружением — запасной вход через Redirect:
+        // Если всплывающее окно заблокировано, возникла внутренняя ошибка или не поддерживается окружением — запасной вход через Redirect:
         if (e?.code === 'auth/popup-blocked' ||
             e?.code === 'auth/cancelled-popup-request' ||
+            e?.code === 'auth/internal-error' ||
             e?.code === 'auth/operation-not-supported-in-this-environment') {
           try {
             sessionStorage.setItem("fbRedirectPending", "1");
