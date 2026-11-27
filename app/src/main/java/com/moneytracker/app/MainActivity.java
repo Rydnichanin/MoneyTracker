@@ -413,6 +413,7 @@ public class MainActivity extends Activity {
                     .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
                     .setDestinationInExternalFilesDir(this, Environment.DIRECTORY_DOWNLOADS, "MoneyTracker-update.apk");
             long id = manager.enqueue(request);
+            apkInstallStarted = false;
             getSharedPreferences(UPDATE_PREFS, MODE_PRIVATE).edit().putLong(UPDATE_DOWNLOAD_ID, id).apply();
             Toast.makeText(this, "Скачиваю обновление в фоне. Ход загрузки виден в уведомлениях.", Toast.LENGTH_LONG).show();
         } catch (Exception e) {
@@ -479,8 +480,8 @@ public class MainActivity extends Activity {
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
         try {
             apkInstallStarted = true;
-            getSharedPreferences(UPDATE_PREFS, MODE_PRIVATE).edit().remove(UPDATE_DOWNLOAD_ID).apply();
             startActivity(installIntent);
+            getSharedPreferences(UPDATE_PREFS, MODE_PRIVATE).edit().remove(UPDATE_DOWNLOAD_ID).apply();
         } catch (Exception e) {
             apkInstallStarted = false;
             Toast.makeText(this, "Android не смог открыть установщик APK", Toast.LENGTH_LONG).show();
