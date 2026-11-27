@@ -72,14 +72,23 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           set -euo pipefail
+          export LANG=C
           echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/moneytracker-release.pfx"
-          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/moneytracker-release.pfx" >> "$GITHUB_ENV"
-
-      - name: Verify signing key alias
-        env:
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-        run: keytool -list -keystore "$RUNNER_TEMP/moneytracker-release.pfx" -storetype PKCS12 -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS"
+          source_alias="$(keytool -list -v -keystore "$RUNNER_TEMP/moneytracker-release.pfx" -storetype PKCS12 -storepass "$ANDROID_KEYSTORE_PASSWORD" | awk -F': ' '/^Alias name: / {print $2; exit}')"
+          if [ -z "$source_alias" ]; then
+            echo 'Could not find a private-key alias in the PKCS12 keystore.' >&2
+            exit 1
+          fi
+          keytool -importkeystore -noprompt \
+            -srckeystore "$RUNNER_TEMP/moneytracker-release.pfx" \
+            -srcstoretype PKCS12 -srcstorepass "$ANDROID_KEYSTORE_PASSWORD" \
+            -srcalias "$source_alias" -srckeypass "$ANDROID_KEY_PASSWORD" \
+            -destkeystore "$RUNNER_TEMP/moneytracker-release.jks" \
+            -deststoretype JKS -deststorepass "$ANDROID_KEYSTORE_PASSWORD" \
+            -destalias "$ANDROID_KEY_ALIAS" -destkeypass "$ANDROID_KEY_PASSWORD"
+          keytool -list -keystore "$RUNNER_TEMP/moneytracker-release.jks" -storetype JKS \
+            -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS"
+          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/moneytracker-release.jks" >> "$GITHUB_ENV"
 
       - name: Build signed release APK
         env:

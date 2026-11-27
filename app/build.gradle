@@ -10,15 +10,15 @@ android {
         applicationId "com.moneytracker.app"
         minSdk 26
         targetSdk 34
-        versionCode 3
-        versionName "1.2"
+        versionCode 4
+        versionName "1.2.1"
     }
 
     signingConfigs {
         release {
             def keystorePath = System.getenv('ANDROID_KEYSTORE_PATH')
             if (keystorePath) storeFile file(keystorePath)
-            storeType 'PKCS12'
+            storeType 'JKS'
             storePassword System.getenv('ANDROID_KEYSTORE_PASSWORD') ?: ''
             keyAlias System.getenv('ANDROID_KEY_ALIAS') ?: ''
             keyPassword System.getenv('ANDROID_KEY_PASSWORD') ?: ''
