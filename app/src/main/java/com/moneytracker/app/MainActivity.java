@@ -2,6 +2,7 @@ package com.moneytracker.app;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.DownloadManager;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -10,11 +11,15 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.database.Cursor;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.net.Uri;
+import android.os.Environment;
+import android.provider.Settings;
+import android.widget.Toast;
 import android.webkit.GeolocationPermissions;
 import android.webkit.JavascriptInterface;
 import android.webkit.JsResult;
@@ -27,9 +32,15 @@ import androidx.core.app.NotificationCompat;
 public class MainActivity extends Activity {
 
     private static final int PERMISSION_REQUEST_CODE = 100;
+    private static final int INSTALL_PERMISSION_REQUEST_CODE = 102;
+    private static final String UPDATE_PREFS = "app_update";
+    private static final String UPDATE_DOWNLOAD_ID = "download_id";
     private static final String WEB_ORIGIN = "https://rydnichanin.github.io";
     private WebView webView;
     private boolean receiverRegistered;
+    private boolean updateReceiverRegistered;
+    private boolean apkInstallStarted;
+    private String pendingUpdateUrl;
     private static final String REMINDER_CHANNEL_ID = "moneytracker_reminders";
 
     private final BroadcastReceiver gpsReceiver = new BroadcastReceiver() {
@@ -69,6 +80,16 @@ public class MainActivity extends Activity {
         }
     };
 
+    private final BroadcastReceiver updateDownloadReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (intent == null || !DownloadManager.ACTION_DOWNLOAD_COMPLETE.equals(intent.getAction())) return;
+            long downloadId = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L);
+            long expectedId = getSharedPreferences(UPDATE_PREFS, MODE_PRIVATE).getLong(UPDATE_DOWNLOAD_ID, -1L);
+            if (downloadId == expectedId) handleUpdateDownloadComplete(downloadId);
+        }
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -76,6 +97,7 @@ public class MainActivity extends Activity {
 
         webView = findViewById(R.id.webview);
         configureWebView();
+        registerUpdateDownloadReceiver();
         handleAuthIntent(getIntent());
 
         webView.loadUrl("https://rydnichanin.github.io/MoneyTracker/index.html");
@@ -170,6 +192,8 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        registerUpdateDownloadReceiver();
+        recoverCompletedUpdateDownload();
         if (!receiverRegistered) {
             registerReceiver(gpsReceiver, new IntentFilter("GPS_UPDATE"), Context.RECEIVER_NOT_EXPORTED);
             registerReceiver(notificationReceiver, new IntentFilter("com.moneytracker.NOTIFICATION"), Context.RECEIVER_NOT_EXPORTED);
@@ -189,6 +213,10 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        if (updateReceiverRegistered) {
+            unregisterReceiver(updateDownloadReceiver);
+            updateReceiverRegistered = false;
+        }
         if (webView != null) {
             webView.loadUrl("about:blank");
             webView.stopLoading();
@@ -200,6 +228,11 @@ public class MainActivity extends Activity {
     }
 
     public class WebAppInterface {
+        @JavascriptInterface
+        public void downloadAndInstallUpdate(String url) {
+            runOnUiThread(() -> beginUpdateDownload(url));
+        }
+
         @JavascriptInterface
         public void startTrip() {
             Intent intent = new Intent(MainActivity.this, LocationService.class);
@@ -316,6 +349,142 @@ public class MainActivity extends Activity {
                         .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                         .build());
             });
+        }
+    }
+
+    private void beginUpdateDownload(String url) {
+        Uri uri = Uri.parse(url == null ? "" : url);
+        String path = uri.getPath() == null ? "" : uri.getPath();
+        if (!"https".equalsIgnoreCase(uri.getScheme())
+                || !"github.com".equalsIgnoreCase(uri.getHost())
+                || !path.toLowerCase(java.util.Locale.ROOT).contains("/moneytracker/releases/")
+                || !path.toLowerCase(java.util.Locale.ROOT).endsWith(".apk")) {
+            Toast.makeText(this, "Не удалось проверить адрес обновления", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        long existingId = getSharedPreferences(UPDATE_PREFS, MODE_PRIVATE).getLong(UPDATE_DOWNLOAD_ID, -1L);
+        if (existingId > 0 && isDownloadActive(existingId)) {
+            Toast.makeText(this, "Обновление уже загружается", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !getPackageManager().canRequestPackageInstalls()) {
+            pendingUpdateUrl = url;
+            Intent settingsIntent = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                    Uri.parse("package:" + getPackageName()));
+            startActivityForResult(settingsIntent, INSTALL_PERMISSION_REQUEST_CODE);
+            Toast.makeText(this, "Разрешите установку обновлений для Учёт Курьера Pro", Toast.LENGTH_LONG).show();
+            return;
+        }
+        enqueueUpdateDownload(url);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == INSTALL_PERMISSION_REQUEST_CODE) {
+            String url = pendingUpdateUrl;
+            pendingUpdateUrl = null;
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O || getPackageManager().canRequestPackageInstalls()) {
+                if (url != null) enqueueUpdateDownload(url);
+            } else {
+                Toast.makeText(this, "Без этого разрешения Android не сможет установить APK", Toast.LENGTH_LONG).show();
+            }
+        }
+    }
+
+    private void enqueueUpdateDownload(String url) {
+        DownloadManager manager = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+        if (manager == null) {
+            Toast.makeText(this, "Загрузчик Android недоступен", Toast.LENGTH_LONG).show();
+            return;
+        }
+        try {
+            java.io.File downloadDir = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
+            if (downloadDir != null) {
+                java.io.File previousApk = new java.io.File(downloadDir, "MoneyTracker-update.apk");
+                if (previousApk.exists()) previousApk.delete();
+            }
+            DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url))
+                    .setTitle("Обновление Учёт Курьера Pro")
+                    .setDescription("Скачиваем обновление приложения")
+                    .setMimeType("application/vnd.android.package-archive")
+                    .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                    .setDestinationInExternalFilesDir(this, Environment.DIRECTORY_DOWNLOADS, "MoneyTracker-update.apk");
+            long id = manager.enqueue(request);
+            getSharedPreferences(UPDATE_PREFS, MODE_PRIVATE).edit().putLong(UPDATE_DOWNLOAD_ID, id).apply();
+            Toast.makeText(this, "Скачиваю обновление в фоне. Ход загрузки виден в уведомлениях.", Toast.LENGTH_LONG).show();
+        } catch (Exception e) {
+            Toast.makeText(this, "Не удалось начать загрузку обновления", Toast.LENGTH_LONG).show();
+            e.printStackTrace();
+        }
+    }
+
+    private boolean isDownloadActive(long id) {
+        DownloadManager manager = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+        if (manager == null) return false;
+        try (Cursor cursor = manager.query(new DownloadManager.Query().setFilterById(id))) {
+            if (cursor == null || !cursor.moveToFirst()) return false;
+            int statusIndex = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS);
+            if (statusIndex < 0) return false;
+            int status = cursor.getInt(statusIndex);
+            return status == DownloadManager.STATUS_PENDING || status == DownloadManager.STATUS_RUNNING
+                    || status == DownloadManager.STATUS_PAUSED;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private void recoverCompletedUpdateDownload() {
+        long id = getSharedPreferences(UPDATE_PREFS, MODE_PRIVATE).getLong(UPDATE_DOWNLOAD_ID, -1L);
+        if (id > 0 && !isDownloadActive(id)) handleUpdateDownloadComplete(id);
+    }
+
+    private void registerUpdateDownloadReceiver() {
+        if (updateReceiverRegistered) return;
+        IntentFilter filter = new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(updateDownloadReceiver, filter, Context.RECEIVER_EXPORTED);
+        } else {
+            registerReceiver(updateDownloadReceiver, filter);
+        }
+        updateReceiverRegistered = true;
+    }
+
+    private void handleUpdateDownloadComplete(long downloadId) {
+        DownloadManager manager = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+        if (manager == null) return;
+        try (Cursor cursor = manager.query(new DownloadManager.Query().setFilterById(downloadId))) {
+            if (cursor == null || !cursor.moveToFirst()) return;
+            int statusIndex = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS);
+            if (statusIndex < 0 || cursor.getInt(statusIndex) != DownloadManager.STATUS_SUCCESSFUL) {
+                getSharedPreferences(UPDATE_PREFS, MODE_PRIVATE).edit().remove(UPDATE_DOWNLOAD_ID).apply();
+                Toast.makeText(this, "Не удалось скачать APK. Проверьте интернет и попробуйте снова.", Toast.LENGTH_LONG).show();
+                return;
+            }
+        } catch (Exception e) {
+            Toast.makeText(this, "Не удалось проверить загруженный APK", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        if (apkInstallStarted) return;
+        Uri apkUri = manager.getUriForDownloadedFile(downloadId);
+        if (apkUri == null) {
+            Toast.makeText(this, "Загруженный APK не найден", Toast.LENGTH_LONG).show();
+            return;
+        }
+        Intent installIntent = new Intent(Intent.ACTION_VIEW)
+                .setDataAndType(apkUri, "application/vnd.android.package-archive")
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        try {
+            apkInstallStarted = true;
+            getSharedPreferences(UPDATE_PREFS, MODE_PRIVATE).edit().remove(UPDATE_DOWNLOAD_ID).apply();
+            startActivity(installIntent);
+        } catch (Exception e) {
+            apkInstallStarted = false;
+            Toast.makeText(this, "Android не смог открыть установщик APK", Toast.LENGTH_LONG).show();
+            e.printStackTrace();
         }
     }
 

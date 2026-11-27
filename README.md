@@ -57,7 +57,7 @@ Release APK подписываются постоянным ключом. Androi
 1. Один раз запустите `powershell -ExecutionPolicy Bypass -File scripts/create-android-signing-key.ps1`. Скрипт создаст keystore `%USERPROFILE%\.android\moneytracker-release.pfx`, сохранит пароль в соседний файл и скопирует Base64 keystore в буфер обмена. Сохраните резервную копию обоих файлов в надёжном месте.
 2. В настройках GitHub-репозитория → Settings → Secrets and variables → Actions добавьте `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` со значением `moneytracker-release` и `ANDROID_KEY_PASSWORD`.
 3. Для нового Android-релиза увеличьте `versionCode` и `versionName` в `app/build.gradle`, отправьте изменения в `main` и создайте тег с таким же именем, например `android-v1.2`: `git tag android-v1.2; git push origin android-v1.2`.
-4. `.github/workflows/android-release.yml` соберёт подписанный APK, опубликует его как `MoneyTracker.apk`, обновит `version.json` и запустит деплой сайта. Приложение заметит новую версию и предложит скачать её. Установку подтвердит Android.
+4. `.github/workflows/android-release.yml` соберёт подписанный APK, опубликует его как `MoneyTracker.apk`, обновит `version.json` и запустит деплой сайта. Начиная с Android 1.2.3 приложение скачивает APK через Android DownloadManager в фоне и открывает системное подтверждение установки. Android всё равно требует подтвердить установку; после неё установщик предлагает открыть приложение. Первое обновление до 1.2.3 со старой версии ещё скачивается прежним способом, потому что native downloader появляется только в этой версии.
 
 Обычный workflow сборки на коммитах и pull request собирает только debug APK для проверки. Он не годится для обновления установленного приложения.
 

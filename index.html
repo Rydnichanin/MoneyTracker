@@ -1024,10 +1024,10 @@
       <div class="card" style="border-color:#20324a;">
         <div class="card-title" style="color:#6ec6ff;">📲 Версия приложения</div>
         <div style="font-size:12px;color:#9aa7b5;line-height:1.5;margin-bottom:10px;">
-          Проверяйте новые версии и скачивайте APK со страницы релизов.
+          Обновление загрузится в фоне и откроет системное подтверждение установки.
         </div>
         <button type="button" class="btn-main" style="background:#102238;color:#6ec6ff;border:1px solid #24486b;padding:10px;" onclick="checkForAppUpdates(true, true, true)">Проверить обновления</button>
-        <button type="button" class="btn-main" style="background:#151b23;color:#fff;border:1px solid #303947;padding:10px;margin-top:7px;" onclick="downloadLatestApk()">Скачать APK</button>
+        <button type="button" class="btn-main" style="background:#151b23;color:#fff;border:1px solid #303947;padding:10px;margin-top:7px;" onclick="downloadLatestApk()">Обновить приложение</button>
       </div>
       <div id="settingsList"></div>
     </div>
@@ -7925,9 +7925,11 @@ const badgeEl = document.getElementById('appVersionBadge');
 if (badgeEl) badgeEl.textContent = 'v' + APP_CURRENT_VERSION;
 
 window.downloadLatestApk = () => {
-  const releaseUrl = window._androidReleaseUrl || 'https://github.com/Rydnichanin/MoneyTracker/releases/latest';
-  window.showToast('Открываю страницу последнего релиза GitHub', 'info');
-  if (window.AndroidBridge && typeof window.AndroidBridge.openBrowser === 'function') {
+  const releaseUrl = window._androidReleaseUrl || 'https://github.com/Rydnichanin/MoneyTracker/releases/latest/download/MoneyTracker.apk';
+  if (window.AndroidBridge && typeof window.AndroidBridge.downloadAndInstallUpdate === 'function') {
+    window.AndroidBridge.downloadAndInstallUpdate(releaseUrl);
+  } else if (window.AndroidBridge && typeof window.AndroidBridge.openBrowser === 'function') {
+    window.showToast('Открываю загрузку обновления в браузере', 'info');
     window.AndroidBridge.openBrowser(releaseUrl);
   } else {
     const a = document.createElement('a');
