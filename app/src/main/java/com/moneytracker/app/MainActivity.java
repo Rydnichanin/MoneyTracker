@@ -12,6 +12,8 @@ import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.net.Uri;
 import android.webkit.GeolocationPermissions;
 import android.webkit.JavascriptInterface;
@@ -127,6 +129,8 @@ public class MainActivity extends Activity {
     }
 
     private String pendingAuthUrl = null;
+    private boolean authDeliveryInFlight;
+    private final Handler authHandler = new Handler(Looper.getMainLooper());
 
     private void handleAuthIntent(Intent intent) {
         if (intent == null) return;
@@ -138,11 +142,21 @@ public class MainActivity extends Activity {
     }
 
     private void deliverPendingAuth() {
-        if (pendingAuthUrl != null && webView != null) {
+        if (pendingAuthUrl != null && webView != null && !authDeliveryInFlight) {
+            authDeliveryInFlight = true;
             final String urlToDeliver = pendingAuthUrl;
             webView.post(() -> webView.evaluateJavascript(
-                    "if (typeof handleAndroidAuth === 'function') { handleAndroidAuth(" +
-                            org.json.JSONObject.quote(urlToDeliver) + "); }", null));
+                    "(function(){if(typeof window.handleAndroidAuth!=='function')return false;window.handleAndroidAuth(" +
+                            org.json.JSONObject.quote(urlToDeliver) + ");return true;})()",
+                    result -> {
+                        authDeliveryInFlight = false;
+                        if ("true".equals(result)) {
+                            pendingAuthUrl = null;
+                        } else if (pendingAuthUrl != null) {
+                            // Firebase modules may still be loading when Android returns from Chrome.
+                            authHandler.postDelayed(this::deliverPendingAuth, 300);
+                        }
+                    }));
         }
     }
 

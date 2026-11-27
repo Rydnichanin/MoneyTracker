@@ -74,12 +74,18 @@
         if (cred && cred.idToken) idToken = cred.idToken;
       } catch(e) {}
 
+      if (!idToken && resultOrUser?._tokenResponse?.oauthIdToken) {
+        idToken = resultOrUser._tokenResponse.oauthIdToken;
+      }
+
       if (!idToken && resultOrUser?._tokenResponse?.idToken) {
         idToken = resultOrUser._tokenResponse.idToken;
       }
-
-      if (!idToken && user && typeof user.getIdToken === 'function') {
-        idToken = await user.getIdToken();
+      if (!idToken) {
+        status.textContent = 'Google подтвердил вход, но не вернул токен для приложения. Закройте страницу и попробуйте войти ещё раз.';
+        status.className = 'status error';
+        btn.style.display = 'block';
+        return;
       }
 
       const name = encodeURIComponent(user?.displayName || "");
@@ -109,8 +115,11 @@
         appLink.style.display = "inline-block";
       }
 
-      const isApk = /AndroidBridge/i.test(navigator.userAgent) || !!window.AndroidBridge;
-      if (isApk) {
+      // The OAuth page runs in Chrome, outside the WebView, so AndroidBridge is
+      // not present here. The explicit source marker survives the browser handoff.
+      const returnToAndroidApp = new URLSearchParams(location.search).get('source') === 'android-app';
+      if (returnToAndroidApp) {
+        status.innerHTML = "✅ Вход выполнен!<br><span style='font-size:12px;color:#aaa;'>Возвращаемся в приложение...</span>";
         window.location.href = deepLink;
       } else {
         // В обычном веб-браузере возвращаемся в основное приложение
@@ -121,7 +130,7 @@
       }
 
       setTimeout(() => {
-        if (isApk) {
+        if (returnToAndroidApp) {
           status.innerHTML = "✅ Вход подтверждён!<br><span style='font-size:12px;color:#aaa;'>Если приложение не открылось автоматически, нажмите кнопку ниже:</span>";
         }
       }, 2000);

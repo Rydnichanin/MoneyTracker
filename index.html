@@ -521,7 +521,8 @@
           // Загружаем адреса и настройки параллельно для ускорения старта
           Promise.all([
             window.loadCustomAddressesFromFirebase ? window.loadCustomAddressesFromFirebase() : Promise.resolve(),
-            window.loadUserDataFromFirebase ? window.loadUserDataFromFirebase() : Promise.resolve()
+            window.loadUserDataFromFirebase ? window.loadUserDataFromFirebase() : Promise.resolve(),
+            window.loadRecurringBillsFromFirebase ? window.loadRecurringBillsFromFirebase() : Promise.resolve()
           ]).catch(e => console.warn('Параллельная загрузка настроек:', e.message));
         });
       }
@@ -658,7 +659,7 @@
       // 1. Если запущено внутри APK и доступен мост openBrowser:
       if (window.AndroidBridge && typeof window.AndroidBridge.openBrowser === 'function') {
         try {
-          window.AndroidBridge.openBrowser("https://rydnichanin.github.io/MoneyTracker/auth.html");
+          window.AndroidBridge.openBrowser("https://rydnichanin.github.io/MoneyTracker/auth.html?source=android-app");
           setTimeout(() => { if (googleBtn) { googleBtn.disabled = false; googleBtn.style.opacity = '1'; } }, 2000);
           return;
         } catch(e) {
@@ -734,7 +735,7 @@
 
     const getEmailPass = () => ({
       email: (document.getElementById('loginEmail')?.value || '').trim().toLowerCase(),
-      pass:  (document.getElementById('loginPassword')?.value || '').trim()
+      pass:  document.getElementById('loginPassword')?.value || ''
     });
 
     const _loginGuard = {
@@ -781,7 +782,19 @@
       showError('');
 
       try {
-        const userCred = await signInWithEmailAndPassword(auth, email, pass);
+        // Старые версии формы убирали пробелы по краям пароля. Сначала
+        // сохраняем эту совместимость, затем пробуем пароль буквально.
+        const passwordOptions = pass.trim() === pass ? [pass] : [pass.trim(), pass];
+        let userCred = null;
+        for (let i = 0; i < passwordOptions.length; i++) {
+          try {
+            userCred = await signInWithEmailAndPassword(auth, email, passwordOptions[i]);
+            break;
+          } catch(e) {
+            const retryable = ['auth/invalid-credential', 'auth/invalid-login-credentials', 'auth/wrong-password'].includes(e?.code);
+            if (!retryable || i === passwordOptions.length - 1) throw e;
+          }
+        }
         _loginGuard.success();
         if (userCred && userCred.user) {
           startApp(userCred.user);
@@ -800,7 +813,8 @@
     };
 
     window.emailRegister = async () => {
-      const { email, pass } = getEmailPass();
+      const { email, pass: rawPass } = getEmailPass();
+      const pass = rawPass.trim();
       if (!email) return showError('Введите email для регистрации');
       if (!email.includes('@')) return showError('Введите корректный email (напр. user@mail.com)');
       if (!pass) return showError('Введите пароль');
@@ -1633,13 +1647,13 @@
         if (data && data.customAddresses) {
           const arr = JSON.parse(data.customAddresses);
           window._customAddrsCache = arr;
-          localStorage.setItem('waCustomAddrs', JSON.stringify(arr));
+          localStorage.setItem(userCacheKey('waCustomAddrs'), JSON.stringify(arr));
           console.log('[Адреса] Из Firebase:', arr.length, 'адресов');
           return arr;
         } else {
           console.log('[Адреса] В Firebase нет данных (поле customAddresses отсутствует)');
           // Если в Firebase пусто но в localStorage есть — сохраняем в Firebase
-          const local = JSON.parse(localStorage.getItem('waCustomAddrs') || '[]');
+          const local = JSON.parse(localStorage.getItem(userCacheKey('waCustomAddrs')) || '[]');
           if (local.length > 0) {
             console.log('[Адреса] Синхронизируем localStorage→Firebase:', local.length, 'адресов');
             await saveCustomAddresses(local);
@@ -1650,7 +1664,7 @@
     } catch(e) { console.warn('Адреса load Firebase error:', e.message); }
     // Fallback: localStorage
     try {
-      const arr = JSON.parse(localStorage.getItem('waCustomAddrs') || '[]');
+      const arr = JSON.parse(localStorage.getItem(userCacheKey('waCustomAddrs')) || '[]');
       window._customAddrsCache = arr;
       return arr;
     } catch(e) { return []; }
@@ -1659,12 +1673,12 @@
   // Синхронная версия — только из кэша/localStorage (для мест где нет await)
   function loadCustomAddresses() {
     if (window._customAddrsCache !== null) return window._customAddrsCache;
-    try { return JSON.parse(localStorage.getItem('waCustomAddrs') || '[]'); } catch(e) { return []; }
+    try { return JSON.parse(localStorage.getItem(userCacheKey('waCustomAddrs')) || '[]'); } catch(e) { return []; }
   }
 
   async function saveCustomAddresses(arr) {
     window._customAddrsCache = arr;
-    localStorage.setItem('waCustomAddrs', JSON.stringify(arr));
+    localStorage.setItem(userCacheKey('waCustomAddrs'), JSON.stringify(arr));
     try {
       const { fbDB, fbMethods, fbUser } = window;
       if (fbUser && fbUser.uid && fbDB) {
@@ -1719,35 +1733,35 @@
                   }, { merge: true });
                 } catch(e) {}
               }
-              localStorage.setItem('budget_categories_v1', JSON.stringify(parsed));
+              localStorage.setItem(userCacheKey('budget_categories_v1'), JSON.stringify(parsed));
               if (window.renderBudget) window.renderBudget();
             }
           } catch(e) {}
         }
         if (data.budgetSource) {
-          localStorage.setItem('budget_source_v1', data.budgetSource);
+          localStorage.setItem(userCacheKey('budget_source_v1'), data.budgetSource);
         }
         if (data.budgetCustomAmount !== undefined) {
-          localStorage.setItem('budget_custom_amount_v1', String(data.budgetCustomAmount));
+          localStorage.setItem(userCacheKey('budget_custom_amount_v1'), String(data.budgetCustomAmount));
         }
         if (data.budgetRangeFrom) {
-          localStorage.setItem('budget_range_from_v1', data.budgetRangeFrom);
+          localStorage.setItem(userCacheKey('budget_range_from_v1'), data.budgetRangeFrom);
         }
         if (data.budgetRangeTo) {
-          localStorage.setItem('budget_range_to_v1', data.budgetRangeTo);
+          localStorage.setItem(userCacheKey('budget_range_to_v1'), data.budgetRangeTo);
         }
         if (data.budgetSingleDate) {
-          localStorage.setItem('budget_single_date_v1', data.budgetSingleDate);
+          localStorage.setItem(userCacheKey('budget_single_date_v1'), data.budgetSingleDate);
         }
         if (data.budgetGlobalSource) {
-          localStorage.setItem('budget_global_source_v1', data.budgetGlobalSource);
+          localStorage.setItem(userCacheKey('budget_global_source_v1'), data.budgetGlobalSource);
         }
         if (data.incomeGoal !== undefined) {
-          localStorage.setItem('incomeGoal', String(data.incomeGoal));
+          localStorage.setItem(userCacheKey('incomeGoal'), String(data.incomeGoal));
           if (window.renderAnalytics) window.renderAnalytics();
         }
         if (data.expenseGoal !== undefined) {
-          localStorage.setItem('expenseGoal', String(data.expenseGoal));
+          localStorage.setItem(userCacheKey('expenseGoal'), String(data.expenseGoal));
           if (window.renderExpenseFullAnalytics) window.renderExpenseFullAnalytics();
         }
         if (data.fuelPrice !== undefined) {
@@ -1956,7 +1970,7 @@
       }
       // Берём адреса из localStorage (старая версия приложения хранит там)
       let arr = [];
-      try { arr = JSON.parse(localStorage.getItem('waCustomAddrs') || '[]'); } catch(e) {}
+      try { arr = JSON.parse(localStorage.getItem(userCacheKey('waCustomAddrs')) || '[]'); } catch(e) {}
       if (!arr.length) {
         status.textContent = '⚠️ В памяти устройства нет адресов.';
         btn.disabled = false; btn.textContent = '☁️ Загрузить адреса в Firebase';
@@ -2205,8 +2219,11 @@
   let _compareMonthB = '';
 
   let _carCostPeriodMode = 'topbar'; // 'topbar', 'this_month', 'prev_month', 'all'
+  window._carCostPeriodMode = _carCostPeriodMode;
   window.setCarCostPeriodMode = (mode) => {
+    if (!['topbar', 'this_month', 'prev_month', 'all'].includes(mode)) return;
     _carCostPeriodMode = mode;
+    window._carCostPeriodMode = mode;
     if (window.renderFuelTracker) window.renderFuelTracker();
   };
 
@@ -2264,7 +2281,11 @@
   const CACHE_TX_KEY = 'cache_tx_v1';
   const CACHE_TX_LIMIT = 300; // храним только последние N — не раздуваем localStorage
   let localCacheUserId = '';
-  const userCacheKey = (key) => localCacheUserId ? `${key}_${localCacheUserId}` : key;
+  const userCacheKey = (key) => {
+    const uid = (window.fbUser && window.fbUser.uid) || localCacheUserId;
+    return uid ? `${key}_${uid}` : key;
+  };
+  window.userStorageKey = userCacheKey;
 
   function cacheSettingsToLocal() {
     try { localStorage.setItem(userCacheKey(CACHE_SETTINGS_KEY), JSON.stringify({ DEFAULTS, ACCOUNTS })); } catch(e) {}
@@ -3428,7 +3449,7 @@
     const forecast = dayOfMonth>0 ? Math.round(curMonthInc/dayOfMonth*daysInCurMonth) : 0;
     const forecastHtml = curMonthInc>0 ? `<div class="sec-title">🔮 Прогноз на ${fmtM(currentMonthKey)}</div><div class="goal-box"><div style="display:flex;justify-content:space-between;font-size:13px;"><span>Заработано</span><span class="pos" style="font-weight:bold;">${curMonthInc.toLocaleString()} ₸</span></div><div style="display:flex;justify-content:space-between;font-size:13px;margin-top:4px;"><span>К концу месяца</span><span style="font-weight:bold;color:#a78bfa;">≈ ${forecast.toLocaleString()} ₸</span></div><div class="month-meta" style="margin-top:4px;">на основе темпа: ${dayOfMonth} из ${daysInCurMonth} дн.</div></div>` : '';
     // Цель по доходу на месяц — хранится локально на устройстве
-    let incomeGoal=0; try{incomeGoal=parseInt(localStorage.getItem('incomeGoal')||'0')||0;}catch(e){}
+    let incomeGoal=0; try{incomeGoal=parseInt(localStorage.getItem(userCacheKey('incomeGoal'))||'0')||0;}catch(e){}
     const goalPct = incomeGoal>0 ? Math.min(100,Math.round(curMonthInc/incomeGoal*100)) : 0;
     const goalHtml = `<div class="sec-title" style="display:flex;justify-content:space-between;align-items:center;"><span>🎯 Цель на ${fmtM(currentMonthKey)}</span><button onclick="editIncomeGoal()" style="background:none;border:1px solid #2a2a2a;border-radius:6px;color:#a78bfa;font-size:10px;padding:3px 7px;cursor:pointer;">✏️ ${incomeGoal>0?'Изменить':'Задать'}</button></div>${
       incomeGoal>0
@@ -3962,7 +3983,7 @@
   window.editIncomeGoal = () => {
     const old = document.getElementById('_goalEditDialog');
     if (old) old.remove();
-    let cur = 0; try { cur = parseInt(localStorage.getItem('incomeGoal') || '0') || 0; } catch (e) {}
+    let cur = 0; try { cur = parseInt(localStorage.getItem(userCacheKey('incomeGoal')) || '0') || 0; } catch (e) {}
     const div = document.createElement('div');
     div.id = '_goalEditDialog';
     div.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;padding:20px;';
@@ -3983,7 +4004,7 @@
     const val = parseInt(document.getElementById('_goalEditInput').value) || 0;
     const dialog = document.getElementById('_goalEditDialog');
     if (dialog) dialog.remove();
-    try { localStorage.setItem('incomeGoal', String(val)); } catch (e) {}
+    try { localStorage.setItem(userCacheKey('incomeGoal'), String(val)); } catch (e) {}
     try {
       const { fbDB, fbMethods, fbUser } = window;
       if (fbUser && fbUser.uid && fbDB) {
@@ -4057,6 +4078,7 @@
   const BUDGET_RANGE_TO_KEY = 'budget_range_to_v1';
   const BUDGET_SINGLE_DATE_KEY = 'budget_single_date_v1';
   const BUDGET_GLOBAL_SOURCE_KEY = 'budget_global_source_v1';
+  const budgetStorageKey = key => userCacheKey(key);
 
   function isNightIncomeTx(t) {
     const sub = (t.subcategory || '').toLowerCase();
@@ -4121,7 +4143,7 @@
     if (period === 'today') {
       from = todayStr; to = todayStr; label = 'Сегодня';
     } else if (period === 'date') {
-      const savedDate = localStorage.getItem(BUDGET_SINGLE_DATE_KEY) || todayStr;
+      const savedDate = localStorage.getItem(budgetStorageKey(BUDGET_SINGLE_DATE_KEY)) || todayStr;
       from = savedDate; to = savedDate; label = savedDate;
     } else if (period === 'yesterday') {
       const y = new Date(n);
@@ -4188,7 +4210,7 @@
   function getBudgetCategories() {
     let list = null;
     try {
-      const saved = localStorage.getItem(BUDGET_CATEGORIES_KEY);
+      const saved = localStorage.getItem(budgetStorageKey(BUDGET_CATEGORIES_KEY));
       if (saved) list = JSON.parse(saved);
     } catch(e) {}
     if (!Array.isArray(list) || list.length === 0) {
@@ -4224,7 +4246,7 @@
 
   function saveBudgetCategories(cats) {
     try {
-      localStorage.setItem(BUDGET_CATEGORIES_KEY, JSON.stringify(cats));
+      localStorage.setItem(budgetStorageKey(BUDGET_CATEGORIES_KEY), JSON.stringify(cats));
     } catch(e) {}
     try {
       const { fbDB, fbMethods, fbUser } = window;
@@ -4239,11 +4261,11 @@
   window.saveBudgetCategories = saveBudgetCategories;
 
   window.setBudgetPeriod = (period) => {
-    try { localStorage.setItem(BUDGET_SOURCE_KEY, period); } catch(e) {}
+    try { localStorage.setItem(budgetStorageKey(BUDGET_SOURCE_KEY), period); } catch(e) {}
     if (period === 'date') {
       const existing = document.getElementById('budgetSingleDate')?.value;
-      if (existing && !localStorage.getItem(BUDGET_SINGLE_DATE_KEY)) {
-        try { localStorage.setItem(BUDGET_SINGLE_DATE_KEY, existing); } catch(e) {}
+      if (existing && !localStorage.getItem(budgetStorageKey(BUDGET_SINGLE_DATE_KEY))) {
+        try { localStorage.setItem(budgetStorageKey(BUDGET_SINGLE_DATE_KEY), existing); } catch(e) {}
       }
     }
     try {
@@ -4263,7 +4285,7 @@
   window.onBudgetSingleDateChange = () => {
     const d = document.getElementById('budgetSingleDate')?.value || '';
     if (d) {
-      localStorage.setItem(BUDGET_SINGLE_DATE_KEY, d);
+      localStorage.setItem(budgetStorageKey(BUDGET_SINGLE_DATE_KEY), d);
       try {
         const { fbDB, fbMethods, fbUser } = window;
         if (fbUser && fbUser.uid && fbDB) {
@@ -4277,8 +4299,8 @@
   window.onBudgetRangeChange = () => {
     const f = document.getElementById('budgetFromDate')?.value || '';
     const t = document.getElementById('budgetToDate')?.value || '';
-    if (f) localStorage.setItem(BUDGET_RANGE_FROM_KEY, f);
-    if (t) localStorage.setItem(BUDGET_RANGE_TO_KEY, t);
+    if (f) localStorage.setItem(budgetStorageKey(BUDGET_RANGE_FROM_KEY), f);
+    if (t) localStorage.setItem(budgetStorageKey(BUDGET_RANGE_TO_KEY), t);
     try {
       const { fbDB, fbMethods, fbUser } = window;
       if (fbUser && fbUser.uid && fbDB) {
@@ -4293,7 +4315,7 @@
 
   window.onBudgetGlobalSourceChange = () => {
     const src = document.getElementById('budgetGlobalIncomeSource')?.value || 'all';
-    localStorage.setItem(BUDGET_GLOBAL_SOURCE_KEY, src);
+    localStorage.setItem(budgetStorageKey(BUDGET_GLOBAL_SOURCE_KEY), src);
     try {
       const { fbDB, fbMethods, fbUser } = window;
       if (fbUser && fbUser.uid && fbDB) {
@@ -4305,7 +4327,7 @@
 
   window.onBudgetCustomAmountChange = () => {
     const val = Number(document.getElementById('budgetCustomAmountInput').value) || 0;
-    try { localStorage.setItem(BUDGET_CUSTOM_AMOUNT_KEY, String(val)); } catch(e) {}
+    try { localStorage.setItem(budgetStorageKey(BUDGET_CUSTOM_AMOUNT_KEY), String(val)); } catch(e) {}
     try {
       const { fbDB, fbMethods, fbUser } = window;
       if (fbUser && fbUser.uid && fbDB) {
@@ -4324,9 +4346,9 @@
     const n = new Date(); if (n.getHours() < 3) n.setDate(n.getDate() - 1);
     const today = new Date(n - n.getTimezoneOffset() * 60000).toISOString().split('T')[0];
 
-    const currentPeriod = localStorage.getItem(BUDGET_SOURCE_KEY) || 'today';
-    const customAmt = Number(localStorage.getItem(BUDGET_CUSTOM_AMOUNT_KEY)) || 0;
-    const globalSrc = localStorage.getItem(BUDGET_GLOBAL_SOURCE_KEY) || 'all';
+    const currentPeriod = localStorage.getItem(budgetStorageKey(BUDGET_SOURCE_KEY)) || 'today';
+    const customAmt = Number(localStorage.getItem(budgetStorageKey(BUDGET_CUSTOM_AMOUNT_KEY))) || 0;
+    const globalSrc = localStorage.getItem(budgetStorageKey(BUDGET_GLOBAL_SOURCE_KEY)) || 'all';
 
     // 1. Обновляем выпадающий список глобальных источников
     const globalSrcSelect = document.getElementById('budgetGlobalIncomeSource');
@@ -4364,7 +4386,7 @@
 
     if (singleDateRow) singleDateRow.style.display = currentPeriod === 'date' ? 'block' : 'none';
     if (singleDateInp) {
-      const savedSingleDate = localStorage.getItem(BUDGET_SINGLE_DATE_KEY) || today;
+      const savedSingleDate = localStorage.getItem(budgetStorageKey(BUDGET_SINGLE_DATE_KEY)) || today;
       singleDateInp.value = savedSingleDate;
     }
 
@@ -4374,8 +4396,8 @@
       customInp.value = customAmt || '';
     }
 
-    let globalFrom = localStorage.getItem(BUDGET_RANGE_FROM_KEY) || today;
-    let globalTo = localStorage.getItem(BUDGET_RANGE_TO_KEY) || today;
+    let globalFrom = localStorage.getItem(budgetStorageKey(BUDGET_RANGE_FROM_KEY)) || today;
+    let globalTo = localStorage.getItem(budgetStorageKey(BUDGET_RANGE_TO_KEY)) || today;
     if (fromInp && !fromInp.value) fromInp.value = globalFrom;
     if (toInp && !toInp.value) toInp.value = globalTo;
 
@@ -4409,7 +4431,7 @@
 
       let cDates;
       if (effPeriod === 'date') {
-        const savedDate = (c.period === 'date' && c.dateFrom) ? c.dateFrom : (localStorage.getItem(BUDGET_SINGLE_DATE_KEY) || today);
+        const savedDate = (c.period === 'date' && c.dateFrom) ? c.dateFrom : (localStorage.getItem(budgetStorageKey(BUDGET_SINGLE_DATE_KEY)) || today);
         cDates = { from: savedDate, to: savedDate, label: `Дата: ${savedDate}` };
       } else if (effPeriod === 'custom') {
         cDates = { from: c.dateFrom || today, to: c.dateTo || today, label: `${c.dateFrom || today} — ${c.dateTo || today}` };
@@ -5052,6 +5074,7 @@
   };
 
   window.getCarOwnershipStats = (fuelStats, forcedPeriod = null) => {
+    const ownershipStartDate = '2026-09-01';
     const periodMode = forcedPeriod || (window._carCostPeriodMode || 'topbar');
 
     const now = new Date();
@@ -5077,9 +5100,9 @@
       filterTo = `${prevMonthKey}-31`;
       periodName = `Прошлый месяц (${monthNames[prevM - 1]} ${prevY})`;
     } else if (periodMode === 'all') {
-      filterFrom = '';
+      filterFrom = ownershipStartDate;
       filterTo = '';
-      periodName = 'За всё время';
+      periodName = 'С 01.09.2026';
     } else {
       // topbar — синхронизация с верхним фильтром
       const fEl = document.getElementById("fromDate");
@@ -5088,7 +5111,8 @@
       filterTo = tEl ? tEl.value : '';
 
       if (!filterFrom && !filterTo) {
-        periodName = 'За всё время';
+        filterFrom = ownershipStartDate;
+        periodName = 'С 01.09.2026';
       } else if (filterFrom === filterTo) {
         if (filterFrom === todayStr) periodName = `Сегодня (${filterFrom.slice(8,10)}.${filterFrom.slice(5,7)})`;
         else periodName = `День: ${filterFrom.slice(8,10)}.${filterFrom.slice(5,7)}.${filterFrom.slice(0,4)}`;
@@ -5099,6 +5123,8 @@
       } else {
         periodName = `По ${filterTo.slice(8,10)}.${filterTo.slice(5,7)}`;
       }
+      if (!filterFrom || filterFrom < ownershipStartDate) filterFrom = ownershipStartDate;
+      if (filterTo && filterTo < ownershipStartDate) periodName = 'До начала учёта';
     }
 
     const isPeriodActive = Boolean(filterFrom || filterTo);
@@ -5154,22 +5180,25 @@
       if (!isFuel && !isOil && !isRepair && !isWash && !isIns && !isFine && !isCarGeneral && !isMaint) return;
 
       const amt = Number(t.amount) || 0;
-      allTimeAutoCost += amt;
-      if (isFuel) allTimeFuelCost += amt;
+      const d = t.date || '';
+      const sinceOwnershipStart = d >= ownershipStartDate;
+      if (sinceOwnershipStart) {
+        allTimeAutoCost += amt;
+        if (isFuel) allTimeFuelCost += amt;
+      }
 
-      const m = (t.date || '').slice(0, 7);
-      if (m) {
+      const m = d.slice(0, 7);
+      if (m && sinceOwnershipStart) {
         allMonths[m] = (allMonths[m] || 0) + amt;
         if (m === thisMonthKey) curMonthAutoCost += amt;
       }
 
       const odo = Number(t.odometer);
-      if (odo > 0) {
+      if (odo > 0 && sinceOwnershipStart) {
         allOdoEntries.push({ date: t.date || '', odo, amount: amt, isFuel });
       }
 
       // Проверка диапазона дат
-      const d = t.date || '';
       if (filterFrom && d < filterFrom) {
         if (odo > 0) lastOdoBeforePeriod = odo;
         return;
@@ -5200,8 +5229,10 @@
     // Стоимость владения делим на пробег по всем авто-записям с одометром,
     // включая ТО и ремонт. Топливные интервалы отдельно остаются источником
     // пробега только в режиме «поездка», где одометр хранит длину поездки.
-    let allTimeDistance = fuelStats && fuelStats.odoMode === 'trip' && fuelStats.totalDistanceAllTime > 0
-      ? fuelStats.totalDistanceAllTime : 0;
+    const ownershipTripDistance = fuelStats && fuelStats.odoMode === 'trip' && Array.isArray(fuelStats.intervals)
+      ? fuelStats.intervals.filter(i => i.toDate >= ownershipStartDate).reduce((sum, i) => sum + (Number(i.distance) || 0), 0)
+      : 0;
+    let allTimeDistance = ownershipTripDistance;
     if (allTimeDistance === 0 && allOdoEntries.length >= 2) {
       const minOdo = allOdoEntries[0].odo;
       const maxOdo = allOdoEntries[allOdoEntries.length - 1].odo;
@@ -5213,12 +5244,17 @@
     // 2. Дистанция за период
     let periodDistance = 0;
     if (isPeriodActive) {
-      if (periodOdoEntries.length >= 2) {
-        const minO = periodOdoEntries[0].odo;
-        const maxO = periodOdoEntries[periodOdoEntries.length - 1].odo;
-        if (maxO > minO) periodDistance = maxO - minO;
-      } else if (periodOdoEntries.length === 1 && lastOdoBeforePeriod && periodOdoEntries[0].odo > lastOdoBeforePeriod) {
-        periodDistance = periodOdoEntries[0].odo - lastOdoBeforePeriod;
+      if (fuelStats && fuelStats.odoMode === 'trip' && Array.isArray(fuelStats.intervals)) {
+        periodDistance = fuelStats.intervals.filter(i => (!filterFrom || i.toDate >= filterFrom) && (!filterTo || i.toDate <= filterTo))
+          .reduce((sum, i) => sum + (Number(i.distance) || 0), 0);
+      }
+      if (periodDistance === 0 && periodOdoEntries.length >= 2) {
+        const firstO = periodOdoEntries[0].odo;
+        const lastO = periodOdoEntries[periodOdoEntries.length - 1].odo;
+        if (lastO > firstO) periodDistance = lastO - firstO;
+      }
+      if (periodDistance === 0 && periodOdoEntries.length && lastOdoBeforePeriod && periodOdoEntries[0].odo > lastOdoBeforePeriod) {
+        periodDistance = periodOdoEntries[periodOdoEntries.length - 1].odo - lastOdoBeforePeriod;
       }
     } else {
       periodDistance = allTimeDistance;
@@ -5394,20 +5430,20 @@
             <div class="fuel-label">Общая цена 1 км</div>
             <div class="fuel-metric" style="color:#ffd166;">${costPerKm ? `${costPerKm} ₸/км` : '—'}</div>
             <div style="font-size:10px;color:#8899a6;margin-top:2px;">
-              ${periodDistance > 0 ? `все авто-расходы ÷ ${periodDistance.toLocaleString()} км` : (isPerKmFallback ? 'среднее за всё время (все расходы ÷ км)' : 'введите показания одометра')}
+              ${periodDistance > 0 ? `все авто-расходы ÷ ${periodDistance.toLocaleString()} км` : (isPerKmFallback ? 'среднее с 01.09.2026 (все расходы ÷ км)' : 'введите показания одометра')}
             </div>
           </div>
           <div class="fuel-box" style="margin-bottom:0;">
             <div class="fuel-label">Только бензин (1 км)</div>
             <div class="fuel-metric" style="color:#6ec6ff;">${fuelCostPerKm ? `${fuelCostPerKm} ₸/км` : '—'}</div>
             <div style="font-size:10px;color:#8899a6;margin-top:2px;">
-              ${periodDistance > 0 ? `бензин ÷ ${periodDistance.toLocaleString()} км` : (isPerKmFallback ? 'среднее за всё время (топливо ÷ км)' : 'введите показания одометра')}
+              ${periodDistance > 0 ? `бензин ÷ ${periodDistance.toLocaleString()} км` : (isPerKmFallback ? 'среднее с 01.09.2026 (топливо ÷ км)' : 'введите показания одометра')}
             </div>
           </div>
         </div>
 
         <div style="display:flex;justify-content:space-between;align-items:center;background:#0d1522;border:1px solid #1a2a40;border-radius:10px;padding:8px 12px;margin-bottom:10px;font-size:11px;">
-          <span>🚗 Пробег: <b style="color:#fff;">${periodDistance > 0 ? `${periodDistance.toLocaleString()} км` : (allTimeDistance > 0 ? `${allTimeDistance.toLocaleString()} км (всего)` : '—')}</b></span>
+          <span>🚗 Пробег: <b style="color:#fff;">${periodDistance > 0 ? `${periodDistance.toLocaleString()} км` : (!isPeriodActive && allTimeDistance > 0 ? `${allTimeDistance.toLocaleString()} км (с 01.09.2026)` : '—')}</b></span>
           <span>⛽ Бензин: <b style="color:#6ec6ff;">${periodFuelCost.toLocaleString()} ₸</b></span>
         </div>
 
@@ -5696,7 +5732,7 @@
   window.editExpenseGoal = () => {
     const old = document.getElementById('_expGoalDialog');
     if (old) old.remove();
-    let cur = 0; try { cur = parseInt(localStorage.getItem('expenseGoal') || '0') || 0; } catch (e) {}
+    let cur = 0; try { cur = parseInt(localStorage.getItem(userCacheKey('expenseGoal')) || '0') || 0; } catch (e) {}
     const div = document.createElement('div');
     div.id = '_expGoalDialog';
     div.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;padding:20px;';
@@ -5717,7 +5753,7 @@
     const val = parseInt(document.getElementById('_expGoalInput').value) || 0;
     const dialog = document.getElementById('_expGoalDialog');
     if (dialog) dialog.remove();
-    try { localStorage.setItem('expenseGoal', String(val)); } catch (e) {}
+    try { localStorage.setItem(userCacheKey('expenseGoal'), String(val)); } catch (e) {}
     try {
       const { fbDB, fbMethods, fbUser } = window;
       if (fbUser && fbUser.uid && fbDB) {
@@ -5824,7 +5860,7 @@
     ` : '';
 
     // Лимит расходов на месяц
-    let expenseGoal = 0; try { expenseGoal = parseInt(localStorage.getItem('expenseGoal') || '0') || 0; } catch(e) {}
+    let expenseGoal = 0; try { expenseGoal = parseInt(localStorage.getItem(userCacheKey('expenseGoal')) || '0') || 0; } catch(e) {}
     const goalPct = expenseGoal > 0 ? Math.min(100, Math.round(curMonthExp / expenseGoal * 100)) : 0;
     const expGoalHtml = `
       <div class="sec-title" style="display:flex;justify-content:space-between;align-items:center;">
@@ -6120,26 +6156,68 @@
   // ══ 4. РЕГУЛЯРНЫЕ ЕЖЕМЕСЯЧНЫЕ ПЛАТЕЖИ И PUSH-НАПОМИНАНИЯ ═══════
   // ════════════════════════════════════════════════════════════════
   const RECURRING_BILLS_KEY = 'recurring_bills_v1';
+  const LEGACY_SAMPLE_BILL_IDS = new Set(['rb_rent', 'rb_inet', 'rb_phone', 'rb_credit', 'rb_sub']);
   window.getRecurringBills = () => {
     let list = null;
-    try { list = JSON.parse(localStorage.getItem(RECURRING_BILLS_KEY) || 'null'); } catch(e) {}
-    if (!list || !Array.isArray(list) || !list.length) {
-      list = [
-        { id: 'rb_rent', title: 'Квартплата / Аренда', amount: 35000, dayOfMonth: 5, categoryName: 'Жильё', paidMonths: [] },
-        { id: 'rb_inet', title: 'Интернет', amount: 6500, dayOfMonth: 10, categoryName: 'Связь', paidMonths: [] },
-        { id: 'rb_phone', title: 'Мобильная связь', amount: 3500, dayOfMonth: 15, categoryName: 'Связь', paidMonths: [] },
-        { id: 'rb_credit', title: 'Кредит / Рассрочка', amount: 25000, dayOfMonth: 20, categoryName: 'Кредит', paidMonths: [] },
-        { id: 'rb_sub', title: 'Подписки / Сервисы', amount: 2000, dayOfMonth: 25, categoryName: 'Подписки', paidMonths: [] }
-      ];
-      try { localStorage.setItem(RECURRING_BILLS_KEY, JSON.stringify(list)); } catch(e) {}
-    }
-    return list;
+    try { list = JSON.parse(localStorage.getItem(userCacheKey(RECURRING_BILLS_KEY)) || '[]'); } catch(e) {}
+    return Array.isArray(list) ? list : [];
   };
 
-  window.saveRecurringBills = (list) => {
-    try { localStorage.setItem(RECURRING_BILLS_KEY, JSON.stringify(list)); } catch(e) {}
+  window.saveRecurringBills = async (list) => {
+    const cleanList = Array.isArray(list) ? list : [];
+    try { localStorage.setItem(userCacheKey(RECURRING_BILLS_KEY), JSON.stringify(cleanList)); } catch(e) {}
+    try {
+      const { fbDB, fbMethods, fbUser } = window;
+      if (!fbUser?.uid || !fbDB || !fbMethods?.setDoc) throw new Error('Войдите в аккаунт, чтобы сохранить платежи в Firebase.');
+      await fbMethods.setDoc(fbMethods.doc(fbDB, 'users', fbUser.uid), {
+        recurringBills: cleanList,
+        recurringBillsUpdated: Date.now()
+      }, { merge: true });
+    } catch(e) {
+      console.warn('Recurring bills Firebase sync error:', e.message);
+      window.showToast('⚠️ Не удалось синхронизировать регулярные платежи: ' + (window.firebaseErrorRu ? window.firebaseErrorRu(e) : e.message), 'error');
+    }
     if (window.renderRecurringBills) window.renderRecurringBills();
     if (window.checkCarAndBillsReminders) window.checkCarAndBillsReminders();
+  };
+
+  window.loadRecurringBillsFromFirebase = async () => {
+    const { fbDB, fbMethods, fbUser } = window;
+    if (!fbUser?.uid || !fbDB || !fbMethods?.getDoc) return [];
+    const userRef = fbMethods.doc(fbDB, 'users', fbUser.uid);
+    try {
+      const snap = await fbMethods.getDoc(userRef);
+      const data = snap.exists() ? snap.data() : {};
+      // Старый общий localStorage не переносим: он содержал демонстрационные платежи
+      // и не был привязан к аккаунту. В Firebase отсутствие списка означает [] .
+      const bills = Array.isArray(data.recurringBills)
+        ? data.recurringBills.filter(b => b && b.id && !LEGACY_SAMPLE_BILL_IDS.has(b.id) && String(b.title || '').trim())
+        : [];
+      localStorage.setItem(userCacheKey(RECURRING_BILLS_KEY), JSON.stringify(bills));
+      localStorage.removeItem(RECURRING_BILLS_KEY);
+      if (!Array.isArray(data.recurringBills)) {
+        await fbMethods.setDoc(userRef, { recurringBills: [], recurringBillsUpdated: Date.now() }, { merge: true });
+      } else if (bills.length !== data.recurringBills.length) {
+        await fbMethods.setDoc(userRef, { recurringBills: bills, recurringBillsUpdated: Date.now() }, { merge: true });
+      }
+      if (typeof window._recurringBillsUnsubscribe === 'function') window._recurringBillsUnsubscribe();
+      if (fbMethods.onSnapshot) {
+        window._recurringBillsUnsubscribe = fbMethods.onSnapshot(userRef, liveSnap => {
+          if (!liveSnap.exists()) return;
+          const liveBills = liveSnap.data().recurringBills;
+          if (!Array.isArray(liveBills)) return;
+          const clean = liveBills.filter(b => b && b.id && !LEGACY_SAMPLE_BILL_IDS.has(b.id) && String(b.title || '').trim());
+          localStorage.setItem(userCacheKey(RECURRING_BILLS_KEY), JSON.stringify(clean));
+          if (window.renderRecurringBills) window.renderRecurringBills();
+        }, err => console.warn('Recurring bills Firebase listener error:', err.message));
+      }
+      if (window.renderRecurringBills) window.renderRecurringBills();
+      return bills;
+    } catch(e) {
+      console.warn('Recurring bills Firebase load error:', e.message);
+      window.showToast('⚠️ Не удалось загрузить регулярные платежи из Firebase.', 'error');
+      return window.getRecurringBills();
+    }
   };
 
   window.renderRecurringBills = () => {
@@ -6227,7 +6305,7 @@
 
     if (!Array.isArray(bill.paidMonths)) bill.paidMonths = [];
     if (!bill.paidMonths.includes(curMonthKey)) bill.paidMonths.push(curMonthKey);
-    window.saveRecurringBills(bills);
+    await window.saveRecurringBills(bills);
 
     const txData = {
       type: 'expense',
@@ -6284,7 +6362,7 @@
     setTimeout(() => { const inp = document.getElementById('_newBillTitle'); if (inp) inp.focus(); }, 100);
   };
 
-  window.saveNewRecurringBillModal = () => {
+  window.saveNewRecurringBillModal = async () => {
     const title = (document.getElementById('_newBillTitle').value || '').trim();
     const amount = Number(document.getElementById('_newBillAmount').value);
     const day = Number(document.getElementById('_newBillDay').value);
@@ -6301,16 +6379,16 @@
       categoryName: 'Платежи',
       paidMonths: []
     });
-    window.saveRecurringBills(bills);
+    await window.saveRecurringBills(bills);
     document.getElementById('_addBillModal').remove();
     window.showToast(`✅ Платёж "${title}" добавлен`);
   };
 
-  window.deleteRecurringBill = (billId) => {
+  window.deleteRecurringBill = async (billId) => {
     if (!confirm('Удалить этот регулярный платёж?')) return;
     let bills = window.getRecurringBills();
     bills = bills.filter(b => b.id !== billId);
-    window.saveRecurringBills(bills);
+    await window.saveRecurringBills(bills);
     window.showToast('Платёж удалён');
   };
 

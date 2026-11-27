@@ -151,7 +151,7 @@
 
       const firebaseAddresses = await readFirebaseAddresses();
       let localAddresses = [];
-      try { localAddresses = JSON.parse(localStorage.getItem('waCustomAddrs') || '[]'); } catch (_) {}
+      try { localAddresses = JSON.parse(localStorage.getItem(window.userStorageKey ? window.userStorageKey('waCustomAddrs') : 'waCustomAddrs') || '[]'); } catch (_) {}
       const sources = [...firebaseAddresses, ...localAddresses];
 
       const blocks = originalText.split(/(\[\d+\.\d+,\s*\d+:\d+\])/);
