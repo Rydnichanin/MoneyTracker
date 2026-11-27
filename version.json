@@ -1,9 +1,9 @@
 {
   "version": "5.2.8",
   "build": 2026112106,
-  "androidVersionName": "1.2.3",
-  "androidVersionCode": 6,
-  "androidChangelog": "Обновление приложения до версии 1.2.3",
+  "androidVersionName": "1.2.4",
+  "androidVersionCode": 7,
+  "androidChangelog": "Обновление приложения до версии 1.2.4",
   "androidReleaseUrl": "https://github.com/Rydnichanin/MoneyTracker/releases/latest/download/MoneyTracker.apk",
   "updatedAt": "2026-11-21T08:41:53.783Z",
   "source": "https://github.com/rydnichanin/MoneyTracker",
