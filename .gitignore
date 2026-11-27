@@ -1,0 +1,8 @@
+.gradle/
+**/build/
+*.jks
+*.keystore
+*.pfx
+*.p12
+moneytracker-release-passwords.txt
+local.properties

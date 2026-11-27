@@ -1,4 +1,4 @@
-name: Build APK
+name: Build Android debug APK
 
 on:
   push:
@@ -47,11 +47,11 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x ./gradlew
 
-      - name: Build Release APK
-        run: gradle assembleRelease --warning-mode none
+      - name: Build debug APK
+        run: gradle assembleDebug --warning-mode none
 
-      - name: Upload APK
+      - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: MoneyTracker-APK
-          path: app/build/outputs/apk/release/app-release.apk
+          name: MoneyTracker-debug-APK
+          path: app/build/outputs/apk/debug/app-debug.apk

@@ -1,6 +1,10 @@
 {
   "version": "5.2.8",
   "build": 2026112106,
+  "androidVersionName": "1.1",
+  "androidVersionCode": 2,
+  "androidChangelog": "",
+  "androidReleaseUrl": "https://github.com/Rydnichanin/MoneyTracker/releases/latest",
   "updatedAt": "2026-11-21T08:41:53.783Z",
   "source": "https://github.com/rydnichanin/MoneyTracker",
   "title": "Учёт Курьера Pro v5.2.8",

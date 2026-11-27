@@ -2,6 +2,9 @@ package com.moneytracker.app;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -12,10 +15,12 @@ import android.os.Bundle;
 import android.net.Uri;
 import android.webkit.GeolocationPermissions;
 import android.webkit.JavascriptInterface;
+import android.webkit.JsResult;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import androidx.core.app.NotificationCompat;
 
 public class MainActivity extends Activity {
 
@@ -23,6 +28,7 @@ public class MainActivity extends Activity {
     private static final String WEB_ORIGIN = "https://rydnichanin.github.io";
     private WebView webView;
     private boolean receiverRegistered;
+    private static final String REMINDER_CHANNEL_ID = "moneytracker_reminders";
 
     private final BroadcastReceiver gpsReceiver = new BroadcastReceiver() {
         @Override
@@ -93,7 +99,21 @@ public class MainActivity extends Activity {
             }
         });
         webView.addJavascriptInterface(new WebAppInterface(), "AndroidBridge");
+        createReminderNotificationChannel();
         webView.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public boolean onJsConfirm(WebView view, String url, String message, JsResult result) {
+                boolean updatePrompt = message != null && message.startsWith("Доступна новая версия приложения");
+                new android.app.AlertDialog.Builder(MainActivity.this)
+                        .setTitle("Учёт Курьера Pro")
+                        .setMessage(message)
+                        .setPositiveButton(updatePrompt ? "Скачать" : "Да", (dialog, which) -> result.confirm())
+                        .setNegativeButton(updatePrompt ? "Позже" : "Отмена", (dialog, which) -> result.cancel())
+                        .setOnCancelListener(dialog -> result.cancel())
+                        .show();
+                return true;
+            }
+
             @Override
             public void onGeolocationPermissionsShowPrompt(String origin,
                     GeolocationPermissions.Callback callback) {
@@ -225,16 +245,85 @@ public class MainActivity extends Activity {
             }
             return false;
         }
+
+        @JavascriptInterface
+        public boolean canPostNotifications() {
+            return Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
+                    || checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED;
+        }
+
+        @JavascriptInterface
+        public long getAppVersionCode() {
+            try {
+                android.content.pm.PackageInfo info = getPackageManager().getPackageInfo(getPackageName(), 0);
+                return Build.VERSION.SDK_INT >= Build.VERSION_CODES.P ? info.getLongVersionCode() : info.versionCode;
+            } catch (PackageManager.NameNotFoundException e) {
+                return 0;
+            }
+        }
+
+        @JavascriptInterface
+        public String getAppVersionName() {
+            try {
+                android.content.pm.PackageInfo info = getPackageManager().getPackageInfo(getPackageName(), 0);
+                return info.versionName != null ? info.versionName : "";
+            } catch (PackageManager.NameNotFoundException e) {
+                return "";
+            }
+        }
+
+        @JavascriptInterface
+        public void requestPostNotificationsPermission() {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                    && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                runOnUiThread(() -> requestPermissions(
+                        new String[]{Manifest.permission.POST_NOTIFICATIONS}, PERMISSION_REQUEST_CODE + 1));
+            }
+        }
+
+        @JavascriptInterface
+        public void showReminderNotification(String title, String body, int notificationId) {
+            if (!canPostNotifications()) return;
+            runOnUiThread(() -> {
+                NotificationManager manager = getSystemService(NotificationManager.class);
+                if (manager == null) return;
+                Intent openApp = new Intent(MainActivity.this, MainActivity.class);
+                openApp.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                PendingIntent contentIntent = PendingIntent.getActivity(
+                        MainActivity.this, 0, openApp,
+                        PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0));
+                manager.notify(notificationId, new NotificationCompat.Builder(MainActivity.this, REMINDER_CHANNEL_ID)
+                        .setSmallIcon(R.mipmap.ic_launcher)
+                        .setContentTitle(title)
+                        .setContentText(body)
+                        .setStyle(new NotificationCompat.BigTextStyle().bigText(body))
+                        .setContentIntent(contentIntent)
+                        .setAutoCancel(true)
+                        .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                        .build());
+            });
+        }
+    }
+
+    private void createReminderNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationManager manager = getSystemService(NotificationManager.class);
+            if (manager != null) manager.createNotificationChannel(new NotificationChannel(
+                    REMINDER_CHANNEL_ID, "Напоминания", NotificationManager.IMPORTANCE_DEFAULT));
+        }
     }
 
     private void checkAndRequestPermissions() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
-                checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[]{
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.ACCESS_COARSE_LOCATION,
-                    Manifest.permission.POST_NOTIFICATIONS
-            }, PERMISSION_REQUEST_CODE);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            java.util.ArrayList<String> missing = new java.util.ArrayList<>();
+            if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED)
+                missing.add(Manifest.permission.ACCESS_FINE_LOCATION);
+            if (checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED)
+                missing.add(Manifest.permission.ACCESS_COARSE_LOCATION);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                    && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED)
+                missing.add(Manifest.permission.POST_NOTIFICATIONS);
+            if (!missing.isEmpty()) requestPermissions(missing.toArray(new String[0]), PERMISSION_REQUEST_CODE);
         }
     }
 }

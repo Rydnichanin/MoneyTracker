@@ -1007,6 +1007,14 @@
         </button>
       </div>
 
+      <div class="card" style="border-color:#20324a;">
+        <div class="card-title" style="color:#6ec6ff;">📲 Версия приложения</div>
+        <div style="font-size:12px;color:#9aa7b5;line-height:1.5;margin-bottom:10px;">
+          Проверяйте новые версии и скачивайте APK со страницы релизов.
+        </div>
+        <button type="button" class="btn-main" style="background:#102238;color:#6ec6ff;border:1px solid #24486b;padding:10px;" onclick="checkForAppUpdates(true, true, true)">Проверить обновления</button>
+        <button type="button" class="btn-main" style="background:#151b23;color:#fff;border:1px solid #303947;padding:10px;margin-top:7px;" onclick="downloadLatestApk()">Скачать APK</button>
+      </div>
       <div id="settingsList"></div>
     </div>
   </div>
@@ -6310,6 +6318,16 @@
   // ══ 5. СИСТЕМА PUSH-НАПОМИНАНИЙ И ПРОВЕРКИ АЛЕРТОВ ═════════════
   // ════════════════════════════════════════════════════════════════
   window.requestPushPermission = async () => {
+    if (window.AndroidBridge && typeof window.AndroidBridge.canPostNotifications === 'function') {
+      if (!window.AndroidBridge.canPostNotifications()) {
+        window.AndroidBridge.requestPostNotificationsPermission();
+        window.showToast('Разрешите уведомления Android и нажмите кнопку ещё раз', 'info');
+        return;
+      }
+      window.showToast('✅ Уведомления включены');
+      window.checkCarAndBillsReminders(true);
+      return;
+    }
     if (!('Notification' in window)) {
       window.showToast('Уведомления не поддерживаются в этом браузере', 'error');
       return;
@@ -6393,23 +6411,29 @@
     }
 
     // Native Push notification
-    if ('Notification' in window && Notification.permission === 'granted' && alerts.length > 0) {
+    const isAndroidApp = !!(window.AndroidBridge && typeof window.AndroidBridge.showReminderNotification === 'function');
+    if (((isAndroidApp && window.AndroidBridge.canPostNotifications()) ||
+         ('Notification' in window && Notification.permission === 'granted')) && alerts.length > 0) {
       alerts.forEach(al => {
         const lastSent = localStorage.getItem('push_sent_' + al.key);
         if (forcePush || lastSent !== todayStr) {
           try {
-            if (navigator.serviceWorker && navigator.serviceWorker.controller) {
-              navigator.serviceWorker.ready.then(reg => {
-                reg.showNotification('MoneyTracker Напоминание', {
-                  body: al.text,
-                  icon: './icons/icon-192.png',
-                  badge: './icons/icon-192.png'
-                });
-              });
+            if (isAndroidApp) {
+              let notificationId = 0;
+              for (let i = 0; i < al.key.length; i++) notificationId = ((notificationId * 31) + al.key.charCodeAt(i)) | 0;
+              window.AndroidBridge.showReminderNotification('MoneyTracker Напоминание', al.text, notificationId & 0x7fffffff);
+              localStorage.setItem('push_sent_' + al.key, todayStr);
+            } else if (navigator.serviceWorker) {
+              navigator.serviceWorker.ready.then(reg => reg.showNotification('MoneyTracker Напоминание', {
+                body: al.text,
+                icon: './icon.png',
+                badge: './icon.png'
+              })).then(() => localStorage.setItem('push_sent_' + al.key, todayStr))
+                .catch(e => console.warn('Push dispatch error:', e));
             } else {
               new Notification('MoneyTracker Напоминание', { body: al.text });
+              localStorage.setItem('push_sent_' + al.key, todayStr);
             }
-            localStorage.setItem('push_sent_' + al.key, todayStr);
           } catch(e) { console.warn('Push dispatch error:', e); }
         }
       });
@@ -7823,13 +7847,13 @@ const badgeEl = document.getElementById('appVersionBadge');
 if (badgeEl) badgeEl.textContent = 'v' + APP_CURRENT_VERSION;
 
 window.downloadLatestApk = () => {
-  const apkUrl = 'https://github.com/rydnichanin/MoneyTracker/releases/download/v5.2.0/MoneyTracker-v5.2.0.apk';
-  window.showToast('📥 Скачивание APK с GitHub...', 'info');
+  const releaseUrl = window._androidReleaseUrl || 'https://github.com/Rydnichanin/MoneyTracker/releases/latest';
+  window.showToast('Открываю страницу последнего релиза GitHub', 'info');
   if (window.AndroidBridge && typeof window.AndroidBridge.openBrowser === 'function') {
-    window.AndroidBridge.openBrowser(apkUrl);
+    window.AndroidBridge.openBrowser(releaseUrl);
   } else {
     const a = document.createElement('a');
-    a.href = apkUrl;
+    a.href = releaseUrl;
     a.target = '_blank';
     document.body.appendChild(a);
     a.click();
@@ -7864,13 +7888,41 @@ window.forceFullAppReset = async () => {
   window.location.replace(cleanUrl + '?reset=' + Date.now());
 };
 
-window.checkServerVersion = async () => false;
-window.checkForAppUpdates = async () => {
+window.checkServerVersion = async (showPrompt = true, forcePrompt = false) => {
+  if (!window.AndroidBridge || typeof window.AndroidBridge.getAppVersionCode !== 'function') return false;
+  try {
+    const response = await fetch('./version.json?check=' + Date.now(), { cache: 'no-store' });
+    if (!response.ok) return false;
+    const latest = await response.json();
+    if (typeof latest.androidReleaseUrl === 'string' && latest.androidReleaseUrl.startsWith('https://github.com/')) {
+      window._androidReleaseUrl = latest.androidReleaseUrl;
+    }
+    const latestCode = Number(latest.androidVersionCode || 0);
+    const installedCode = Number(window.AndroidBridge.getAppVersionCode());
+    if (!latestCode || latestCode <= installedCode) return false;
+    if (showPrompt) {
+      const seenKey = 'android_update_prompted_' + latestCode;
+      if (forcePrompt || !sessionStorage.getItem(seenKey)) {
+        sessionStorage.setItem(seenKey, '1');
+        const releaseNotes = latest.androidChangelog ? '\n\n' + latest.androidChangelog : '';
+        if (confirm(`Доступна новая версия приложения ${latest.androidVersionName || ''}. Скачать её?${releaseNotes}`)) {
+          window.downloadLatestApk();
+        }
+      }
+    }
+    return true;
+  } catch (e) {
+    console.warn('[Update] Не удалось проверить версию APK:', e);
+    return false;
+  }
+};
+window.checkForAppUpdates = async (showPrompt = true, showResultToast = false, forcePrompt = false) => {
+  const apkUpdateAvailable = await window.checkServerVersion(showPrompt, forcePrompt);
   if ('serviceWorker' in navigator) {
     const reg = window._swRegistration || (await navigator.serviceWorker.getRegistration());
     if (reg) await reg.update().catch(() => {});
   }
-  window.showToast('✅ Установлена актуальная версия (' + APP_CURRENT_VERSION + ')', 'success');
+  if (!apkUpdateAvailable && showResultToast) window.showToast('✅ Новых Android-обновлений нет', 'success');
 };
 
 // Регистрация Service Worker — автоматическое тихое обновление в фоне
@@ -7883,6 +7935,7 @@ if ('serviceWorker' in navigator) {
   });
 
   window.addEventListener('load', async () => {
+    setTimeout(() => window.checkForAppUpdates(true), 1500);
     try {
       const reg = await navigator.serviceWorker.register('./sw.js');
       window._swRegistration = reg;
@@ -7914,7 +7967,7 @@ if ('serviceWorker' in navigator) {
 window.addEventListener('online', () => {
   window.showToast('✅ Подключение восстановлено');
   if (window.render) window.render();
-  if (window.checkForAppUpdates) window.checkForAppUpdates(false);
+  if (window.checkForAppUpdates) window.checkForAppUpdates(true);
 });
 window.addEventListener('offline', () => {
   window.showToast('📵 Нет сети — работаем офлайн', 'warn');
